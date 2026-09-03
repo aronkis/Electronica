@@ -304,11 +304,16 @@ hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cfc_est', 'IOInterface', 'AX
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cfc_est', 'IOInterfaceMapping', 'x"154"');
 
 % --- adc_forensic mapping (T8.3 valid-cadence + rail-level forensic) ---
+% LEAN: block-existence guard -- self-syncs with the overlay gating in
+% assemble (map only what actually got built; no env re-derivation to drift).
+if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','adc_forensic'))
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/adc_forensic', 'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/adc_forensic', 'IOInterfaceMapping', 'x"15C"');
+end
 % --- end adc_forensic mapping ---
 % --- state-pair registers (iq_debug_tap_overlay: boundary loop-state pairs,
 %     packed stored-int I/Q latched every 4096th rail beat) ---
+if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','state_agc_in'))
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/state_agc_in',  'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/state_agc_in',  'IOInterfaceMapping', 'x"160"');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/state_agc_out', 'IOInterface', 'AXI4-Lite');
@@ -317,6 +322,7 @@ hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/state_cs_in',   'IOInterface
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/state_cs_in',   'IOInterfaceMapping', 'x"168"');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/state_cs_out',  'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/state_cs_out',  'IOInterfaceMapping', 'x"16C"');
+end
 % --- end state-pair mappings ---
 % --- T8.5 canary mappings (canary_instrumentation_overlay: shadow timing
 %     loop divergence detectors + strobe forensic + beat counter) ---
@@ -350,6 +356,8 @@ hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cs_lf_div_cnt',  'IOInterfac
 end   % lean: canary regs absent
 
 % --- T8.7 canary4 valid census (0x1A0 was reserved; now cs_vin_cnt) ---
+% LEAN: block-existence guard (census stripped in production).
+if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','cs_vin_cnt'))
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cs_vin_cnt',  'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cs_vin_cnt',  'IOInterfaceMapping', 'x"1A0"');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cs_vlf_cnt',  'IOInterface', 'AXI4-Lite');
@@ -358,8 +366,12 @@ hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cs_vout_cnt', 'IOInterface',
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cs_vout_cnt', 'IOInterfaceMapping', 'x"1A8"');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cnt_rxwords', 'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cnt_rxwords', 'IOInterfaceMapping', 'x"1AC"');
+end
+% byte_fifo_ovf (0x1B0) is a SHIPPED FIFO fix -- always mapped (not debug).
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/byte_fifo_ovf', 'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/byte_fifo_ovf', 'IOInterfaceMapping', 'x"1B0"');
+% --- P1B decision-stage census (0x1B4-0x1C8) -- LEAN strip ---
+if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','p1b_pd_w1'))
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pd_w1', 'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pd_w1', 'IOInterfaceMapping', 'x"1B4"');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pd_w2', 'IOInterface', 'AXI4-Lite');
@@ -372,6 +384,7 @@ hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pc_w2', 'IOInterface', '
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pc_w2', 'IOInterfaceMapping', 'x"1C4"');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pa_w1', 'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pa_w1', 'IOInterfaceMapping', 'x"1C8"');
+end
 % --- end T8.6 canary2 mappings ---
 % --- end taps_240k5 mappings ---
 % nodescr: pn_phase (0x150) REMOVED -- no descrambler, so no PN-phase register.

@@ -1,5 +1,0 @@
-[    7.938866] adrv9002 spi0.0: adrv9002-phy Rev 12.0, Firmware 0.22.64,  Stream 0.7.18.0,  API version: 68.20.12 successfully initialized
-[    7.952708] cf_axi_adc 84a00000.axi-adrv9002-rx-lpc: ADI AIM (10.03.\x00) probed ADC ADRV9002 as MASTER
-[    7.975508] cf_axi_dds 84a0a000.axi-adrv9002-tx-lpc: Analog Devices CF_AXI_DDS_DDS MASTER (9.02.b) at 0x84A0A000 mapped to 0x000000009d3fe338, probed DDS ADRV9002
-[    8.003475] cf_axi_dds 84a0c000.axi-adrv9002-tx2-lpc: Analog Devices CF_AXI_DDS_DDS MASTER (9.02.b) at 0x84A0C000 mapped to 0x00000000bd243bbb, probed DDS ADRV9002
-[    9.432894] systemd[1]: /usr/lib/systemd/system/iiod.service:16: Invalid environment assignment, ignoring: $IIOD_EXTRA_OPTS=

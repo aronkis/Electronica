@@ -1,1 +1,0 @@
-HW-GOLDEN: capGolden=0/20 biterr_delta=-36637 pkts_delta=-674 rstcs=0xBA cfc=0x647 rssi=18.643

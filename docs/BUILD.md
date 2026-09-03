@@ -3,7 +3,8 @@
 Authoritative, reproducible path from the MATLAB/Simulink model to a deployed
 `BOOT.BIN` on an ADALM-Jupiter (ADRV9002) board. The canonical modem source kit is
 [`jupiter_240k5_byte/`](../jupiter_240k5_byte/README_BYTE.md); the deployed image is
-the **rxfix** build (`CFOChangeDetectThreshold = 0.0125` + the `resolver_lookback_fix`).
+the **lean** build (`build_lean_image.sh`, md5 `dcf5c5fb`) — a debug-strip of P1E-v3
+carrying `rxfix` + `resolver_lookback_fix` + the acquisition/tick fixes.
 
 ---
 
@@ -28,22 +29,27 @@ the **rxfix** build (`CFOChangeDetectThreshold = 0.0125` + the `resolver_lookbac
         ▼
  bootgen  (boot/zynq.bif: fsbl + pmufw + bl31 + u-boot + system_top.bit)
         ▼
- BOOT.BIN  →  deploy_rxfix.sh <ip>  →  provision.sh <ip>  →  live_check.sh
+ BOOT.BIN  →  deploy_image.sh <ip>  →  provision.sh <ip>  →  link_test.sh ber
 ```
 
-**One command** runs the whole model→BOOT.BIN half:
+**One command** builds the shipped **lean** image (the model→BOOT.BIN half):
 
 ```bash
-cd /mnt/onetb/scratch/qpsk_variants/jupiter_240k5_byte
-setsid nohup ./build_image.sh > build_image.log 2>&1 </dev/null &   # ~2 h, detached
-grep -E 'BUILD_IMAGE_(DONE|FAIL)' build_image.log                   # watch for the marker
+cd /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte
+setsid nohup ./build_lean_image.sh > build_lean.log 2>&1 </dev/null &   # ~2 h, detached
+grep -E 'LEAN_IMAGE_DONE|LEAN_.*FAIL' build_lean.log                    # watch for the marker
 ```
 
-`build_image.sh [TARGET_DIR]` = **source env → gates → image**, fail-fast, with a
-single terminal line: `BUILD_IMAGE_DONE md5=<32hex> path=<...>` or
-`BUILD_IMAGE_FAIL (<stage>)`. `TARGET_DIR` defaults to the sanctioned rxfix build
-dir; pass a fresh `.../jupiter_byte_verify_build` for a reproducibility rebuild that
-must not clobber the deployed-image provenance.
+`build_lean_image.sh` = **`QPSK_LEAN=1` gates → Vivado image → dual-DMA tap BD step**,
+producing `jupiter_byte_lean_build/.../BOOT.BIN` and the line
+`LEAN_IMAGE_DONE md5=<32hex> size=<n>`. This is the recipe that produced the deployed
+`dcf5c5fb` (see [PROVENANCE.md](PROVENANCE.md)).
+
+> The older `build_image.sh [TARGET_DIR]` builds the **pre-lean rxfix lineage** (no
+> `QPSK_LEAN`, no tap step) and defaults `TARGET_DIR` to `jupiter_byte_rxfix_build` —
+> kept for provenance, but it does **not** reproduce the shipped image; use
+> `build_lean_image.sh`. Image md5 is not reproducible across Vivado rebuilds;
+> equivalence is by the gates + BIST golden `cap_out=0x04922282`, not md5.
 
 ---
 
@@ -60,7 +66,7 @@ must not clobber the deployed-image provenance.
 Device target: Zynq UltraScale+ `xczu3eg-sfva625-2-e`.
 
 **Never modify the repo master** `/home/tcollins/dev/qpsk_ai` — it is the read-only
-donor. All build work happens under `/mnt/onetb/scratch/qpsk_variants/`.
+donor. All build work happens under `/mnt/onetb/scratch/qpsk-jupiter-modem/`.
 
 ---
 
@@ -123,25 +129,25 @@ Jupiter has **no remote power**: a bad flash = physical reflash+reboot only. The
 is size-checked and backed up.
 
 ```bash
-cd /mnt/onetb/scratch/qpsk_variants/two_jup
-for ip in 10.0.0.148 10.0.0.146; do
-  ./deploy_rxfix.sh $ip                                           # 1. flash /boot/BOOT.BIN (size>6MB, backs up .prerxfix) + reboot -- RETURNS IMMEDIATELY
-  until ./anyssh.sh $ip 'echo up' | grep -q up; do sleep 5; done  # 2. WAIT for the board back (reboot ~30-60s) -- else step 3 hits "unreachable"
-  ./provision.sh $ip                                              # 3. install qpsk_tun + lvds + watchdog (only on a fresh board; a reflash keeps /root)
-done
-./live_check.sh                                                   # 4. acceptance: -B BER + rstcs + per-board Rx metrics
+cd /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup
+./deploy_image.sh 10.0.0.148                                      # 1. flash board A (size>6MB, backs up .pregeneric) + reboot + wait
+./deploy_image.sh 10.0.0.146                                      #    then board B, one at a time
+./provision.sh 10.0.0.148 && ./provision.sh 10.0.0.146           # 2. install qpsk_tun + lvds + watchdog (fresh board only)
+./link_test.sh ber -d 90                                         # 3. acceptance: OTA -B BER both directions + rstcs
 ```
 
-- **`deploy_rxfix.sh <ip>`** — flashes `BOOT.BIN` only. Default source is the shipped
-  rxfix image; override with `BOOT=<path> ./deploy_rxfix.sh <ip>`. Backs up the current
-  `/boot/BOOT.BIN` → `/boot/BOOT.BIN.prerxfix` (aborts if the backup can't be made), stages
-  to `/root` with a size re-check, then `cp` + `sync` + `reboot`.
-- **`provision.sh <ip>`** — installs the files `link_test.sh preflight` requires but
-  `deploy_rxfix.sh` does not: builds `qpsk_tun` on-board from the `host_app_k5` sources,
-  and copies the LVDS profile + watchdog. Only needed on a **fresh/wiped board** (a
-  BOOT.BIN reflash leaves `/root` intact) or whenever `preflight` reports a missing file.
-  Wait for the reboot to finish first; compiling on-board is safe (never arms/DMAs).
-- **`live_check.sh`** — reads `-B` BER + `rstcs`/`cfc`/`level`/rssi to confirm health.
+- **`deploy_image.sh <ip> [BOOT.BIN]`** — the generic flash tool (defaults to the lean
+  image; pass a path or set `$BOOT` for another). Backs up the current `/boot/BOOT.BIN`
+  → `/boot/BOOT.BIN.pregeneric`, stages to `/root` with a size re-check, then `cp` +
+  `sync` + `reboot` + waits for the board back. Flash **one board at a time**. (The
+  frozen `deploy_pifix.sh`/`deploy_rxfix.sh`/`deploy_tap.sh`/`deploy_ch2.sh` are
+  image-specific variants kept for provenance.)
+- **`provision.sh <ip>`** — installs the files `link_test.sh preflight` requires but the
+  flash does not: builds `qpsk_tun` on-board from the `host_app_k5` sources, and copies
+  the LVDS profile + watchdog. Only needed on a **fresh/wiped board** (a BOOT.BIN reflash
+  leaves `/root` intact) or whenever `preflight` reports a missing file. Wait for the
+  reboot to finish first; compiling on-board is safe (never arms/DMAs).
+- **`link_test.sh ber`** — reads `-B` BER + `rstcs`/`cfc`/`level`/rssi to confirm health.
 
 After deploy+provision, verify with `./link_test.sh preflight` (both boards PASS).
 See [TESTING.md](TESTING.md) for the full acceptance ladder.
@@ -155,7 +161,7 @@ See [TESTING.md](TESTING.md) for the full acceptance ladder.
 | **CFO reset-storm ("rxfix")** | `commhdlQPSKTxRxParameters.m:45` — `CFOChangeDetectThreshold = 0.0125` (was `0.0015625`) | ±5577 Hz deadband; kills the ~52/s false carrier-loop reset (`rstcs` 52/s→0, frame yield 40%→93.5%) |
 | **Phase-ambiguity resolver** | `resolver_lookback_fix` (git `8033363`), integrated by `assemble_jupiter_240k5_byte.m` | preamble-based full-quadrant resolution → byte plane carries **arbitrary** data (99.9% HW), not golden-only |
 
-Both are in the source kit and the shipped `BOOT.BIN` (md5 `8d6b82ff…`).
+Both are in the source kit and the shipped `BOOT.BIN` (md5 `dcf5c5fb…`).
 
 ## Troubleshooting
 
@@ -164,5 +170,5 @@ Both are in the source kit and the shipped `BOOT.BIN` (md5 `8d6b82ff…`).
 | MATLAB error at "Create Project" | **Expected/benign** — the Tcl finishes the project. Only a real failure is `FATAL: no vivado project produced` (guarded). |
 | `FATAL: BD has no byte_breakout` | Wrong reference design — the ADI byte RD wasn't applied. Check the HDL Coder `ReferenceDesign` = "JUPITER (RX & TX, BYTE DMA)". |
 | A gate stamp not `PASS` | Do not build. Re-run `run_full_gates_t8.sh` and read the failing stage's `.txt`/`.out`. |
-| Rebuild md5 ≠ shipped `8d6b82ff` | Normal (Vivado non-determinism). Validate functionally: gates PASS + BIST golden. |
+| Rebuild md5 ≠ shipped `dcf5c5fb` | Normal (Vivado non-determinism). Validate functionally: gates PASS + BIST golden. |
 | Board won't boot after flash | Restore `/boot/BOOT.BIN.prerxfix` (the backup) via reflash; no remote power. |

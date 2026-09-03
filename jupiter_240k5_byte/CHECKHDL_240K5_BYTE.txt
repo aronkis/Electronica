@@ -1,4 +1,4 @@
-JUPITER_240K5_BYTE_CHECKHDL 18-Jul-2026 10:07:23
+JUPITER_240K5_BYTE_CHECKHDL 19-Jul-2026 08:17:08
 errors=0 warnings=1
 sps=8 Rsym=1.92e6 (T8 rate fix, rail 15.36e6=enb_1_2=240ksym) thr=0.0125 K5[35 23]TB25 ROWS136 CODED2176 ROMk5+byteDMA
 IN-FABRIC infoValid-GATED K5 Tx encoder + 136x16 ping-pong interleaver + 64-bit PN9 filler (no gather, stock DAC wiring)

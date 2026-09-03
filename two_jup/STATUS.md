@@ -1,3 +1,31 @@
+# CURRENT STATE (2026-07-20)
+
+- **Deployed image: `dcf5c5fb29e6` (lean)** on both boards — a debug-strip of
+  P1E-v3 that removes instrumentation to restore timing margin while keeping
+  every fix + the tick compensation + dual-DMA tap. Deployed 2026-07-20,
+  acceptance PASS (preflight, TAP_SMOKE_PASS, BER unchanged, rstcs ~0). Rollback
+  `/boot/BOOT.BIN.prelean` = v3 `0de4d5cb`. (See docs/PROVENANCE.md.)
+- **The forward BER floor is root-caused and escalated.** The ~1.4e-4 forward
+  residual is the **256-sample tick insertion by 148's BBDC rejection tracking
+  cal** (proven by single-variable cal A/B; two_jup/ESCALATION_ADI.md). v3
+  compensates the recoverable (stale-grid) casualty in fabric; the physically-
+  destroyed insert burst is the residual, removable only at the ADI/silicon
+  level (RMA declined; bbdc-disable not viable — rejection_en ARM-inert,
+  tracking-off DC-storms, PAUSED=2 unreachable in this kernel). Reverse is at
+  the design floor ~2e-6.
+- **IP-over-RF tooling is ready** (was scripted-but-never-closed below): tun
+  bring-up (`link_test.sh tun`), UDP ladder + TCP (`perf`), latency matrix
+  (`lat`), MTU edges (`mtu`), and SSH closure (`ssh`, RF-SSH-OK). iperf3 is
+  **native on both boards** (148: 3.18, 146: 3.9 — version skew noted).
+  qpsk_perf (control-free UDP) is the primary instrument. The full L3
+  characterization session (`QPSK_HIL=1 matlab -batch "cd tests; runTests('L3')"`)
+  is ready to run — it will finally capture RF-SSH-OK + throughput/latency.
+- **Repo cleaned + MATLAB test suite landed** (branch `cleanup-tests-2026-07`):
+  21 dead files removed, host `make test` un-broken, `tests/runTests.m` is the
+  primary runner (L1 host-pure / L2 gate stamps / L3 hardware). See docs/TESTING.md.
+
+---
+
 # Two-Jupiter FDD Link — Where We Sit (2026-07-10)
 
 **Goal:** bidirectional FDD RF link between two Jupiter SDRs (A=10.0.0.148, B=10.0.0.146),
@@ -25,7 +53,7 @@
   sequential ramp, TCP/IP headers) get RF-corrupted. Keepalive frames lock fine because
   their padding is PN9-filled (high entropy). **SSH's post-KEX stream is encrypted =
   high-entropy = self-whitening**, so it should pass where ping fails.
-- `two_jup/tun_ssh_key.sh`: sets up ed25519 **pubkey auth out-of-band** (installed on 148,
+- `two_jup/archive/tun_ssh_key.sh`: sets up ed25519 **pubkey auth out-of-band** (installed on 148,
   `PermitRootLogin yes`), brings up the quiet-pair link `WHITEN=0` (both boards lock),
   runs an **entropy discriminator** (urandom over tun0 → does `dma_rx_ok` climb?), then
   SSHes 146→148 over tun0 with minimal-KEX (ed25519 hostkey, curve25519, chacha20) +

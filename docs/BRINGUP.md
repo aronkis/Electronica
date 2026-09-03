@@ -11,13 +11,18 @@ Boards: **A = 10.0.0.148**, **B = 10.0.0.146** (wired mgmt LAN; all access via
 remote recovery is reflash + reboot; treat `/boot/BOOT.BIN` as precious
 (size-check >6 MB + backup before any overwrite; the deploy scripts enforce it).
 
+> **Bringing up a DIFFERENT pair of boards** (other IPs / other RF environment)?
+> Read [PORTING.md](PORTING.md) first — it is the thin delta over this procedure
+> (set `A_IP`/`B_IP`, obtain the image, then re-survey the §2 frequency plan and
+> §4 gain for your hardware). The numbers in this doc are specific to boards A/B.
+
 ## 0. What should be running
 
 | Item | Value |
 |---|---|
-| Image | `pifix` BOOT.BIN md5 `5c85af2cf62d25c6c0b4d350e2944019` (see PROVENANCE) |
+| Image | **lean** BOOT.BIN, kit `jupiter_byte_lean_build/` (debug-strip of P1E-v3; current md5 `dcf5c5fb…`, but identity is by BIST golden not md5 — see [PROVENANCE.md](PROVENANCE.md) for the authoritative current image) |
 | Interface profile | `lvds_1p92_mhz.{bin,json}` → 1.92 Msps, 8 sps @ 240 ksym |
-| Frequency plan | FORWARD 146→148 @ **2.00 GHz**, REVERSE 148→146 @ **1.90 GHz** (quiet pair; survey-confirmed, see §2) |
+| Frequency plan | FORWARD 146→148 @ **2.00 GHz**, REVERSE 148→146 @ **1.90 GHz** (quiet pair; survey-confirmed for boards A/B — see §2. **A different pair must re-survey**, PORTING.md) |
 | Rx gain | `automatic` during acquisition, then **pin 148's Rx gain** (`spi` mode) post-lock — §4 |
 | Host tool | `/root/host_app_k5/qpsk_tun` (built on-board from `host_app_k5/`) |
 
@@ -25,12 +30,16 @@ remote recovery is reflash + reboot; treat `/boot/BOOT.BIN` as precious
 
 ```sh
 cd two_jup
-./deploy_pifix.sh 10.0.0.148          # backup -> .prepifix, flash, reboot
-until ./anyssh.sh 10.0.0.148 'echo up' | grep -q up; do sleep 5; done
-./deploy_pifix.sh 10.0.0.146
-until ./anyssh.sh 10.0.0.146 'echo up' | grep -q up; do sleep 5; done
+# deploy_image.sh: generic flash tool (defaults to the current lean image; pass a
+# path or set $BOOT to flash a different one). Backs up /boot -> .pregeneric,
+# flashes, reboots, and waits for the board back. Flash ONE at a time.
+./deploy_image.sh 10.0.0.148          # board A
+./deploy_image.sh 10.0.0.146          # board B (after A confirmed back up)
 ./provision.sh 10.0.0.148 && ./provision.sh 10.0.0.146
 ```
+
+(`deploy_pifix.sh` / `deploy_rxfix.sh` / `deploy_tap.sh` are frozen image-specific
+variants kept for provenance; `deploy_image.sh` supersedes them for new work.)
 
 Verify: `anyssh.sh <ip> 'md5sum /boot/BOOT.BIN'` matches PROVENANCE; both boards
 report the profile files and `qpsk_tun` present (provision does this).
@@ -38,7 +47,7 @@ report the profile files and `qpsk_tun` present (provision does this).
 ## 2. Arm (per session)
 
 The canonical arm sequence lives in `link_test.sh` (and verbatim copies in
-`ber_ota.sh` / `capture_paired.sh` / `exp_forward.sh`): load the LVDS profile,
+`capture_paired.sh` / `exp_forward.sh`): load the LVDS profile,
 ENSM `calibrated`, front-end GPIOs, `tx_a` port, Tx LO + 0 dB attenuation +
 `rf_enabled`, Rx LO + `rf_enabled` + `automatic` gain, modem regfile reset,
 `0x158=1` (byte Tx), `0x118=0`, `0x114=1` (Rx=air), DAC mux, rstCS pulse,
@@ -98,8 +107,11 @@ point; leave `automatic` during acquisition.
 | B/C OTA -B | `test.sh ber -d 120` | see table below |
 | C real data | `link_test.sh tun` / `ssh` | tun0 ping / SSH over RF |
 
-Healthy numbers on the pifix image (final acceptance 2026-07-11: 22 min
-continuous -B, ~276k frames/direction, verified-lock + 148 gain pin):
+Healthy numbers **for boards A/B specifically** (final acceptance 2026-07-11:
+22 min continuous -B, ~276k frames/direction, verified-lock + 148 gain pin;
+re-confirmed on the current lean image). **These are NOT universal** — a
+different pair, antennas, or RF path will differ. See PORTING.md before treating
+them as targets:
 
 | Direction | BER | CLEAN | rstcs |
 |---|---|---|---|

@@ -32,11 +32,6 @@
  * and Jupiter modem writes must go via mwipcore direct_reg_access, not
  * devmem).
  *
- * DMA register sequences follow ByteDmaRegisters.m (the proven recipes):
- * engine reset = CONTROL 0 then 1 before use; Tx one-shots use FLAGS=2
- * (TLAST only -- the in-FPGA word aligner needs per-transfer tlast). The
- * modem register file at 0x9D000000 is owned by qpsk_net_setup.sh.
- *
  * Rx capture has two modes (HW constraints measured on silicon: the S2MM
  * engine never chains a second transfer without an engine reset, and an
  * incoming TLAST terminates a transfer early):
@@ -747,7 +742,6 @@ static void seq_evt(void *ctx, const char *type, uint32_t seq, uint32_t n,
 
 static void seq_run(int duration)
 {
-    unsigned char txf[QPSK_PKT_BYTES_MAX];
     unsigned char payload[QPSK_SEQ_PAYLOAD_LEN];
     unsigned char pkt[QPSK_PKT_BYTES_MAX];
     struct qpsk_seq_stats ss;

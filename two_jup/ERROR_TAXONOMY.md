@@ -749,3 +749,81 @@ class. This is the shipped, hardware-verified HDL fix for the tick. The
 forward BER floor remains bounded by the physically-destroyed insert bursts
 (the tick source itself -- see ESCALATION_ADI.md: the BBDC tracking cal);
 removing that source is the remaining lever, now an ADI-side item.
+
+## 2026-07-19 — LEAN IMAGE: strip validated, tap build-step gap (rolled back)
+
+The debug-strip lean image (98cbf2a98af0) built clean (all QPSK_LEAN=1 gates
+PASS, checkhdl BOTH_PASS) and its MODEM is functionally sound on hardware:
+preflight PASS, state-regs correctly SKIPPED (0x160-0x16C stripped), and a
+120 s BER = 1.9e-6 (CLEAN 98.9%, MISS 0.0%) -- the strip broke nothing in the
+datapath. LUT saving modest (56874->56282, 80.6%->79.76% CLB LUTs; ~51 CLBs);
+timing = same pre-existing enable-divided class as v3.
+
+BUT tap_smoke FAILED (tap dead rms=0.0 all modes): the build driver omitted
+the separate bd_tap_dualdma.tcl step that routes the kept 0x10C mux output to
+the rx2-lpc capture DMA (the v3 chain ran it; build_byte_image.sh does not).
+So the 0x10C mux exists in fabric but there is no rx2-lpc capture device.
+This is a BUILD-RECIPE gap, not a strip defect. Fixed: build_lean_image.sh
+now runs the dual-DMA step (bd_tap_dualdma ch1 -> clear_incr -> ch2_build2)
+after build_byte_image.sh, exactly as p1e2_chain.sh did.
+
+Boards rolled back to v3 (0de4d5cba0af, the complete hardware-verified image)
+via the /boot/BOOT.BIN.prelean backup. Rebuild of a tap-complete lean image
+is a decision for the user given the modest LUT benefit vs v3.
+
+## 2026-07-20 — 15.36 MSPS profile: no tick benefit (the design decimates)
+
+Goal: test whether a faster SSI profile dilutes the tick. Result: the current
+v3 design LOCKS and decodes cleanly at the 15.36 MSPS profile (packets_out
+advancing ~212 pps, rstcs=0, near-end-loopback BER clean) -- BUT it runs at
+its native 240 ksym: the design's clock-enable structure DECIMATES the 15.36
+SSI 8:1 back to the 240-ksym processing rate. It is not actually faster.
+
+Two-board forward BER at the 15.36 profile: 1.25e-4 (CLEAN 97.9%, MISS 0.4%)
+-- essentially identical to the 1.92 profile (~1.4e-4). Reverse 1.05e-5.
+No improvement.
+
+This resolves the fixed-samples-vs-fixed-time question: the tick lands as
++32 symbols in the 240-ksym PROCESSING domain regardless of the SSI rate
+(a fixed 256-sample SSI insertion would have decimated to +4 sym and helped;
+it did not). So a plain profile swap gives nothing.
+
+To ACTUALLY dilute the tick, the design must PROCESS at the true 8x rate
+(1.92 Msym, no decimation) -- 8x more frames per fixed ~1.5s tick episode ->
+~8x lower fractional loss (forward ~1.4e-4 -> ~1.7e-5). But that hits a
+TIMING WALL: adc_1_clk = dclk/4 scales 8x with the SSI; the design is
+constrained at 125 MHz with the -12ns enable-divided paths (4459 endpoints)
+that pass today only because the real 1.92 clock runs ~8x under the
+constraint. At true 8x those paths violate -> requires re-pipelining (major
+re-architecture, the 240k5 byte/FEC/telemetry additions pushed it over the
+edge; the older/smaller design closed at 15.36). A 2x intermediate rate
+(480 ksym) is the lower-risk probe if the ~8x dilution is worth pursuing.
+
+## 2026-07-20 — Class-4 "NCO-reset asymmetry" / PS-latch item CLOSED (HDL exoneration)
+
+Scoped the proposed "PS latch hysteresis" / NCO-replica acquisition-robustness
+fix (07-18 candidate) by reading the generated HDL rather than re-instrumenting
+live. Verdict: **do not build it — the suspect is exonerated by source.**
+
+- The CS's DDS is `Direct_Digital_Synthesis` -> `NCO.v` (validIn = Loop Filter
+  valid). `NCO.v` valid path is TRANSPARENT: `outsel` = `validIn` through a
+  5-deep shift register (not "depth 2" as the 07-18 note abstractly assumed);
+  the phase accumulator HOLDS on `validIn==0` (`validPInc=const0`, clean pause);
+  the block emits NO `validOut` (valid handled externally by `Delay7` in
+  `Carrier_Synchronizer.v`). There is no internal self-corrupting valid pipeline
+  — nothing to "eat" a strobe on a single-cycle upset, and nothing to harden.
+  (`NCO_block.v` is the CFC's NCO, a different instance; same transparent shape.)
+- Disciplinary line: no repro, no fix. `timing_hardening` was justified by a
+  concrete `tb_timing_wedge` repro on the shipping netlist; there is no such
+  repro here and the HDL predicts clean handling. `canary4` never returned an
+  eater verdict, and by the taxonomy's own note the upset would be "invisible to
+  every register instrument by construction" — so live re-diagnosis is a likely
+  dead end too.
+- No headroom either: the deterministic wedge is fixed+shipped; steady-state is
+  at the mosaic floor (~1 frame/episode); the residual ~1/3-arm acquisition
+  retry is stochastic SNR-margin on the thin forward budget, already auto-handled
+  by `exp_forward.sh`. Even a working fix would move nothing.
+
+Net: the fabric side is exhausted (folded into ESCALATION_ADI.md addendum
+2026-07-20). Forward <1e-4 requires the tick source gone (ADI BBDC / replace
+148), not more HDL.

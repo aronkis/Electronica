@@ -1,1 +1,0 @@
-HW-GOLDEN capGolden=18/20 rstcs=0x15 cfc=0x139 rssi=16.872

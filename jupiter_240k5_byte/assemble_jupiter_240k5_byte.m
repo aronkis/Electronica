@@ -84,22 +84,27 @@ fec_remove_scrambler(sys, loop);
 fprintf('=== applying 240k5 observability taps overlay ===\n');
 taps_240k5_overlay(sys, loop);
 
-% Phase 2.12: T8.3 ADC ingest forensic register (0x15C) -- same-version file
-% as the jupiter_240k5 master (commit 3a6d320)
+% LEAN mode (QPSK_LEAN=1): production images STRIP the debug shadow/telemetry
+% overlays -- adc_forensic (0x15C), iq_debug state-pairs (0x160-0x16C),
+% canary/canary2/canary3/cfc, canary4 valid-census (0x1A0-0x1AC), p1b decision
+% taps (0x1B4-0x1C8). Their verdicts are delivered and the full stack + FIFO
+% exceeds the ZU3EG (placer 102%, 2026-07-15). KEPT in LEAN: the 0x10C tap mux
+% + dual-DMA, p1d telemetry, p1e comp, taps 0x150/0x154, fec_capture BIST
+% golden, byte FIFO fix (0x1B0). Instrumented lineage: jupiter_byte_canary4_build.
+LEAN = ~isempty(getenv('QPSK_LEAN'));
+if LEAN, fprintf('=== LEAN build: stripping adc_forensic/state-pairs/canary*/p1b ===\n'); end
+
+% Phase 2.12: T8.3 ADC ingest forensic register (0x15C) -- STRIP in LEAN.
+if ~LEAN
 fprintf('=== applying ADC forensic overlay ===\n');
 adc_forensic_overlay(sys, loop);
+end
 
-% Phase 2.12b: activate the runtime debug tap mux (0x10C) + boundary state-pair
-% registers (0x160-0x16C) -- error-hunt campaign B1 (see iq_debug_tap_overlay.m)
-fprintf('=== applying IQ debug tap + state-pair overlay ===\n');
+% Phase 2.12b: runtime debug tap mux (0x10C) + boundary state-pairs (0x160-0x16C).
+% iq_debug_tap_overlay drops the state-pairs internally under QPSK_LEAN and
+% KEEPS the 0x10C mux + dual-DMA tap (the verification instrument).
+fprintf('=== applying IQ debug tap overlay ===\n');
 iq_debug_tap_overlay(sys, loop);
-
-% LEAN mode (QPSK_LEAN=1): production images skip the debug shadow/telemetry
-% overlays -- their verdicts are delivered (loops RTL-faithful, corruption in
-% the DMA plane) and the full stack + FIFO exceeds the ZU3EG (placer 102%,
-% 2026-07-15). The instrumented lineage lives on in jupiter_byte_canary4_build.
-LEAN = ~isempty(getenv('QPSK_LEAN'));
-if LEAN, fprintf('=== LEAN build: skipping canary/canary2/canary3/cfc-tap ===\n'); end
 
 if ~LEAN
 % Phase 2.12d: T8.5 shadow timing loop + fabric canaries (0x170-0x188) --
@@ -149,16 +154,21 @@ fprintf('=== applying byte rx FIFO overlay ===\n');
 byte_rxfifo_overlay(sys, loop);
 
 % Phase 2.16c: canary4 valid-census counters (CS validIn / LF valid / CS
-% validOut -> 0x1A0/0x1A4/0x1A8) + byte-DMA census (0x1AC).
+% validOut -> 0x1A0/0x1A4/0x1A8) + byte-DMA census (0x1AC). STRIP in LEAN.
+% NB byte_rxfifo_overlay above is the shipped FIFO fix and is NOT gated.
+if ~LEAN
 fprintf('=== applying canary4 valid census overlay ===\n');
 canary4_validcensus_overlay(sys, loop);
+end
 
 % Phase 2.16d: P1B decision-stage census (Peak Search / Timing Adjust / PD
 % FIFO / Packet Controller / Phase Ambiguity -> 0x1B4-0x1C8) -- the last
 % un-instrumented corner; names the stage whose decision cadence breaks at
-% device ticks.
+% device ticks. STRIP in LEAN.
+if ~LEAN
 fprintf('=== applying P1B decision taps overlay ===\n');
 p1b_decision_taps_overlay(sys, loop);
+end
 
 % Phase 2.16e: THE CLASS-1 FIX -- Timing Adjust tracks the freshest peak
 % report (offset hold + armed set := timingOffsetValid; stale-offset fires
@@ -287,6 +297,8 @@ dbgsrc = get_param(get_param(getfield(get_param([loop '/debugI'],'LineHandles'),
     'SrcBlockHandle'),'Name');
 assert(strcmp(dbgsrc,'Receiver'), ...
     'GATE FAIL: composite debugI not driven by Receiver muxed diag (src=%s)', dbgsrc);
+% state-pairs (0x160-0x16C) are STRIPPED in LEAN; the 0x10C mux above stays.
+if isempty(getenv('QPSK_LEAN'))
 assert(~isempty(find_system([loop '/Receiver/QPSK Rx'],'SearchDepth',1,'LookUnderMasks','all', ...
     'FollowLinks','on','Name','StatePairProbe')), 'GATE FAIL: StatePairProbe missing');
 for spn = {'state_agc_in','state_agc_out','state_cs_in','state_cs_out'}
@@ -294,6 +306,9 @@ for spn = {'state_agc_in','state_agc_out','state_cs_in','state_cs_out'}
         'GATE FAIL: composite outport %s missing', spn{1});
 end
 fprintf('gate(e3): debug tap mux wired + StatePairProbe + 4 state-pair outports present\n');
+else
+fprintf('gate(e3): debug tap mux wired (LEAN: state-pairs stripped)\n');
+end
 fprintf('gate(e2): resolver look-back fix present (EstDataLookback/EstVldLookback len=40) on %d block(s)\n', numel(paefix));
 % (f) threshold resolves to stock in the DUT mask ws (mask ws only exists after
 %     a compile -- resolve here if available, else defer to the post-Update
@@ -306,12 +321,15 @@ catch e
     if contains(e.message,'GATE FAIL'), rethrow(e); end
     fprintf('gate(f): slResolve deferred to post-Update check (%s)\n', strtrim(e.message));
 end
-% (f2) T8.3 forensic: AdcForensic block present + workflow AXI mapping x"15C"
+% (f2) T8.3 forensic: AdcForensic block present + workflow AXI mapping x"15C".
+% STRIP in LEAN (the mapping is block-existence-guarded in hdlworkflow).
+if isempty(getenv('QPSK_LEAN'))
 assert(~isempty(find_system(loop,'SearchDepth',1,'Name','AdcForensic')), ...
     'GATE FAIL: AdcForensic block missing');
 wfT8 = fileread('hdlworkflow_loopback.m');
 assert(contains(wfT8, 'adc_forensic') && contains(wfT8, 'x"15C"'), ...
     'GATE FAIL: adc_forensic x"15C" mapping missing from hdlworkflow_loopback.m');
+end
 % (f3) T8.3 AGC gain-range types took on the DUT copy (composite clone)
 agcB = [loop '/Receiver/QPSK Rx/Automatic Gain Control'];
 assert(strcmp(strtrim(get_param([agcB '/Data Type Conversion'],'OutDataTypeStr')), ...
@@ -325,10 +343,14 @@ assert(isempty(find_system(agcB,'SearchDepth',1,'LookUnderMasks','all', ...
 for r = {'count_out','packets_out','bit_errors_out','dbg_sentinel', ...
          'cnt_descr_in','cnt_frame_start','cnt_vit_reset','cnt_deint_valid', ...
          'cnt_dec_bits','cnt_bist_start','cap_in','cap_deint','cap_out','cap_cad', ...
-         'rstcs_count','cfc_est','adc_forensic', ...
+         'rstcs_count','cfc_est', ...
          'byte_ready','byte_rx_data','byte_rx_valid','byte_rx_last','byte_rx_user'}
     assert(~isempty(find_system(loop,'SearchDepth',1,'BlockType','Outport','Name',r{1})), ...
         'GATE FAIL: outport %s missing', r{1});
+end
+if ~LEAN   % adc_forensic (0x15C) stripped in LEAN
+    assert(~isempty(find_system(loop,'SearchDepth',1,'BlockType','Outport','Name','adc_forensic')), ...
+        'GATE FAIL: outport adc_forensic missing');
 end
 for r = {'skip_count','byte_data','byte_valid','tx_data_source','byte_first','byte_rx_ready'}
     assert(~isempty(find_system(loop,'SearchDepth',1,'BlockType','Inport','Name',r{1})), ...

@@ -51,7 +51,7 @@ module wrap_byte_taps
     .cnt_vit_reset(nc1), .cnt_deint_valid(nc2),
     .cnt_dec_bits(nc3), .cnt_bist_start(nc4), .dbg_sentinel(nc5),
     .cap_in(nc6), .cap_deint(nc7), .cap_out(cap_out), .cap_cad(),
-    .rstcs_count(rstcs_count), .cfc_est(cfc_est), .adc_forensic(),
+    .rstcs_count(rstcs_count), .cfc_est(cfc_est),
     .byte_ready(byte_ready),
     .byte_rx_data(byte_rx_data), .byte_rx_valid(byte_rx_valid),
     .byte_rx_last(byte_rx_last), .byte_rx_user(byte_rx_user));

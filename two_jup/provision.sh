@@ -26,7 +26,7 @@ echo "=== PROVISION $IP  $(date -Is) ==="
 $W "$IP" 'echo up' 2>/dev/null | grep -q up || { echo "FATAL: $IP unreachable via anyssh.sh"; exit 1; }
 
 # sanity: the master files must exist on the host
-for f in "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_ber.c" \
+for f in "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_ber.c" "$SRC/qpsk_seq.c" \
          "$D/lvds_1p92_mhz.bin" "$D/lvds_1p92_mhz.json" "$D/lock_watchdog.sh"; do
   [ -f "$f" ] || { echo "FATAL: master file missing on host: $f"; exit 1; }
 done
@@ -35,8 +35,8 @@ done
 #    (the board-proven recipe from ber_loopback_gate.sh -- no dependence on make).
 echo "-- host_app_k5 sources -> board; build qpsk_tun (on-board gcc) --"
 $W "$IP" 'mkdir -p /root/host_app_k5' 2>/dev/null
-scpput "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_ber.c" \
-       "$SRC/qpsk_frame.h" "$SRC/qpsk_ber.h" "$SRC/qpsk_hw.h" root@"$IP":/root/host_app_k5/
+scpput "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_ber.c" "$SRC/qpsk_seq.c" \
+       "$SRC/qpsk_frame.h" "$SRC/qpsk_ber.h" "$SRC/qpsk_hw.h" "$SRC/qpsk_seq.h" root@"$IP":/root/host_app_k5/
 $W "$IP" 'cd /root/host_app_k5 && gcc -O2 -Wall -o qpsk_tun qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c 2>&1 | tail -3
   [ -x qpsk_tun ] && echo "  qpsk_tun built OK" || echo "  qpsk_tun BUILD FAILED"' 2>/dev/null
 

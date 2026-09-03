@@ -95,8 +95,11 @@ assert(gRom, 'HDL GATE FAIL: K5 ROM word[0] 1204691830 not found in generated HD
 % byte-path structure present in the generated netlist
 top = fileread(fullfile(vdir,'TxRxComposite.v'));
 for p = {'byte_data','byte_valid','byte_first','byte_ready','tx_data_source', ...
-         'byte_rx_data','byte_rx_valid','byte_rx_last','byte_rx_user','byte_rx_ready','adc_forensic'}
+         'byte_rx_data','byte_rx_valid','byte_rx_last','byte_rx_user','byte_rx_ready'}
     assert(contains(top, p{1}), 'HDL GATE FAIL: %s missing from TxRxComposite.v ports', p{1});
+end
+if isempty(getenv('QPSK_LEAN'))   % adc_forensic (0x15C) stripped in LEAN
+    assert(contains(top, 'adc_forensic'), 'HDL GATE FAIL: adc_forensic missing from TxRxComposite.v ports');
 end
 gEnc = ~isempty(dir(fullfile(vdir,'*ConvEncK5*.v'))) || contains(allv,'ConvEncK5');
 gShf = ~isempty(dir(fullfile(vdir,'*ByteBitShifter*.v'))) || contains(allv,'ByteBitShifter');

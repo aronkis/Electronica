@@ -60,6 +60,13 @@ else
 end
 
 % ---------------- (2) state pair registers ----------------
+% LEAN (QPSK_LEAN=1): STRIP the boundary state-pairs (0x160-0x16C). Section (1)
+% above -- the 0x10C runtime tap mux + dual-DMA -- is KEPT (the verification
+% instrument); only the debug state-snapshot ports are dropped.
+if ~isempty(getenv('QPSK_LEAN'))
+    fprintf('iq_debug_tap_overlay: LEAN -- 0x10C mux kept, state-pairs (2) stripped\n');
+    return;
+end
 if ~isempty(find_system(qrx, 'SearchDepth',1, 'LookUnderMasks','all', ...
         'FollowLinks','on', 'Name','StatePairProbe'))
     fprintf('iq_debug_tap_overlay: StatePairProbe already present -- skipping (2)\n');

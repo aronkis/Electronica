@@ -2,9 +2,20 @@
 
 Single source of truth for **which `BOOT.BIN` is on which board, which kit built it,
 and what it carries**. Build trees are gitignored, so this tracked file is how the
-deployed image stays reproducible from version-controlled state.
+deployed image stays reproducible from version-controlled state. Image identity is
+by the **BIST golden `cap_out=0x04922282`**, not md5 (md5 is not reproducible across
+Vivado rebuilds).
 
-## Deployed / current images
+## Current image (deployed on both boards)
+
+| md5 | Kit | What | Deployed |
+|---|---|---|---|
+| **`dcf5c5fb29e6`** | `jupiter_byte_lean_build/` (`build_lean_image.sh`) | **The shipped image.** A LEAN debug-strip of P1E-v3: instrumentation removed (`QPSK_LEAN=1`; canary/state-pairs `0x160-0x16C` stripped) to restore ZU3EG timing margin, **keeping every fix** — `rxfix`, `resolver_lookback_fix`, `pifix`, `byte_rxfifo`, P1E-v3 tick compensation, dual-DMA tap (mux `0x10C` modes 0-3), P1D telemetry, DDS-diet. | **both boards, 2026-07-20** — acceptance PASS (preflight, `TAP_SMOKE_PASS`, BER rev ~2e-6 / fwd ~1.4e-4, `rstcs`~0). Rollback `/boot/BOOT.BIN.prelean` = v3 `0de4d5cb`. |
+
+## Image lineage (development history)
+
+The table below is the historical build lineage that led to the current image
+(newest first). It is **history**, not the current deployment — see above.
 
 | md5 (BOOT.BIN) | Size | Kit / build dir | Config | Where |
 |---|---|---|---|---|
@@ -48,12 +59,13 @@ Different docs use different stage letters for the same journey — this is the 
 
 | Convention | Where | Meaning |
 |---|---|---|
-| **S0–S3** | `docs/superpowers/plans/2026-07-04-two-jupiter-fdd-link-plan.md` | S0 preflight/reflash · S1 DDS-tone channel verify · S2 modem deploy · S3 bring-up to <0.01% |
+| **S0–S3** | the 2026-07-04 two-Jupiter FDD link plan (superpowers plan, local disk — not tracked) | S0 preflight/reflash · S1 DDS-tone channel verify · S2 modem deploy · S3 bring-up to <0.01% |
 | **S1–S6** | `plans/2026-07-01-bidir-240k-k5-plan.md` | S1 sim · S2 build · S3 deploy · S4 offline-air · S5 on-chip BIST · S6 FDD soak |
 | **S1 / S1B / G1 / G2** | `jupiter_240k5_byte/README_BYTE.md` | build netlist gates (S1 ROM, S1B byte) + HW gates (G1 BIST-on-air, G2 arbitrary-data) |
 
 
-- `0de4d5cba0af` | 7203552 | jupiter_byte_p1e2_build | v3 tick-compensation (acc-position arm qualifier accOff<=530) + P1D telem + dual-DMA tap + DDS-diet | DEPLOYED both boards 2026-07-19; hardware-verified (hunt 20260719_065300, no regression, arm census armable_frac=1.00)
+- `dcf5c5fb29e6` | 7203552 | jupiter_byte_lean_build | **CURRENT SHIPPED.** LEAN debug-strip of v3: HDL debug logic removed (adc_forensic/canary/p1b state-pairs 0x160-0x16C stripped; `QPSK_LEAN=1` gates) to restore ZU3EG placement/timing margin, while KEEPING the shipped fixes (rxfix, resolver, pifix, byte-rxfifo) + P1E-v3 tick-compensation + dual-DMA tap (mux modes 0-3, 0x10C) + P1D telem. Carries the DDS-diet. On a non-ticking board the v3 compensation is a no-op. | **DEPLOYED both boards 2026-07-20** (staged via `deploy_image.sh`); acceptance: preflight PASS both, TAP_SMOKE_PASS (LEAN mode), BER rev ~2e-6 / fwd tick footprint MISS 0.4% unchanged, rstcs ~0. Rollback = `/boot/BOOT.BIN.prelean` (holds v3 `0de4d5cb`).
+- `0de4d5cba0af` | 7203552 | jupiter_byte_p1e2_build | v3 tick-compensation (acc-position arm qualifier accOff<=530) + P1D telem + dual-DMA tap + DDS-diet | superseded by the lean image 2026-07-20; retained as the `/boot/BOOT.BIN.prelean` rollback on both boards. DEPLOYED 2026-07-19; hardware-verified (hunt 20260719_065300, no regression, arm census armable_frac=1.00)
 
 ## Historical image IDs (lab lineage)
 

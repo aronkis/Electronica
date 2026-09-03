@@ -83,6 +83,12 @@ $W $A_IP "P=/sys/bus/iio/devices/iio:device2; echo spi > \$P/in_voltage0_gain_co
 echo "  148 Rx gain pinned: $GV dB; link locked"
 
 # --- 2. state-pair regs: two reads, 1 s apart -------------------------------
+# LEAN=1 images STRIP the state-pairs (0x160-0x16C); skip this gate and keep
+# the mux-mode captures below (the 0x10C tap is retained in LEAN).
+if [ "${LEAN:-0}" = 1 ]; then
+  echo "--- state regs: SKIPPED (LEAN image -- 0x160-0x16C stripped) ---"
+  SOK="SKIP(LEAN)"
+else
 echo "--- state regs (0x160 AGC_IN / 0x164 AGC_OUT / 0x168 CS_IN / 0x16C CS_OUT) ---"
 SREAD='DRA=/sys/kernel/debug/iio/iio:device0/direct_reg_access; echo enabled > /sys/bus/iio/devices/iio:device0/reg_access
   for r in 0x160 0x164 0x168 0x16C; do echo $r > $DRA; printf "%s=%s " $r $(cat $DRA); done; echo'
@@ -94,6 +100,7 @@ SOK=PASS
 echo "$S1" | grep -qE '=0x[0-9a-fA-F]*[1-9a-fA-F]' || SOK="FAIL(all-zero)"
 [ "$S1" = "$S2" ] && SOK="FAIL(frozen)"   # free-running latch must move between reads
 echo "  state regs: $SOK"
+fi
 
 # --- 3. per-mode captures: tap (rx2-lpc) + receiver input (rx-lpc) -----------
 for m in 0 1 2 3; do

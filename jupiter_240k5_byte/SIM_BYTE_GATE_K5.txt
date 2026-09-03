@@ -1,5 +1,5 @@
 ============ jupiter_240k5_byte MODEL-LEVEL BYTE GATE ============
-date: 18-Jul-2026 09:59:55
+date: 19-Jul-2026 08:09:18
 result: PASS
 oracles: (a) air bits vs k5 ROM words (modulator symbol log, pi/4-Gray
   inverse, 13-sym Barker frame find), (b) cap_out 0x04922282 + bit_errors

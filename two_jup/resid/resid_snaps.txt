@@ -1,6 +1,0 @@
---- snaps @ t~25s ---
-146(RX@2.10 from 148): rssi=32.515 rxgain=34.000000 cfc=0xFFFFFD20 lvl=0xB010180 rstcs=0x0 biterr=0x2DB37 cap=0xD28A pkts=0xD91
-148(RX@2.00 from 146): rssi=16.817 rxgain=34.000000 cfc=0x6C1 lvl=0xE010180 rstcs=0x91 biterr=0x58889 cap=0xD28A pkts=0x1A39
---- snaps @ end ---
-146: rssi=32.409 rxgain=34.000000 cfc=0xAFE lvl=0xB010180 rstcs=0x0 biterr=0x848F1 cap=0xD28A pkts=0x269D
-148: rssi=16.839 rxgain=34.000000 cfc=0x3A1 lvl=0xE010180 rstcs=0x91 biterr=0xAE701 cap=0xD28A pkts=0x3325

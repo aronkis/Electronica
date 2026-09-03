@@ -1,5 +1,5 @@
 ============ jupiter_240k5_byte S1B NETLIST BYTE GATE ============
-date: 18-Jul-2026 10:14:31
+date: 19-Jul-2026 08:24:44
 result: PASS
 DUT: makehdl TxRxComposite netlist (s1_rtl/hdlsrc, cadence_rtl_patch applied),
   Verilator wrap_byte.v + sim_byte.cpp: internal loopback, tx_data_source=1,

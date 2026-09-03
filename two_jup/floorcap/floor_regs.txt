@@ -1,2 +1,0 @@
-PRE/MID/POST 148 regs:
-pkts=0x3114 cap=0xD28A biterr=0xA8D17 rstcs=0x40 cfc=0x53E fx=0xE010180 rssi=16.982

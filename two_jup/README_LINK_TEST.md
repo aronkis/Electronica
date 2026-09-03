@@ -18,9 +18,10 @@ host on the wired management LAN.
 
 Before you run anything, all of the following must already be true:
 
-- **Both boards are flashed with the `rxfix` `BOOT.BIN`** (the CFO-step-detector fix,
-  `CFOChangeDetectThreshold = 0.0125`). This kit does **not** flash — it assumes the
-  boot files are already on the boards.
+- **Both boards are flashed with the current image** (lean `dcf5c5fb`; carries the
+  `rxfix` CFO-step-detector fix, `CFOChangeDetectThreshold = 0.0125`). This kit does
+  **not** flash — it assumes the boot files are already on the boards. See
+  [../docs/PROVENANCE.md](../docs/PROVENANCE.md).
 - **Wired management LAN reachable** to both boards. Board A = `10.0.0.148`,
   Board B = `10.0.0.146`.
 - **`anyssh.sh` works** (password auth over the wired LAN, already set up). Every board
@@ -200,7 +201,7 @@ the whole run. Check both boards' `rstcs` delta on every `ber` run.
 ### `cap_out` sanity value
 
 `cap_out` (`0x144`, shown by `preflight` and `status`) reads back the golden value
-`0x4922282` on a healthy, correctly-imaged board. A different value points at a bad image or
+`0x04922282` on a healthy, correctly-imaged board. A different value points at a bad image or
 a modem not in the expected state.
 
 ### `tun` (ping) results

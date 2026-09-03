@@ -19,7 +19,12 @@ ifeq ($(BOARD),zed)
 CFLAGS  += -DQPSK_BOARD_ZED
 endif
 
-all: qpsk_tun qpsk_capture qpsk_ringwrite
+all: qpsk_tun qpsk_capture qpsk_ringwrite qpsk_perf
+
+# qpsk_perf: control-free UDP throughput/RTT instrument for RF-link
+# characterization (libc-only; built on-board like the other tools).
+qpsk_perf: qpsk_perf.c
+	$(CC) $(CFLAGS) -o qpsk_perf qpsk_perf.c
 
 qpsk_ringwrite: qpsk_ringwrite.c
 	$(CC) $(CFLAGS) -o qpsk_ringwrite qpsk_ringwrite.c
@@ -38,6 +43,16 @@ qpsk_tun: qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_hw.h qpsk_ber.h qps
 
 qpsk_capture: qpsk_capture.c qpsk_hw.h
 	$(CC) $(CFLAGS) -o qpsk_capture qpsk_capture.c
+
+# ref_dump: print the fixed -B reference frame as 16 uint64 words for the
+# offline byte scorer. Output format is the contract in k5_240/decode_ref_k5.m.
+ref_dump: ref_dump.c qpsk_ber.o qpsk_frame.o qpsk_ber.h qpsk_frame.h
+	$(CC) $(CFLAGS) -o ref_dump ref_dump.c qpsk_ber.o qpsk_frame.o
+
+# seq_dump: print the exact -S wire frame bytes for given seqs; the C ground
+# truth that tests/TestFrameContract.m cross-checks seq_frame_bytes_k5.m against.
+seq_dump: seq_dump.c qpsk_seq.o qpsk_frame.o qpsk_seq.h qpsk_frame.h
+	$(CC) $(CFLAGS) -o seq_dump seq_dump.c qpsk_seq.o qpsk_frame.o
 
 test_frame: test_frame.c qpsk_frame.o
 	$(CC) $(CFLAGS) -o test_frame test_frame.c qpsk_frame.o

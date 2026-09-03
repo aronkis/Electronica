@@ -13,8 +13,8 @@ air → K=5 Viterbi decode → host byte egress.
 Entry point: `assemble_jupiter_240k5_byte.m` (donor phases 0..2.12 verbatim,
 then byte phases 2.13–2.16). Gates: `sim_byte_gate_k5.m` (model),
 `run_netlist_gates.sh` (checkhdl → makehdl → S1 ROM regression → S1B byte
-netlist gate). Vivado build NOT launched from this kit yet (see "Vivado
-completion" below).
+netlist gate). The full model→BOOT.BIN build is `build_lean_image.sh` (the
+shipped `dcf5c5fb` image); see [../docs/BUILD.md](../docs/BUILD.md).
 
 ## Data plane
 
@@ -184,8 +184,8 @@ full-quadrant resolution instead of the golden-only quadrant-0 accident. Validat
 in the free harness on BOTH golden and non-golden vectors, then hardware-proven:
 the byte plane carries arbitrary (non-golden) data at **99.9% on HW** (merge
 `8033363`, "byte plane carries arbitrary data 99.9% on HW"). The fix is integrated
-by `assemble_jupiter_240k5_byte.m` and is present in the shipped rxfix image
-(BOOT.BIN md5 `8d6b82ff...`). The S1B rot0/rot17 gates pass and the golden path is
+by `assemble_jupiter_240k5_byte.m` and is present in the shipped image (lean
+`dcf5c5fb`, and every build since the rxfix `8d6b82ff`). The S1B rot0/rot17 gates pass and the golden path is
 re-gated (still cap_out=0x04922282), so both golden and arbitrary payloads decode.
 
 ## Known HW-risk class (why the sim gates are necessary but not sufficient)
@@ -218,15 +218,14 @@ streaming metric (magCV / spectrum) BEFORE trusting BER, per that finding.
   `rtl_sim/wrap_byte.v` + `rtl_sim/sim_byte.cpp`, aligned rot=0 + rotated
   rot=17 → s1b_analyze_byte.m → S1B_GATE.txt).
 
-## Vivado completion (NOT run from this kit — post-T8 merge)
+## Vivado completion (implemented as `complete_byte_t8.tcl`)
 
-`hdlworkflow_loopback.m` is already retargeted at the byte RD
+`hdlworkflow_loopback.m` is retargeted at the byte RD
 (`AnalogDevices.jupiter.plugin_rd_rxtx_byte`, 'JUPITER (RX & TX, BYTE DMA)',
 ReferenceDesignParameter incl. multiple=2 preserved) with all 10 byte port
-mappings inserted. The build will fail at the Create Project step exactly like
-the parent kit (wrong add_ip path) — the completion Tcl (`complete_and_byte.tcl`,
-to be derived from this kit's `complete_and_gather.tcl`) must do, in ONE
-Vivado session on `hdl_prj_jupiter_composite/vivado_ip_prj`:
+mappings inserted. The IP-core workflow fails by design at the Create Project step
+(wrong add_ip path); the completion Tcl `complete_byte_t8.tcl` finishes the build
+in ONE Vivado session on `hdl_prj_jupiter_composite/vivado_ip_prj`, doing:
 
 1. **Template insert**: the `vivado_insert_ip_TEMPLATE.tcl` body with the
    corrected `update_ip_catalog -add_ip ./ipcore/TxRxCompo_ip_v1_0.zip` path

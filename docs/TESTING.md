@@ -1,10 +1,28 @@
-# TESTING — the three-tier acceptance ladder
+# TESTING — MATLAB is the primary test runner
 
-How to verify the K5 QPSK Jupiter modem, from a dev box with no radio up to a live
-two-board RF link. One entry point drives it all:
+`tests/runTests.m` is the single entry point. It discovers every
+`matlab.unittest` `TestCase` under `tests/`, selects by level tag, emits
+JUnit-XML + TAP into `tests/results/`, and exits nonzero on failure under
+`matlab -batch`. See `tests/README.md` for the full guide.
 
 ```bash
-cd /mnt/onetb/scratch/qpsk_variants/two_jup
+matlab -batch "cd tests; runTests"            # L1 host-pure (< 3 min)
+matlab -batch "cd tests; runTests('L2')"       # HDL gate stamps (RUN_GATES=1 executes)
+QPSK_HIL=1 matlab -batch "cd tests; runTests('L3')"   # RF link, needs both boards
+sudo -E matlab -batch "cd tests; runTests"     # also exercises the root-gated tun/tap tests
+```
+
+| Level | Scope | Needs |
+|---|---|---|
+| **L1** | C tests (`make test`), MATLAB↔C frame contract, byte/decode selftests, tun/tap loopback | nothing (tun/tap need root → Incomplete otherwise) |
+| **L2** | HDL gate verdicts (stamp check; `RUN_GATES=1` runs the ~30 min suite) | MATLAB (+Vivado for exec) |
+| **L3** | tun bring-up, latency, iperf/UDP, TCP, SSH usability | `QPSK_HIL=1` + boards 10.0.0.148/146 |
+
+The hardware acceptance ladder below is the operator procedure the L3 tests
+automate (driven through `two_jup/link_test.sh`):
+
+```bash
+cd two_jup
 ./test.sh loopback          # Tier A: self-loopback (host + internal FPGA), no RF
 ./test.sh bist              # Tier B: on-chip BIST comparator (golden cap_out)
 ./test.sh ber               # Tier B: host full-packet scorer (buckets + BER)
@@ -94,7 +112,7 @@ image (the rxfix keeps it ~0).
 
 `link_test.sh preflight` verifies each board has: `/root/host_app_k5/qpsk_tun` (executable),
 `/root/lvds_1p92_mhz.{bin,json}`, `/root/lock_watchdog.sh`, and working modem reg access.
-Install them with `provision.sh <ip>` (after `deploy_rxfix.sh` flashes the image) — see
+Install them with `provision.sh <ip>` (after `deploy_image.sh` flashes the image) — see
 [BUILD.md](BUILD.md) §Deploy. Board scratch/logs go to `/dev/shm` (`ber.log`, `qpsk_tun.log`,
 `watchdog.log`), never `/tmp`.
 

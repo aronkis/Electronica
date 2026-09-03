@@ -71,7 +71,7 @@ Usage: ./link_test.sh <subcommand> [options]
 
 Subcommands:
   preflight   verify BOTH boards are ready (reachable; /root/host_app_k5/qpsk_tun
-              executable; /root/lvds_1p92_mhz.{bin,json} present; lock_watchdog.sh
+              executable; /root/lvds_15p36_jupiter.{bin,json} present; lock_watchdog.sh
               present; modem reg access works). NO arm. Prints cap_out/rstcs/level.
               PASS/FAIL per board; exits nonzero if any FAIL.
   ber         THE MAIN LINK TEST. Quiesce -> arm the quiet pair -> watchdogs ->
@@ -129,7 +129,7 @@ quiesce(){
 #       NOT clear byte_ctrl_gpio, so this byte-DMA arm survives re-arms.
 # ---------------------------------------------------------------------------
 arm_ber(){ $W $1 "P=/sys/bus/iio/devices/iio:device2; DB=/sys/kernel/debug/iio/iio:device2
-   cat /root/lvds_1p92_mhz.bin > \$P/stream_config 2>/dev/null; cat /root/lvds_1p92_mhz.json > \$P/profile_config 2>/dev/null; sleep 1
+   cat /root/lvds_15p36_jupiter.bin > \$P/stream_config 2>/dev/null; cat /root/lvds_15p36_jupiter.json > \$P/profile_config 2>/dev/null; sleep 1
    echo calibrated > \$P/out_voltage1_ensm_mode; echo calibrated > \$P/in_voltage1_ensm_mode
    for g in 4 5 6 7; do echo 1 > \$DB/agpio\${g}_direction; echo 1 > \$DB/agpio\${g}_value; done; echo tx_a > \$P/out_voltage0_port_select
    echo $2 > \$P/out_altvoltage2_TX1_LO_frequency; echo 0 > \$P/out_voltage0_hardwaregain; echo rf_enabled > \$P/out_voltage0_ensm_mode
@@ -149,7 +149,7 @@ arm_ber(){ $W $1 "P=/sys/bus/iio/devices/iio:device2; DB=/sys/kernel/debug/iio/i
 # ---------------------------------------------------------------------------
 coldstart_tun(){ # $1 ip $2 txlo $3 rxlo $4 tunaddr $5 peer
   $W $1 "P=/sys/bus/iio/devices/iio:device2; DB=/sys/kernel/debug/iio/iio:device2
-   cat /root/lvds_1p92_mhz.bin > \$P/stream_config 2>/dev/null; cat /root/lvds_1p92_mhz.json > \$P/profile_config 2>/dev/null; sleep 1
+   cat /root/lvds_15p36_jupiter.bin > \$P/stream_config 2>/dev/null; cat /root/lvds_15p36_jupiter.json > \$P/profile_config 2>/dev/null; sleep 1
    echo calibrated > \$P/out_voltage1_ensm_mode; echo calibrated > \$P/in_voltage1_ensm_mode
    for g in 4 5 6 7; do echo 1 > \$DB/agpio\${g}_direction; echo 1 > \$DB/agpio\${g}_value; done; echo tx_a > \$P/out_voltage0_port_select
    echo $2 > \$P/out_altvoltage2_TX1_LO_frequency; echo 0 > \$P/out_voltage0_hardwaregain; echo rf_enabled > \$P/out_voltage0_ensm_mode
@@ -212,8 +212,8 @@ cmd_preflight(){
     out=$($W $ip '
       echo reach=OK
       [ -x /root/host_app_k5/qpsk_tun ] && echo qpsk_tun=OK || echo qpsk_tun=FAIL
-      [ -f /root/lvds_1p92_mhz.bin ]    && echo lvds_bin=OK  || echo lvds_bin=FAIL
-      [ -f /root/lvds_1p92_mhz.json ]   && echo lvds_json=OK || echo lvds_json=FAIL
+      [ -f /root/lvds_15p36_jupiter.bin ]    && echo lvds_bin=OK  || echo lvds_bin=FAIL
+      [ -f /root/lvds_15p36_jupiter.json ]   && echo lvds_json=OK || echo lvds_json=FAIL
       [ -f /root/lock_watchdog.sh ]     && echo watchdog=OK  || echo watchdog=FAIL
       DRA=/sys/kernel/debug/iio/iio:device0/direct_reg_access
       echo enabled > /sys/bus/iio/devices/iio:device0/reg_access 2>/dev/null

@@ -1,7 +1,12 @@
 *.o
 qpsk_tun
 qpsk_capture
+qpsk_ringwrite
+qpsk_perf
 test_frame
 test_k5
 test_ber
 test_whiten
+test_seq
+ref_dump
+seq_dump
