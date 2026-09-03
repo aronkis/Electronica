@@ -1,13 +1,13 @@
 ============ jupiter_240k5_byte MODEL-LEVEL BYTE GATE ============
-date: 06-Aug-2026 14:46:24
+date: 26-Jul-2026 02:00:48
 result: PASS
 oracles: (a) air bits vs k5 ROM words (modulator symbol log, pi/4-Gray
   inverse, 13-sym Barker frame find), (b) cap_out 0x04922282 + bit_errors
   steady, (c) byte_rx = 16x uint64 info words/frame (WPP=16).
-run A (aligned, golden info): air(frames=8 firstGold=3 golden=6 tailGold=1) bist(cap=04922282 errsLate=0 pk=8) rx(6 complete packets, last 4 checked) => PASS
+run A (aligned, golden info): air(frames=8 firstGold=3 golden=6 tailGold=1) bist(cap=04922282 errsLate=0 pk=7) rx(5 complete packets, last 4 checked) => PASS
 run B (rotated idx0=18):      SKIPPED (f1536: rotated-realign needs many long frames; WPP-parameterized, geometry-independent, k5-proven)
-run C (ALT pad discriminator):air(frames=8 firstGold=3 golden=6 tailGold=1) bist(cap=04922282 errsLate=0 pk=8) rx(6 complete packets, last 4 checked) => PASS
-run D (ROM path regression):  air(frames=8 firstGold=1 golden=8 tailGold=1) bist(cap=04922282 errsLate=0 pk=8) rx(6 complete packets, last 4 checked) => PASS
+run C (ALT pad discriminator):air(frames=8 firstGold=3 golden=6 tailGold=1) bist(cap=04922282 errsLate=0 pk=7) rx(5 complete packets, last 4 checked) => PASS
+run D (ROM path regression):  air(frames=8 firstGold=1 golden=8 tailGold=1) bist(cap=04922282 errsLate=0 pk=7) rx(5 complete packets, last 4 checked) => PASS
 byte-branch latency: air frame N carries encode(byte frame N-1) --
   ping-pong interleaver, structural one-frame pipeline (documented).
 ==================================================================

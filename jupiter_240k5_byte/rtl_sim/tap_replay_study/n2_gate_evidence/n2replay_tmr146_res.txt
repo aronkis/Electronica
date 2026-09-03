@@ -1,2 +1,0 @@
-PERFRAME iq=/mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/tap_replay_study/chunk_270_339_r0.iq nsamp=3847895 packets=5 frameStart=5 outFrames=4 capGoldFrames=0/4 nrxw=846 goldAny=0 capEverGold=0
-utFrames=4 capGoldFrames=0/4 nrxw=846 nuser=4 goldAny=0 capEverGold=0

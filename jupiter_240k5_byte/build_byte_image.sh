@@ -33,14 +33,6 @@ if ! grep -q 'byte_breakout' "$Z/vivado_prj.srcs/sources_1/bd/system/system.bd" 
 fi
 echo "  byte reference-design BD confirmed (byte_breakout present)"
 
-# T8.9 TMR guard: annotate the triplicated accumulator regs with dont_touch in the
-# GENERATED RTL before Vivado sees them. XDC DONT_TOUCH is too late -- synthesis
-# merges the three copies during optimization (measured: only Delay14C survived,
-# voter cells = 0, i.e. the fix was silently deleted from the bitstream).
-if [ -n "${QPSK_MOVSUM_TMR:-}" ]; then
-  bash "$(dirname "$0")/tmr_attr_inject.sh" "$FRESH" || { echo "TMR_ATTR_FAILED"; exit 1; }
-fi
-
 echo "=== [4/4] Vivado completion (stock wiring + byte connects) ==="
 ( cd "$Z" && timeout 14400 vivado -mode batch -notrace -source "$FRESH/complete_byte_t8.tcl" ) > "$FRESH/build_byte_vivado.log" 2>&1
 grep -E 'WIRE_OK|WIRE_FAIL|BYTE_WIRE_OK|BYTE_FAIL|VALIDATE_OK|VALIDATE_FAILED|BYTE_BUILD_DONE|SYNTH_FAILED|IMPL_FAILED' "$FRESH/build_byte_vivado.log" | tail -6

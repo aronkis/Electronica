@@ -112,13 +112,8 @@ LEAN = ~isempty(getenv('QPSK_LEAN'));
 if LEAN, fprintf('=== LEAN build: stripping adc_forensic/state-pairs/canary*/p1b ===\n'); end
 
 % Phase 2.12: T8.3 ADC ingest forensic register (0x15C) -- STRIP in LEAN.
-% EXCEPTION (burst-hunt instrument): QPSK_ADC_FORENSIC=1 re-adds JUST this overlay
-% to a LEAN build (small: one packed status register + counters; fits where the
-% full debug set does not). Used to catch SSI valid-cadence glitches (maxGap/
-% maxBurst) during the reverse 5-100-frame live-only bursts. The 0x15C mapping in
-% hdlworkflow is block-existence-guarded, so it self-syncs.
-if ~LEAN || ~isempty(getenv('QPSK_ADC_FORENSIC'))
-fprintf('=== applying ADC forensic overlay (LEAN=%d, QPSK_ADC_FORENSIC=%s) ===\n', LEAN, getenv('QPSK_ADC_FORENSIC'));
+if ~LEAN
+fprintf('=== applying ADC forensic overlay ===\n');
 adc_forensic_overlay(sys, loop);
 end
 
@@ -128,64 +123,12 @@ end
 fprintf('=== applying IQ debug tap overlay ===\n');
 iq_debug_tap_overlay(sys, loop);
 
-% Phase 2.12d: T8.5 shadow timing loop + fabric canaries (0x170-0x188) --
-% direct on-chip live-vs-deterministic divergence measurement (Class 1/4).
-% T8.9 STALL FIX (task #15): non-recursive preamble threshold sum -- removes the
-% Delay14 recursive-accumulator vulnerability (confirmed live stall mechanism,
-% FROZEN-class mutes). Env-gated for staged rollout; datapath-only, bit-exact
-% in uncorrupted operation (netlist A/B gated in the harness).
-if ~isempty(getenv('QPSK_MOVSUM_HARDEN'))
-fprintf('=== applying movsum hardening overlay (LEAN=%d) ===\n', LEAN);
-movsum_hardening_overlay(sys, loop);
-end
-
-% T9.0 LOOP-TUNE AXI REGISTERS (task #14): 6 runtime-writable receiver loop
-% constants at 0x1F0-0x204, each CLAMPED in fabric to a safe band around its
-% compiled default (a bad live write can mistune but cannot unlock the loop).
-% Zero-default = compiled constant, so an unwritten image is bit-identical.
-% Relocated off 0x170-0x184 (permanently held by the T8.5 canaries), so unlike
-% the old loop_gain overlay this coexists with the full instrument set.
-if ~isempty(getenv('QPSK_LOOP_TUNE'))
-fprintf('=== applying loop-tune AXI overlay (LEAN=%d) ===\n', LEAN);
-loop_tune_axi_overlay(sys, loop);
-end
-
-% T8.9 TMR stall fix (CHOSEN VARIANT, task #15): triplicated preamble-threshold
-% accumulator + bitwise majority voter with write-back reconverge. A single
-% upset of any copy is outvoted and corrected on the next enabled beat instead
-% of persisting forever (the confirmed live FROZEN-class stall mechanism).
-% REQUIRES tmr_keep.xdc in the Vivado flow (complete_byte_t8.tcl adds it when
-% QPSK_MOVSUM_TMR is set) or synthesis merges the copies and deletes the fix.
-if ~isempty(getenv('QPSK_MOVSUM_TMR'))
-fprintf('=== applying movsum TMR overlay (LEAN=%d) ===\n', LEAN);
-movsum_tmr_overlay(sys, loop);
-end
-
-% EXCEPTION (stall-catch instrument): QPSK_CANARY_T85=1 re-adds JUST this overlay to a
-% LEAN build. COLLIDES with the LEAN loop_gain regs (0x170-0x184) -- build with
-% QPSK_LOOP_GAIN_AXI=0. Purpose: shadow pdiv/idiv = state-TEAR detector; 0x184
-% strobe forensic {maxStrobeGap|skip} = enable-tree starvation detector -- the two
-% candidate physical mechanisms for the 5-100-frame delivery stall (the netlist
-% injection campaign proved the algorithmic core self-heals every coherent upset).
-if ~LEAN || ~isempty(getenv('QPSK_CANARY_T85'))
-if ~isempty(getenv('QPSK_CANARY_T85')) && LEAN
-    assert(strcmp(getenv('QPSK_LOOP_GAIN_AXI'),'0'), ...
-        'QPSK_CANARY_T85 on LEAN requires QPSK_LOOP_GAIN_AXI=0 (0x170-0x184 collision)');
-end
-fprintf('=== applying canary instrumentation overlay (LEAN=%d) ===\n', LEAN);
-canary_instrumentation_overlay(sys, loop);
-end
-
-% EXCEPTION (T8.8 stall finisher): QPSK_CANARY_TAOPS=1 exposes the SyncPulse
-% equality operands (TA timing_Reference / Unit_Delay_En_Sync3 / PS tref) at
-% 0x1E0-0x1E4 -- no address collision with loop_gain or T8.5. One mid-freeze
-% read identifies WHICH operand is wrong. Allowed on LEAN.
-if ~isempty(getenv('QPSK_CANARY_TAOPS'))
-fprintf('=== applying canary5 taops overlay (LEAN=%d) ===\n', LEAN);
-canary5_taops_overlay(sys, loop);
-end
-
 if ~LEAN
+% Phase 2.12d: T8.5 shadow timing loop + fabric canaries (0x170-0x188) --
+% direct on-chip live-vs-deterministic divergence measurement (Class 1/4)
+fprintf('=== applying canary instrumentation overlay ===\n');
+canary_instrumentation_overlay(sys, loop);
+
 % Phase 2.12e: T8.6 path canary + IC/carrier shadow extension (0x18C-0x1A0)
 fprintf('=== applying canary2 overlay ===\n');
 canary2_overlay(sys, loop);
@@ -285,16 +228,6 @@ if LOOPGAIN
     loop_gain_axi_overlay(sys, loop);
 elseif ~LEAN
     fprintf('=== loop-gain AXI overlay SKIPPED (non-LEAN: 0x170-0x184 = canaries) ===\n');
-end
-
-% Phase 2.19: per-frame status telemetry FIFO (0x1D0-0x1DC). ENV-GATED on
-% QPSK_FRAMESTAT with an EARLY RETURN inside the overlay -> byte-identical HDL
-% when unset (G0). Orthogonal to LEAN/debug: 0x1D0-0x1DC are free in both, and
-% do NOT collide with loop_gain (0x170-0x184). Applied AFTER byte_rxfifo AND
-% loop_gain so the composite port set + the p1d runningMax tap are stable.
-if ~isempty(getenv('QPSK_FRAMESTAT'))
-    fprintf('=== applying framestat per-frame telemetry overlay (0x1D0-0x1DC) ===\n');
-    framestat_overlay(sys, loop);
 end
 
 % Bump Description so smart-build cannot claim "no changes". The frame= token
@@ -529,15 +462,10 @@ for r = {'skip_count','byte_data','byte_valid','tx_data_source','byte_first','by
     assert(~isempty(find_system(loop,'SearchDepth',1,'BlockType','Inport','Name',r{1})), ...
         'GATE FAIL: inport %s missing', r{1});
 end
-% (g2) Transmitter byte boundary + shifter/mux structure present.
-% framestat (phase 2.19, env-gated) adds ONE Transmitter outport (fs_txur, the
-% TX-underrun witness) -- account for it instead of hard-coding 9.
+% (g2) Transmitter byte boundary + shifter/mux structure present
 txph = get_param([loop '/Transmitter'],'PortHandles');
-nFsTx = double(~isempty(find_system([loop '/Transmitter'],'SearchDepth',1, ...
-    'BlockType','Outport','Name','fs_txur')));
-assert(numel(txph.Inport)==8 && numel(txph.Outport)==9+nFsTx, ...
-    'GATE FAIL: Transmitter ports %d/%d (expected 8/%d)', ...
-    numel(txph.Inport), numel(txph.Outport), 9+nFsTx);
+assert(numel(txph.Inport)==8 && numel(txph.Outport)==9, ...
+    'GATE FAIL: Transmitter ports %d/%d (expected 8/9)', numel(txph.Inport), numel(txph.Outport));
 for n = {'ByteBitShifter','BitMux'}
     assert(~isempty(find_system([loop '/Transmitter/Input Data'],'SearchDepth',1, ...
         'LookUnderMasks','all','FollowLinks','on','Name',n{1})), 'GATE FAIL: %s missing', n{1});

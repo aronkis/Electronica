@@ -346,10 +346,7 @@ end
 % --- end state-pair mappings ---
 % --- T8.5 canary mappings (canary_instrumentation_overlay: shadow timing
 %     loop divergence detectors + strobe forensic + beat counter) ---
-% Block-existence guard (not a LEAN env test): assemble applies the overlay on
-% LEAN when QPSK_CANARY_T85 is set, and an env gate here silently leaves the
-% canaries unmapped (fabric present, AXI reads 0 -- bit us on the 4dafdad3 image).
-if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','shdw_pdiv_cnt'))
+if isempty(getenv('QPSK_LEAN'))
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/shdw_pdiv_cnt',   'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/shdw_pdiv_cnt',   'IOInterfaceMapping', 'x"170"');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/shdw_pdiv_beat',  'IOInterface', 'AXI4-Lite');
@@ -364,11 +361,8 @@ hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/strobe_forensic', 'IOInterfa
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/strobe_forensic', 'IOInterfaceMapping', 'x"184"');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/beat_counter',    'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/beat_counter',    'IOInterfaceMapping', 'x"188"');
-end
 % --- end T8.5 canary mappings ---
 % --- T8.6 canary2 mappings (canary2_overlay: path canary + IC/carrier shadows) ---
-% Same block-existence idiom: canary2_overlay is ~LEAN-only, T8.5 may exist alone.
-if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','path_canary'))
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/path_canary',    'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/path_canary',    'IOInterfaceMapping', 'x"18C"');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/ic_div_beat',    'IOInterface', 'AXI4-Lite');
@@ -393,33 +387,6 @@ hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cs_vout_cnt', 'IOInterfaceMa
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cnt_rxwords', 'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/cnt_rxwords', 'IOInterfaceMapping', 'x"1AC"');
 end
-
-% --- T9.0 loop-tune AXI registers (loop_tune_axi_overlay), CLAMPED, 0x1F0-0x204 ---
-% Block-existence guard (never an env test -- see the T8.5 lesson). These are
-% INPORTS (host writes); 0 selects the compiled constant.
-if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','lt_cs_prop_gain'))
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_cs_prop_gain',  'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_cs_prop_gain',  'IOInterfaceMapping', 'x"1F0"');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_cs_integ_gain', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_cs_integ_gain', 'IOInterfaceMapping', 'x"1F4"');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_ss_prop_gain',  'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_ss_prop_gain',  'IOInterfaceMapping', 'x"1F8"');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_ss_integ_gain', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_ss_integ_gain', 'IOInterfaceMapping', 'x"1FC"');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_agc_loop_gain', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_agc_loop_gain', 'IOInterfaceMapping', 'x"200"');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_cfo_threshold', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/lt_cfo_threshold', 'IOInterfaceMapping', 'x"204"');
-end
-% --- end T9.0 loop-tune mappings ---
-% --- T8.8 canary5 taops (canary5_taops_overlay: SyncPulse equality operands) ---
-% Block-existence guard (same idiom as T8.5 post-fix -- never an env test here).
-if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','ta_ops'))
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/ta_ops',  'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/ta_ops',  'IOInterfaceMapping', 'x"1E0"');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/ta_diag', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/ta_diag', 'IOInterfaceMapping', 'x"1E4"');
-end
 % byte_fifo_ovf (0x1B0) is a SHIPPED FIFO fix -- always mapped (not debug).
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/byte_fifo_ovf', 'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/byte_fifo_ovf', 'IOInterfaceMapping', 'x"1B0"');
@@ -438,45 +405,6 @@ hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pc_w2', 'IOInterfaceMapp
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pa_w1', 'IOInterface', 'AXI4-Lite');
 hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/p1b_pa_w1', 'IOInterfaceMapping', 'x"1C8"');
 end
-% --- framestat per-frame telemetry FIFO mappings (0x1D0-0x1DC) ---
-% Block-existence guard -- self-syncs with the QPSK_FRAMESTAT env gate in
-% assemble (map only what actually got built; no env re-derivation to drift,
-% same idiom as adc_forensic). 0x1D0/0x1D4/0x1D8 = READ outports (FIFO head_lo /
-% head_hi / stat); 0x1DC = WRITE inport (framestat_pop, the realizable FIFO
-% advance -- HDL Coder AXI4-Lite reads have NO side effect, so "0x1D4 read pops"
-% is done host-side/wrapper-side; see FRAMESTAT_NOTES.md). Free in LEAN + debug.
-if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','framestat_head_lo'))
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_head_lo', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_head_lo', 'IOInterfaceMapping', 'x"1D0"');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_head_hi', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_head_hi', 'IOInterfaceMapping', 'x"1D4"');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_stat', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_stat', 'IOInterfaceMapping', 'x"1D8"');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_pop', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_pop', 'IOInterfaceMapping', 'x"1DC"');
-% checkpoint-1 free-running accepted-word counter (byte_rx_valid&&byte_rx_ready).
-% 0x1C0 is p1b_pc_w1 in non-LEAN debug builds; framestat_overlay hard-asserts
-% p1b absence, so this mapping never coexists with the p1b one above.
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_wordcnt', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_wordcnt', 'IOInterfaceMapping', 'x"1C0"');
-% free-running byte_rx STALL-cycle counter (byte_rx_valid && !byte_rx_ready) --
-% the direct inter-transfer backpressure witness. 0x1C4 is p1b_pc_w2 in
-% non-LEAN debug builds (verified: p1b census 0x1B4-0x1C8 is the ONLY other
-% claimant in this workflow); the framestat_overlay p1b hard-assert refuses
-% that combination, so this mapping never coexists with the p1b one above.
-if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','framestat_stallcnt'))
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_stallcnt', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_stallcnt', 'IOInterfaceMapping', 'x"1C4"');
-end
-% free-running TX byte-FIFO underrun EVENT counter (ByteBitShifter underflow
-% reload = modulator starved, zeros aired). 0x1C8 is p1b_pa_w1 in non-LEAN
-% debug builds -- same p1b-assert guarantee as 0x1C0/0x1C4 above.
-if ~isempty(find_system('commhdlQPSKTxRxLoopback/TxRxComposite','SearchDepth',1,'Name','framestat_txurcnt'))
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_txurcnt', 'IOInterface', 'AXI4-Lite');
-hdlset_param('commhdlQPSKTxRxLoopback/TxRxComposite/framestat_txurcnt', 'IOInterfaceMapping', 'x"1C8"');
-end
-end
-% --- end framestat mappings ---
 % --- end T8.6 canary2 mappings ---
 % --- end taps_240k5 mappings ---
 % nodescr: pn_phase (0x150) REMOVED -- no descrambler, so no PN-phase register.

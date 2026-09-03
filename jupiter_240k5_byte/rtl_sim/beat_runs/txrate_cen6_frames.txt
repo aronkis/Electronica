@@ -1,8 +1,0 @@
-CEN frame=0 clk=98764 occ=24665 fc=1 pushCount=25 popCount=0 pushes=24665 pops=0 fullRAM=0 pace=0 armed=0 pushWrapPos=98662 popWrapPos=-1 pushWraps=1 popWraps=0
-ARMED clk=98766 frame=1 posInFrame=2 sampleCount=0 0 -> 1 fc=1 d3=1
-CEN frame=1 clk=197428 occ=24692 fc=2 pushCount=51 popCount=24639 pushes=24666 pops=24639 fullRAM=0 pace=0 armed=1 pushWrapPos=98458 popWrapPos=-1 pushWraps=2 popWraps=0
-CEN frame=2 clk=296092 occ=24718 fc=2 pushCount=77 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98354 popWrapPos=2 pushWraps=3 popWraps=1
-CEN frame=3 clk=394756 occ=24744 fc=2 pushCount=103 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98250 popWrapPos=2 pushWraps=4 popWraps=2
-CEN frame=4 clk=493420 occ=24770 fc=2 pushCount=129 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98146 popWrapPos=2 pushWraps=5 popWraps=3
-CEN frame=5 clk=592084 occ=24796 fc=2 pushCount=155 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98042 popWrapPos=2 pushWraps=6 popWraps=4
-CEN frame=6 clk=690748 occ=24822 fc=2 pushCount=181 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97938 popWrapPos=2 pushWraps=7 popWraps=5

@@ -1,5 +1,0 @@
-[Unit]
-Description=Render SDD task pipeline page for the LAN dashboard
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/python3 /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/agents/render_pipeline.py

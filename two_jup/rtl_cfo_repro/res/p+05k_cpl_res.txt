@@ -1,2 +1,0 @@
-iq=../stim_p+05k_cpl.iq nsamp=2466600 vphase=0 cadence=4 rstcs_end=8400 skip=0 dumpsamp=0
-packets=48 biterr=51 capout=04922282 rstcs=0 cfc_est=358 nrxw=9130

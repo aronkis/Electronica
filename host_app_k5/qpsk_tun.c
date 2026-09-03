@@ -89,9 +89,6 @@
  * signed comparisons below stay warning-clean under -Wextra -Werror; it must
  * equal QPSK_RX_MULTI_MAX (the unsigned form used for the carve math). */
 #define RX_MULTI_MAX 64
-/* Max areas in the queued RX ring; QPSK_RX_AREAS selects 2..RX_AREAS_MAX at runtime.
- * Defined here because both the instrumentation block and rx_q_id[] are sized by it. */
-#define RX_AREAS_MAX 4
 _Static_assert(RX_MULTI_MAX == (int)QPSK_RX_MULTI_MAX, "RX_MULTI_MAX mismatch");
 /* tx_ids[] is sized to TX_SLOTS; the RUNTIME inflight cap is max_inflight
  * (2 in polled mode -- unchanged -- raised to TX_SLOTS only in IRQ mode). */
@@ -111,8 +108,6 @@ _Static_assert(RX_MULTI_MAX == (int)QPSK_RX_MULTI_MAX, "RX_MULTI_MAX mismatch");
 #define DMAC_TRANSFER_DONE 0x428
 
 #define DMAC_FLAG_TLAST    0x2
-#define DMAC_FLAG_CYCLIC   0x1    /* FLAGS bit0: cyclic re-issue (gated by DMA_CYCLIC
-                                  * synth param; permissive -- no-op on a CYCLIC-0 build) */
 
 /* IRQ-mode interrupt mask. axi_dmac IRQ_MASK bit0 = SOT (start-of-transfer),
  * bit1 = EOT (end-of-transfer); a set bit MASKS (disables) that interrupt.
@@ -180,7 +175,6 @@ static struct {
     uint64_t oversize, tx_stalls, b_side_drops;
     uint64_t retx, dups, recovered;
     uint64_t idle_tx, idle_rx, tun_drops;
-    uint64_t naks_tx, naks_rx, arq_lost;   /* cross-link ARQ (arq_x) */
 } st;
 
 static int pkt_bytes = QPSK_PKT_BYTES_DEFAULT;
@@ -214,29 +208,9 @@ static int max_inflight = 2;    /* polled cap (unchanged); IRQ mode -> TX_SLOTS 
 
 static volatile sig_atomic_t running = 1;
 static volatile sig_atomic_t dump_req = 0;
-static volatile sig_atomic_t framelog_rotate_req = 0;  /* SIGUSR2: rotate framelog */
 
 static void on_term(int s) { (void)s; running = 0; }
 static void on_usr1(int s) { (void)s; dump_req = 1; }
-static void on_usr2(int s) { (void)s; framelog_rotate_req = 1; }
-
-#ifdef QPSK_ARQ_NAKSTAT
-/* Declared here rather than beside axr_is_nak() because stats_dump() below is the
- * first use and sits ~900 lines earlier in the file. Definitions, not externs --
- * this is a single translation unit. See the block at axr_is_nak() for semantics. */
-static unsigned long long nakstat_seen, nakstat_magic, nakstat_parsed;
-#endif
-
-#ifdef QPSK_RXQ_STAT
-/* Forward declaration ONLY -- the counters themselves live beside the queued-RX code
- * that maintains them. Deliberately not hoisted the way the nakstat counters were:
- * hoisting a definition reorders .bss and perturbs the object layout even when the
- * feature is compiled out, and board 148 must rebuild from this same source to a
- * functionally untouched binary. A forward function declaration moves nothing. */
-static void rxq_stats_dump(void);
-#endif
-static void ckpt_stats_dump(void);
-static void txgap_dump(void);
 
 static void stats_dump(void)
 {
@@ -245,8 +219,7 @@ static void stats_dump(void)
         "dma_tx=%llu dma_rx_ok=%llu crc_drop=%llu seq_gap=%llu "
         "idle_tx=%llu idle_rx=%llu tun_drop=%llu "
         "oversize=%llu tx_stall=%llu b_drop=%llu "
-        "retx=%llu dups=%llu recovered=%llu "
-        "naks_tx=%llu naks_rx=%llu arq_lost=%llu\n",
+        "retx=%llu dups=%llu recovered=%llu\n",
         (unsigned long long)st.tun_a_rx, (unsigned long long)st.tun_a_tx,
         (unsigned long long)st.tun_b_rx, (unsigned long long)st.tun_b_tx,
         (unsigned long long)st.frames_tx, (unsigned long long)st.frames_rx_ok,
@@ -255,116 +228,7 @@ static void stats_dump(void)
         (unsigned long long)st.tun_drops,
         (unsigned long long)st.oversize, (unsigned long long)st.tx_stalls,
         (unsigned long long)st.b_side_drops, (unsigned long long)st.retx,
-        (unsigned long long)st.dups, (unsigned long long)st.recovered,
-        (unsigned long long)st.naks_tx, (unsigned long long)st.naks_rx,
-        (unsigned long long)st.arq_lost);
-    txgap_dump();   /* separate line; the stats line above stays byte-identical */
-#ifdef QPSK_ARQ_NAKSTAT
-    /* separate line, not appended to the format above, so the uninstrumented
-     * build's stats line stays byte-for-byte what every existing parser expects */
-    fprintf(stderr, "qpsk_tun nakstat: seen=%llu magic=%llu parsed=%llu\n",
-            nakstat_seen, nakstat_magic, nakstat_parsed);
-#endif
-#ifdef QPSK_RXQ_STAT
-    rxq_stats_dump();   /* separate line; the stats line above stays byte-identical */
-#endif
-    ckpt_stats_dump();  /* prints only when QPSK_CKPT is set */
-}
-
-/* ---- per-frame telemetry logger (QPSK_FRAMELOG) --------------------------
- * Opt-in, env-gated instrument for the PER<1% capture->reproduce campaign.
- * When QPSK_FRAMELOG is unset every hook below is a no-op and the daemon
- * behaves exactly as before (mirrors the QPSK_WHITEN opt-in idiom). Set
- * QPSK_FRAMELOG=/dev/shm/frames.bin to append one 48-byte record per scored
- * RX frame, tagging it with the modem forensic counters read INLINE at the
- * frame boundary -- a synchronous volatile load off the modem BAR, not an
- * async poll, so there is no poll-rate aliasing (R3 frames ~0.8 ms « any ms
- * poll). Cumulative counters (0x104/0x108/0x150) are logged raw; analysis
- * takes deltas (alias-immune). cfc/adcforensic are moving-quantity snapshots,
- * kept as corroboration only (CFO is independently recoverable from the IQ).
- * crc_ok is per-frame good/bad: CRC pass in tun/echo, scored-CLEAN in -B.
- * Flush: SIGUSR1 (with the stats dump) and atexit; SIGUSR2 rotates (truncates)
- * the file so a long capture can be drained without stopping the daemon. */
-struct frame_rec {
-    uint64_t t_mono_ns;       /* CLOCK_MONOTONIC at the decode                */
-    uint64_t t_real_ns;       /* CLOCK_REALTIME (maps to capture wallclock)   */
-    uint32_t host_seq;        /* decoded seq (pass) or raw header seq (fail)  */
-    uint32_t crc_ok;          /* 1 = good frame, 0 = errored/dropped          */
-    uint32_t reg_packets;     /* 0x104 packets_out (cumulative)               */
-    uint32_t reg_biterr;      /* 0x108 bit_errors_out (cumulative BIST)       */
-    uint32_t reg_rstcs;       /* 0x150 rstcs_count (cumulative carrier reset) */
-    uint32_t reg_cfc;         /* 0x154 cfc_est (CFO trajectory snapshot)      */
-    uint32_t reg_adcforensic; /* 0x15C adc_forensic (level/duty/gap snapshot) */
-    uint32_t reserved;        /* pad to 48 B / 8-byte record alignment        */
-};
-_Static_assert(sizeof(struct frame_rec) == 48, "frame_rec must be 48 bytes");
-
-/* Modem forensic register offsets (read-only status). Reads are plain volatile
- * loads off the modem BAR mmap -- the direct_reg_access caveat in qpsk_hw.h
- * applies to control WRITES (arm sequencing), not status reads. */
-#define FL_REG_PACKETS  0x104u
-#define FL_REG_BITERR   0x108u
-#define FL_REG_RSTCS    0x150u
-#define FL_REG_CFC      0x154u
-#define FL_REG_ADCFOR   0x15Cu
-
-static const char *framelog_path = NULL;      /* NULL => logger disabled */
-static FILE *framelog_fp = NULL;
-static volatile uint32_t *modem_regs = NULL;  /* modem BAR, mapped in dma_open when enabled */
-
-static uint64_t framelog_clock_ns(clockid_t clk)
-{
-    struct timespec ts;
-    clock_gettime(clk, &ts);
-    return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
-}
-
-static uint32_t framelog_seq(const unsigned char *p)
-{
-    return (uint32_t)p[4] | ((uint32_t)p[5] << 8)
-         | ((uint32_t)p[6] << 16) | ((uint32_t)p[7] << 24);
-}
-
-static void framelog_record(int crc_ok, uint32_t seq)
-{
-    if (!framelog_fp || !modem_regs)
-        return;
-    struct frame_rec r;
-    r.t_mono_ns       = framelog_clock_ns(CLOCK_MONOTONIC);
-    r.t_real_ns       = framelog_clock_ns(CLOCK_REALTIME);
-    r.host_seq        = seq;
-    r.crc_ok          = crc_ok ? 1u : 0u;
-    r.reg_packets     = modem_regs[FL_REG_PACKETS / 4];
-    r.reg_biterr      = modem_regs[FL_REG_BITERR  / 4];
-    r.reg_rstcs       = modem_regs[FL_REG_RSTCS   / 4];
-    r.reg_cfc         = modem_regs[FL_REG_CFC     / 4];
-    r.reg_adcforensic = modem_regs[FL_REG_ADCFOR  / 4];
-    r.reserved        = 0;
-    fwrite(&r, sizeof r, 1, framelog_fp);
-}
-
-static void framelog_flush(void)
-{
-    if (framelog_fp)
-        fflush(framelog_fp);
-}
-
-static void framelog_close(void)
-{
-    if (framelog_fp) { fflush(framelog_fp); fclose(framelog_fp); framelog_fp = NULL; }
-}
-
-/* Consumed from the event loops (not the signal handler) when SIGUSR2 sets the
- * flag: fopen/fclose are not async-signal-safe. */
-static void framelog_service(void)
-{
-    if (framelog_rotate_req && framelog_fp) {
-        framelog_rotate_req = 0;
-        fclose(framelog_fp);
-        framelog_fp = fopen(framelog_path, "wb");   /* truncate + reopen */
-        if (framelog_fp)
-            setvbuf(framelog_fp, NULL, _IOFBF, 1u << 20);
-    }
+        (unsigned long long)st.dups, (unsigned long long)st.recovered);
 }
 
 static uint32_t dmac_rd(struct dmac *d, uint32_t off)
@@ -477,118 +341,6 @@ static uint32_t tx_ids[MAX_INFLIGHT];
 static int tx_inflight = 0;
 static unsigned tx_slot = 0;
 
-/* ---- TX inter-transfer gap witness (2026-08-28, always on, one line per stats window) ----
- * The modem's TX byte-in plane (16-word ByteWordBuffer) runs dry whenever the MM2S byte
- * stream is silent for more than ~16-28 us between transfers, and every such event costs
- * exactly one air frame (netlist reproduction: rtl_sim/TXPLANE_SIM_RESULTS.md). The
- * hardware queue is ONE request ahead (axi_dmac latches a single request set; a SUBMIT
- * while one is latched overwrites its parameters -- regmap_request.v 9'h102/104-106), so
- * max_inflight=2 (running + latched) is the hardware maximum and the slack the host has
- * is at most one transfer of air (~0.8 ms per F1536 air frame). Silence therefore appears
- * whenever the host does not return to tx_send() before the latched transfer ends --
- * i.e. whenever an event-loop iteration (the RX transfer drain at each S2MM boundary is
- * the long one: 16 CRC checks + tun writes) takes longer than the remaining slack.
- * This witness estimates that silence from the host side, cheaply:
- *   at each submit, after tx_reap(): if the queue is EMPTY (inflight_after_reap == 0)
- *   the fabric has been starved since the previous transfer finished; that finish time
- *   is estimated as previous_submit_time + (frames_in_previous_transfer * frame_period_s)
- *   -- when the previous submit found the queue already busy the fabric consumed it
- *   back-to-back, so the estimate is a lower bound (silence >= estimate). gap_us < 0 is
- *   clipped to 0. Bins: > 20 us (the ByteWordBuffer's cover), > 50 us, > 200 us.
- * Prediction to check against the in-fabric decoder-output checker on the receiver:
- *   gt20us per window ~= garbage-header (magic_bad) frames per window. */
-static double now_s(void);              /* defined below (monotonic seconds) */
-static uint64_t txgap_n, txgap_empty, txgap_gt20, txgap_gt50, txgap_gt200;
-static double   txgap_max_us, txgap_sum_us;
-static uint32_t txgap_hist[48];         /* log2 bins of gap_us (bin i: [2^(i/2)) coarse) */
-static double   txgap_prev_t = 0;       /* previous submit time (monotonic s) */
-static int      txgap_prev_frames = 0;  /* air frames in the previous transfer */
-static int      tx_idle_batch = 0;      /* QPSK_TX_QUEUED=N: N idle frames per transfer (0/1 = off) */
-
-static int txgap_bin(double us)
-{
-    /* integer half-octave bins (no libm: the on-board build links libc only):
-     * bin = 2*floor(log2(v+1)) + (mantissa >= sqrt(2)), clipped to 47 */
-    uint64_t v = us < 0 ? 0 : (uint64_t)us + 1;
-    int l = 0; while ((v >> (l + 1)) != 0) l++;      /* floor(log2 v) */
-    int hi = (l > 0 && (v & (1ull << (l - 1))) != 0); /* next bit set -> upper half-octave */
-    int b = 2 * l + hi;
-    return b >= 48 ? 47 : b;
-}
-static double txgap_bin_hi_us(int b)                  /* upper edge of bin b, in us */
-{
-    int l = b / 2; double v = (double)(1ull << l);
-    return (b & 1) ? v * 2.0 - 1.0 : v * 1.5 - 1.0;
-}
-
-/* called by every submit path with the queue depth after reap and the transfer's frame count */
-static void txgap_note(int inflight_after_reap, int frames, double now)
-{
-    txgap_n++;
-    if (txgap_prev_t > 0 && inflight_after_reap == 0) {
-        double fin = txgap_prev_t + (double)txgap_prev_frames * frame_period_s;
-        double gap = (now - fin) * 1e6;
-        if (gap < 0) gap = 0;
-        txgap_empty++;
-        txgap_sum_us += gap;
-        if (gap > txgap_max_us) txgap_max_us = gap;
-        if (gap > 20.0)  txgap_gt20++;
-        if (gap > 50.0)  txgap_gt50++;
-        if (gap > 200.0) txgap_gt200++;
-        txgap_hist[txgap_bin(gap)]++;
-    }
-    txgap_prev_t = now;
-    txgap_prev_frames = frames;
-}
-
-static double txgap_p99_us(void)
-{
-    uint64_t tot = 0; for (int i = 0; i < 48; i++) tot += txgap_hist[i];
-    if (tot == 0) return 0.0;
-    uint64_t acc = 0; uint64_t goal = (tot * 99 + 99) / 100;
-    for (int i = 0; i < 48; i++) { acc += txgap_hist[i]; if (acc >= goal) return txgap_bin_hi_us(i); }
-    return txgap_max_us;
-}
-
-static void txgap_dump(void)
-{
-    fprintf(stderr, "qpsk_tun txgap: n=%llu empty=%llu gt20us=%llu gt50us=%llu gt200us=%llu max_us=%.0f p99_us=%.0f mean_us=%.1f idle_batch=%d\n",
-            (unsigned long long)txgap_n, (unsigned long long)txgap_empty,
-            (unsigned long long)txgap_gt20, (unsigned long long)txgap_gt50,
-            (unsigned long long)txgap_gt200, txgap_max_us, txgap_p99_us(),
-            txgap_empty ? txgap_sum_us / (double)txgap_empty : 0.0, tx_idle_batch);
-    txgap_n = txgap_empty = txgap_gt20 = txgap_gt50 = txgap_gt200 = 0;
-    txgap_max_us = txgap_sum_us = 0; memset(txgap_hist, 0, sizeof txgap_hist);
-}
-
-/* ---- TX submit log (QPSK_TXLOG) ------------------------------------------
- * Ring of the LAST TXLOG_N tx_send() submissions: monotonic timestamp, slot,
- * inflight-before, and spin count. Dumped once at exit. Separates "the FEEDER
- * missed the air deadline" (gap between consecutive submits > frame period)
- * from "the fabric underran on its own" (submit cadence clean while the RX
- * side shows zero-fill) -- the discriminator the periodic TX zero-fill events
- * (TX_ANOMALY_SCAN.md: exact 30/33/34-frame cadence) need. Unset = NULL = no
- * code in the path beyond one pointer test. */
-struct txlog_rec { uint64_t t_ns; uint32_t slot; uint16_t inflight; uint16_t spins; };
-#define TXLOG_N 65536u
-static struct txlog_rec *txlog_buf;      /* NULL = disabled */
-static unsigned txlog_head;
-static const char *txlog_path;
-
-static void txlog_dump(void)
-{
-    if (!txlog_buf || !txlog_path) return;
-    FILE *f = fopen(txlog_path, "wb");
-    if (!f) return;
-    unsigned n = txlog_head < TXLOG_N ? txlog_head : TXLOG_N;
-    unsigned start = txlog_head < TXLOG_N ? 0 : txlog_head % TXLOG_N;
-    for (unsigned i = 0; i < n; i++)
-        fwrite(&txlog_buf[(start + i) % TXLOG_N], sizeof *txlog_buf, 1, f);
-    fclose(f);
-    fprintf(stderr, "qpsk_tun txlog: wrote %u records (of %u submits) to %s\n",
-            n, txlog_head, txlog_path);
-}
-
 static void tx_reap(void)
 {
     while (tx_inflight > 0 &&
@@ -609,35 +361,18 @@ static int tx_capacity(void)
  * loop apply backpressure via tun-read gating (pfds[tun].events tied to
  * tx_capacity()), so the slot is reaped on the next tx EOT interrupt. Returns
  * 0 on success. */
-/* WHERE THE INTER-TRANSFER SILENCE COMES FROM (finding, 2026-08-28):
- * tx_send() already keeps the axi_dmac one request ahead (max_inflight = 2 = running +
- * latched; the regmap holds a single request set, see the txgap block above), and the
- * keepalive path fills eagerly (`while (tx_capacity())`), so the queue is full whenever
- * the event loop is here. The silence is the event loop NOT being here: one iteration
- * of the polled -G loop runs rx_pump (at an S2MM transfer boundary that is a drain of
- * rx_multi slices -- CRC + tun writes, tens of us each, and every so often the whole
- * drain), retx/axr pumps, then the keepalive fill. With F1536 air frames of ~0.8 ms and
- * only ONE latched transfer, any iteration longer than the remaining latched air time
- * starves the fabric; a 16-frame drain at the transfer boundary is the recurring case,
- * which is why the TX defect on one board shows the OTHER direction's S2MM cadence.
- * The daemon already knew the shape of this (see the DRAIN BUDGET note in rx_pump_queued:
- * "TX queue only max_inflight(2) deep, ~1.6 ms of air"). Two host-only mitigations, both
- * opt-in: QPSK_RX_DRAIN_BUDGET (bound the drain per call) and QPSK_TX_QUEUED=N (idle
- * keepalives batched N air frames per transfer, so one latched transfer covers N frames
- * of air instead of one: N=5 at F1536 -> ~4 ms of cover per latched transfer). */
 static int tx_send(const unsigned char *pkt)
 {
-    int spins = 0;
     if (irq_mode) {
         if (!tx_capacity())
             return -1;             /* defer to the event loop */
     } else {
+        int spins = 0;
         while (!tx_capacity()) {
             if (++spins > 20000) { st.tx_stalls++; return -1; } /* ~2 s */
             usleep(100);
         }
     }
-    txgap_note(tx_inflight, 1, now_s());
     unsigned char *slot = txbuf + (tx_slot % TX_SLOTS) * tx_slot_stride;
     if (tx_xfer_bytes > pkt_bytes) {
         /* K5/F1536: the DMA transfer is a whole air frame (tx_xfer_bytes);
@@ -665,14 +400,6 @@ static int tx_send(const unsigned char *pkt)
     dmac_wr(&txd, DMAC_FLAGS, DMAC_FLAG_TLAST);
     dmac_wr(&txd, DMAC_SUBMIT, 1);
     tx_ids[tx_inflight++] = id;
-    if (txlog_buf) {
-        struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
-        struct txlog_rec *r = &txlog_buf[txlog_head++ % TXLOG_N];
-        r->t_ns = (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
-        r->slot = tx_slot;
-        r->inflight = (uint16_t)(tx_inflight - 1);
-        r->spins = (uint16_t)(spins > 65535 ? 65535 : spins);
-    }
     tx_slot++;
     st.frames_tx++;
     return 0;
@@ -727,7 +454,6 @@ static int tx_send_batch(const unsigned char *frames, int n)
             usleep(100);
         }
     }
-    txgap_note(tx_inflight, n, now_s());
     unsigned char *slot = txbuf + (tx_slot % TX_SLOTS) * TX_BATCH_STRIDE;
     static unsigned char batch[TX_BATCH_STAGE_BYTES] __attribute__((aligned(8)));
     memset(batch, 0, (size_t)(n * tx_xfer_bytes));
@@ -774,234 +500,16 @@ static int rx_spin_w = 6;              /* spin the last W packets (QPSK_SPIN_W);
                                         * higher W -> lower loss, higher CPU */
 static int rx_nap_us = 60;             /* nap while filling (QPSK_NAP_US) */
 
-/* ---- cyclic-ring RX (QPSK_RX_CYCLIC=1; needs a CONFIG.CYCLIC 1 bitstream) ----
- * The single S2MM engine is armed ONCE and auto-restarts in hardware, so the
- * per-transfer-boundary reset/resubmit (which drops ~1 frame per K-packet transfer)
- * is eliminated. This (non-SG) cyclic mode raises NO completion IRQ and never sets
- * DMAC_TRANSFER_DONE, and the per-arm carve_zero is gone, so freshness is detected by
- * frame sequence-number monotonicity rather than rx_done()/CRC. Default OFF: the legacy
- * rx_arm/rx_pump_frame path is byte-for-byte unchanged and stays the fallback. */
-static int rx_cyclic = 0;              /* QPSK_RX_CYCLIC: cyclic ring RX (needs rx_multi>0) */
-static unsigned rx_ring_slots = 0;     /* frames in the contiguous ring (computed at arm) */
-static unsigned rx_ring_scan = 0;      /* next ring slot to inspect (index order) */
-static uint32_t rx_cyc_words0 = 0;     /* 0x1C0 snapshot at arm (ring slot-0 anchor) */
-static uint32_t rx_cyc_last = 0;       /* highest consumed seq */
-static int rx_cyc_have = 0;            /* rx_cyc_last valid */
-
-/* ---- queued-request RX (QPSK_RX_QUEUED=1; works on the CURRENT bitstream) ----
- * The axi_dmac natively queues ONE request ahead: SUBMIT latches the request in the
- * regmap and it is handed to the transfer core at start-of-transfer (up_dma_req_valid
- * clears on SOT, regmap_request.v:177-179), each request still gates on the frame-sync
- * tuser (request_sync_transfer_start hard-tied, rr.v:161), and completions are tracked
- * by a per-ID DONE bitmap (bit cleared at that ID's SOT, set at its EOT, rr.v:371-378).
- * So instead of reset+reprogram per transfer (a host round-trip during which the
- * un-armed engine drops ~1 frame per boundary -- the measured ~2% lag-M loss), keep TWO
- * transfers outstanding: when the fill transfer completes, the other area's transfer is
- * ALREADY queued in hardware and starts at the next frame sync with no host action.
- * carve_zero-before-submit keeps the "valid CRC = fresh slice" eager invariant.
- * Default OFF: legacy reset-per-transfer path unchanged and remains the fallback; a
- * no-progress watchdog re-arms (reset) if the never-reset engine hits an undocumented
- * wedge, so the failure mode degrades to legacy behavior, not a stall. */
-static int rx_queued = 0;              /* QPSK_RX_QUEUED: queued-request RX (needs rx_multi>0) */
-static unsigned rx_q_id[RX_AREAS_MAX] = {0};  /* hardware transfer ID (mod 4) per area */
-/* QPSK_RX_AREAS: number of RX areas in the queued ring (2 = legacy behaviour).
- * >2 decouples re-arm from drain -- see the header comment in apply_nareas. */
-static int      rx_nareas = 2;
-static int      rx_qd = -1;            /* area submitted-but-not-yet-running, or -1 */
-static unsigned rx_clean_mask = 0;     /* areas drained and free to submit */
-static uint32_t rx_area_stride = 0;    /* bytes per area = CARVE / rx_nareas */
-static unsigned rx_q_nsub = 0;         /* submissions since arm (IDs assigned in order) */
-static int rx_q_defer = -1;            /* area whose submit awaits the pending slot, or -1 */
-static double rx_q_progress = 0;       /* last ENGINE event: arm or completion */
-/* rx_q_delivered: last time a frame with actual PAYLOAD reached the host (m > 0).
- * Split from rx_q_progress (2026-08-15, RE-APPLIED 2026-08-17 after the original
- * edit was lost uncommitted): rx_q_on_complete() stamps rx_q_progress on EVERY
- * completion, so a stream of bogus completions (ring stopped re-submitting,
- * byte_rx_ready low, 0x1C0 frozen, host re-consuming stale buffers) kept the
- * timestamp fresh and the watchdog could never fire wherever it lived.
- * Engine-alive and data-flowing are different questions with different clocks;
- * the delivery window is looser so a bad RF stretch does not cause re-arm churn. */
-static double rx_q_delivered = 0;
-static double rx_q_deliv_wdog_s = 10.0; /* QPSK_RX_DELIV_WDOG_S override */
-static unsigned rx_q_resets = 0;       /* watchdog re-arms (should stay 0) */
-static double rx_q_wdog_s = 3.0;       /* no-progress window (QPSK_RX_WDOG_S override) */
-static int rx_drain_budget = 4;        /* QPSK_RX_DRAIN_BUDGET: max slices drained per
-                                        * pump call; 0 = unbounded (historical).
-                                        * DEFAULT 4 (2026-08-14): the wedge root-cause
-                                        * fix (WEDGE_ROOT_CAUSE.md, causal A/B 0/3 vs
-                                        * 6/7) was env-gated only and never reached
-                                        * production bring-up -- reverse acceptance
-                                        * still wedged tonight. Env overrides either
-                                        * way (0 restores unbounded). */
-/* LAYER B fix 2: raw-slice tap. The -S scorer must see the RAW packet BEFORE the CRC
- * gate (that is the whole -S discipline), so it cannot consume rx_pump_frame's decoded
- * return -- and seq_run's own legacy rx_done()/rx_arm() drain bypassed the QUEUED path
- * entirely, which is why the earlier run measured the wrong path while announcing the
- * right one. When set, every slice the queued pump reads is handed here first. NULL by
- * default: no tap, no behaviour change. */
-static void (*rx_raw_tap)(const unsigned char *slice);
-
-/* ---- CP2/CP3 seam checkpoints (QPSK_CKPT) --------------------------------
- * (byte_count, running checksum) pairs bracketing the carve->host copy, per
- * SEGMENTED_LOOPBACK_DESIGN.md: CP2 folds the slice DIRECTLY from the mapped
- * DMA carve (a second uncached read pass), CP3 folds the copied slice. On a
- * per-slice CP2!=CP3 the copy tore or the carve changed under a COMPLETED
- * transfer -- either is a finding. Drain path only: eager-path slices may
- * still be landing, so a mismatch there would be routine, not evidence.
- * Env-gated and sampled (QPSK_CKPT / QPSK_CKPT_N): unset costs nothing and
- * the stats output stays byte-identical. Fold is one rotate+xor per 64-bit
- * word on pkt_bytes (multiple of 8 in every shipped geometry; byte tail kept
- * for -p overrides), chosen over CRC32 for cost -- detection, not correction. */
-static int                ck_en;        /* QPSK_CKPT,   0 = off               */
-static unsigned           ck_every = 1; /* QPSK_CKPT_N, fold every Nth slice  */
-static unsigned long long ck_seen;      /* slices considered (denominator)    */
-static unsigned long long ck_slices;    /* slices actually folded             */
-static unsigned long long ck2_bytes, ck3_bytes;
-static unsigned long long ck_mismatch;  /* CP2 (carve) vs CP3 (copy) disagree */
-static uint64_t           ck2_sum, ck3_sum;
-
-/* ---- framestat comparator log (QPSK_FSLOG) -------------------------------
- * CP1-vs-host per-slice comparator for the instrument image: pops one
- * framestat record (0x1D0 lo non-popping, 0x1D4 hi POPS) per drained slice
- * and logs it beside the 16-bit byte-sum of the HOST-received slice (raw,
- * pre-de-whiten -- the checksum contract in FRAMESTAT_NOTES.md). Offline:
- * fabric checksum (record [63:48]) == host sum on a CRC-FAIL slice means the
- * corruption is at/before the ByteSerializer output (demod side); mismatch
- * means it entered between ByteSerializer and the host buffer (DMA write).
- * record[7:0] frame_seq (= packets_out low byte) is the re-sync tag when the
- * FIFO and drain order drift. Requires the instrument image on the board --
- * on a non-instrument image 0x1D0/0x1D4 read as whatever the composite mux
- * returns there and the log is meaningless (analysis must check the tag
- * advances). Ring of the last FSLOG_N slices, dumped at exit. */
-struct fslog_rec { uint64_t t_ns; uint32_t fs_lo, fs_hi; uint32_t seq;
-                   uint16_t host_ck; uint16_t crc_ok; };
-#define FSLOG_N 131072u
-static struct fslog_rec *fslog_buf;      /* NULL = disabled */
-static unsigned fslog_head;
-static uint32_t fslog_pop_token;         /* 0x1DC pops on a CHANGED value */
-static const char *fslog_path;
-
-static void fslog_dump(void)
-{
-    if (!fslog_buf || !fslog_path) return;
-    FILE *f = fopen(fslog_path, "wb");
-    if (!f) return;
-    unsigned n = fslog_head < FSLOG_N ? fslog_head : FSLOG_N;
-    unsigned start = fslog_head < FSLOG_N ? 0 : fslog_head % FSLOG_N;
-    for (unsigned i = 0; i < n; i++)
-        fwrite(&fslog_buf[(start + i) % FSLOG_N], sizeof *fslog_buf, 1, f);
-    fclose(f);
-    fprintf(stderr, "qpsk_tun fslog: wrote %u records (of %u slices) to %s\n",
-            n, fslog_head, fslog_path);
-}
-
-static uint64_t ck_fold(const volatile unsigned char *p, size_t n)
-{
-    uint64_t h = 0;
-    const volatile uint64_t *w = (const volatile uint64_t *)p;
-    size_t i, nw = n >> 3;
-    for (i = 0; i < nw; i++)
-        h = ((h << 1) | (h >> 63)) ^ w[i];
-    for (i = nw << 3; i < n; i++)
-        h = ((h << 1) | (h >> 63)) ^ p[i];
-    return h;
-}
-
-static void ckpt_stats_dump(void)
-{
-    if (!ck_en) return;
-    fprintf(stderr, "qpsk_tun ckpt: cp2_bytes=%llu cp2_sum=%016llx cp3_bytes=%llu "
-            "cp3_sum=%016llx mismatch=%llu slices=%llu seen=%llu every=%u\n",
-            ck2_bytes, (unsigned long long)ck2_sum, ck3_bytes,
-            (unsigned long long)ck3_sum, ck_mismatch, ck_slices, ck_seen, ck_every);
-}
-
 static double now_s(void);             /* defined below */
-
-#ifdef QPSK_RXQ_STAT
-/* Queued-RX occupancy/contention counters. These separate the two ways the queued path
- * can lose a slot, which is otherwise unobservable:
- *
- *   defers    -- rx_q_submit() found the ONE pending-request slot still busy after its
- *                bounded spin, so the drained area's next transfer could not be queued
- *                immediately. RACE indicator (submit-slot contention).
- *   backlog   -- slices still undrained when a transfer completed (rx_multi - rx_fscan).
- *                HEADROOM indicator (host not keeping up with the fill). full_eager
- *                counts completions where the host had consumed the whole area.
- *   resets    -- watchdog re-arms; should stay 0 on a healthy link.
- *
- * A zero defer count is a real result (it rules out submit contention), so these are
- * reported every dump rather than only when non-zero. */
-static unsigned long long rxq_defers, rxq_completions, rxq_full_eager;
-static unsigned long long rxq_backlog_sum;
-static unsigned           rxq_backlog_max;
-
-/* ENGINE GAPS -- the race that actually matters here, which `defers` cannot see.
- * defers fires only when SUBMIT is still pending, i.e. genuine slot contention. But in
- * steady state the slot is FREE and the danger is the opposite: the host has not
- * REACHED rx_q_submit() yet, because it is still in the drain loop. With one-ahead
- * queueing, when the running transfer ends the other area must ALREADY be queued; it is
- * only queued after its drain finishes. If the drain outruns the transfer, the engine
- * has nothing to start and frames are lost in that gap -- with defers stuck at 0.
- *
- * rxq_queued_flag[a] = "area a has a submitted-but-not-yet-started transfer". Set on a
- * successful submit (which covers the deferred-retry path too, since the retry calls
- * rx_q_submit again), cleared when that transfer begins running, and reset by
- * rx_arm_queued so a watchdog recovery cannot leave stale 1s that hide later gaps. */
-static int                rxq_queued_flag[RX_AREAS_MAX];
-static unsigned long long rxq_engine_gaps;
-static int                rxq_zerohdr;          /* QPSK_RXQ_ZEROHDR,       0 = off */
-static int                rxq_reread;           /* QPSK_RXQ_REREAD,        0 = off */
-static int                rxq_drain_delay_us;   /* QPSK_RXQ_DRAINDELAY_US, 0 = off */
-static unsigned long long rxq_reread_tries, rxq_reread_ok;
-static unsigned long long rxq_zero_us_sum, rxq_zero_n;
-static unsigned           rxq_zero_us_max;
-static unsigned long long rxq_nap_n, rxq_nap_over2ms, rxq_nap_us_sum;
-static unsigned           rxq_nap_us_max;
-static unsigned long long rxq_loop_n, rxq_loop_over2ms;
-static unsigned           rxq_loop_us_max;
-static unsigned long long rxq_pump_n, rxq_pump_over2ms, rxq_pump_us_sum;
-static unsigned           rxq_pump_us_max;
-
-static void rxq_stats_dump(void)
-{
-    fprintf(stderr, "qpsk_tun rxqstat: defers=%llu engine_gaps=%llu completions=%llu "
-            "full_eager=%llu backlog_sum=%llu backlog_max=%u resets=%u\n",
-            rxq_defers, rxq_engine_gaps, rxq_completions, rxq_full_eager,
-            rxq_backlog_sum, rxq_backlog_max, rx_q_resets);
-    fprintf(stderr, "qpsk_tun rxqexp: zerohdr=%d reread=%d drain_delay_us=%d "
-            "zero_n=%llu zero_us_mean=%.1f zero_us_max=%u reread_tries=%llu reread_ok=%llu\n",
-            rxq_zerohdr, rxq_reread, rxq_drain_delay_us, rxq_zero_n,
-            rxq_zero_n ? (double)rxq_zero_us_sum/(double)rxq_zero_n : 0.0,
-            rxq_zero_us_max, rxq_reread_tries, rxq_reread_ok);
-    fprintf(stderr, "qpsk_tun rxqstall: nap_n=%llu nap_us_mean=%.1f nap_us_max=%u "
-            "nap_over2ms=%llu | loop_n=%llu loop_us_max=%u loop_over2ms=%llu\n",
-            rxq_nap_n, rxq_nap_n ? (double)rxq_nap_us_sum/(double)rxq_nap_n : 0.0,
-            rxq_nap_us_max, rxq_nap_over2ms,
-            rxq_loop_n, rxq_loop_us_max, rxq_loop_over2ms);
-    fprintf(stderr, "qpsk_tun rxqpump: pump_n=%llu pump_us_mean=%.1f pump_us_max=%u "
-            "pump_over2ms=%llu\n", rxq_pump_n,
-            rxq_pump_n ? (double)rxq_pump_us_sum/(double)rxq_pump_n : 0.0,
-            rxq_pump_us_max, rxq_pump_over2ms);
-}
-#endif
-
-/* Stride is the carve divided evenly between areas. At rx_nareas==2 this is exactly
- * RX_MULTI_MAX*SLOT_BYTES, i.e. the historical layout, unchanged. */
-static uint32_t rx_area_span(void)
-{
-    return rx_area_stride ? rx_area_stride
-                          : (uint32_t)(RX_MULTI_MAX * SLOT_BYTES);
-}
 
 static uint32_t rx_area_phys(unsigned area)
 {
-    return RX_BUF_PHYS + area * rx_area_span();
+    return RX_BUF_PHYS + area * (uint32_t)(RX_MULTI_MAX * SLOT_BYTES);
 }
 
 static unsigned char *rx_area_virt(unsigned area)
 {
-    return rxbuf + (size_t)area * (size_t)rx_area_span();
+    return rxbuf + area * (RX_MULTI_MAX * SLOT_BYTES);
 }
 
 /* reset + submit a transfer on `area`; that area becomes the fill area */
@@ -1036,517 +544,14 @@ static int rx_done(void)
  * and in the ~2-packet window before the K-packet transfer is expected to
  * finish (rx_pkt_s self-calibrates to the packet rate). It naps only
  * through the bulk of the fill, so CPU stays low. */
-static int rx_done_q(unsigned area);   /* fwd (queued mode) */
 static int rx_want_spin(void)
 {
     if (!rx_multi)
         return 1;
-    if (rx_queued) {
-        /* queued mode has no host-timed rearm window to protect -- the next transfer
-         * is pre-queued in hardware. Spin only to keep drain/completion latency low. */
-        return rx_drain >= 0 || rx_done_q(rx_fill);
-    }
     if (rx_drain >= 0 || rx_done())
         return 1;
     return (now_s() - rx_t0) >= (double)(rx_multi - rx_spin_w) * rx_pkt_s;
 }
-
-/* 32-bit serial-number comparison (RFC1982-style): true iff a is strictly after b. */
-static inline int seq_after(uint32_t a, uint32_t b) { return (int32_t)(a - b) > 0; }
-
-/* One-time arm of the CYCLIC RX ring. The whole RX carve becomes ONE contiguous ring of
- * rx_ring_slots frames; the engine fills slot 0..N-1 then wraps in place (no per-lap
- * dest advance in this non-SG mode) and re-issues forever with no host reset/resubmit.
- * TLAST stays gated off (transfers are X_LENGTH-bounded -- the multi-drain GPIO setup in
- * dma_open already did this). Requires the CONFIG.CYCLIC 1 bitstream; on a CYCLIC-0 build
- * FLAGS bit0 is masked to 0 and the engine would run one transfer then stop (see the
- * QPSK_RX_CYCLIC guard at startup). */
-static void rx_arm_cyclic(void)
-{
-    rx_ring_slots = (2u * RX_MULTI_MAX * SLOT_BYTES) / (unsigned)pkt_bytes;
-    dmac_wr(&rxd, DMAC_CONTROL, 0);                 /* reset once */
-    dmac_wr(&rxd, DMAC_CONTROL, 1);                 /* enable (bit0) */
-    dmac_wr(&rxd, DMAC_IRQ_MASK, dmac_mask_val());  /* no IRQ fires in cyclic; harmless */
-    dmac_wr(&rxd, DMAC_DEST_ADDRESS, rx_area_phys(0));                 /* ring base */
-    dmac_wr(&rxd, DMAC_X_LENGTH, rx_ring_slots * (uint32_t)pkt_bytes - 1);
-    dmac_wr(&rxd, DMAC_FLAGS, DMAC_FLAG_CYCLIC);    /* bit0 cyclic (TLAST off) */
-    dmac_wr(&rxd, DMAC_SUBMIT, 1);                  /* arm once -> re-issues forever */
-    rx_ring_scan = 0; rx_cyc_last = 0; rx_cyc_have = 0;
-    /* wordcnt free-runs from BOOT; ring slot 0 corresponds to the first frame
-     * accepted AFTER this arm (SYNC_TRANSFER_START frame-aligns the base), so
-     * the write-pointer math must be relative to the arm-time snapshot --
-     * without it the reader chases an arbitrarily offset pointer and decodes
-     * torn/unlanded slots forever (manual repro: crc_drop 514/s, idle_rx 0). */
-    if (modem_regs)
-        rx_cyc_words0 = modem_regs[0x1C0 / 4];
-    rx_active = 1;
-    rx_t0 = now_s();
-}
-
-/* Cyclic ring reader: inspect the next slot in index order (the S2MM stream writes
- * strictly in address order, so consecutive frames land in consecutive slots). With the
- * per-arm carve_zero gone, every slot holds a valid-CRC frame after lap 1, so "valid CRC"
- * no longer means "fresh" -- freshness is the seq advancing past the last consumed one.
- * A seq jump of a full ring means the host fell a lap behind (overrun): count it and
- * resync via the +1 cursor (frame S+1 always lands in the slot after frame S). */
-/* CP1 comparator note shared by the cyclic paths (same record the queued drain
- * writes inline): pop-one framestat record + host byte-sum for this slice. */
-static void fslog_note(const unsigned char *slice, int m)
-{
-    if (!fslog_buf || !modem_regs) return;
-    struct timespec fts;
-    clock_gettime(CLOCK_MONOTONIC, &fts);
-    struct fslog_rec *fre = &fslog_buf[fslog_head++ % FSLOG_N];
-    fre->t_ns = (uint64_t)fts.tv_sec * 1000000000ull + (uint64_t)fts.tv_nsec;
-    if ((modem_regs[0x1D8 / 4] & 0xFFFFu) > 0) {
-        fre->fs_lo = modem_regs[0x1D0 / 4];
-        fre->fs_hi = modem_regs[0x1D4 / 4];
-        modem_regs[0x1DC / 4] = ++fslog_pop_token;
-    } else
-        fre->fs_lo = fre->fs_hi = 0xFFFFFFFFu;
-    { uint32_t hck = 0;
-      for (int fb = 0; fb < pkt_bytes; fb++) hck += slice[fb];
-      fre->host_ck = (uint16_t)hck; }
-    fre->seq    = framelog_seq(slice);
-    fre->crc_ok = (uint16_t)(m >= 0);
-}
-
-static int rx_cyc_armed = 0;           /* rx_active is SHARED and gets set by the
-                                        * startup arm of the legacy/queued path, so
-                                        * gating the cyclic arm on it meant
-                                        * rx_arm_cyclic NEVER ran: rx_ring_slots
-                                        * stayed 0, the mod-0 arithmetic let the scan
-                                        * index run unbounded, and carve_copy_from
-                                        * walked off the 2 MB mapping -> the exit-139
-                                        * SEGV at ~15.9k slices (2026-08-12). */
-static int rx_pump_cyclic(unsigned char *out, uint32_t *seq)
-{
-    if (!rx_cyc_armed || rx_ring_slots == 0) {
-        rx_arm_cyclic();
-        rx_cyc_armed = 1;
-        return 0;
-    }
-    unsigned char slice[QPSK_PKT_BYTES_MAX];
-    /* WRITE-POINTER freshness (instrument image). 0x1C0 free-runs counting
-     * accepted 64-bit byte_rx words, so frames_written = wordcnt/WPP and the
-     * ring write slot = frames_written % ring_slots. Slots strictly behind it
-     * (1-slot guard for the frame in flight) are FINAL: decode either delivers
-     * or counts a corrupt frame. No dependence on seq advancing -- which idle
-     * frames do not provide: the seq-monotonicity path below wedged after ONE
-     * frame on idle-only loopback traffic (cycab_212559, idle_rx=1). The
-     * wordcnt wraps mod 2^32 (~5 h at line rate); a wrap misreads one poll and
-     * self-heals under the mod-ring compare. Falls back to the seq path when
-     * the modem BAR is unmapped (non-instrument image). */
-    if (modem_regs) {
-        uint32_t wpp = (uint32_t)pkt_bytes / 8u;
-        uint32_t words = modem_regs[0x1C0 / 4];
-        /* STALL RE-ARM. A fabric soft reset (0x000) after the one-time arm can
-         * hang the engine mid-SYNC_TRANSFER_START handshake: wordcnt freezes
-         * while the demod resumes (cycab_214552: frozen from t=0 because the
-         * loopback re-arm resets the modem AFTER the daemon armed). If the
-         * write pointer is static for >0.5 s, re-arm the ring; counted in
-         * rx_q_resets. Also makes cyclic survive any future fabric reset. */
-        { static uint32_t cw; static double ct;
-          double n = now_s();
-          if (words != cw) { cw = words; ct = n; }
-          else if (ct > 0 && n - ct > 0.5) {
-              rx_q_resets++;
-              rx_arm_cyclic();
-              ct = n;
-              return 0;
-          } }
-        unsigned wslot = (unsigned)(((words - rx_cyc_words0) / wpp) % rx_ring_slots);
-        unsigned avail = (wslot + rx_ring_slots - rx_ring_scan) % rx_ring_slots;
-        if (avail <= 1)
-            return 0;                      /* nothing final behind the writer */
-        if (avail >= rx_ring_slots - 2) {  /* about to be lapped: resync ahead */
-            st.seq_gaps++;
-            rx_ring_scan = (wslot + 2u) % rx_ring_slots;
-            return 0;
-        }
-        carve_copy_from(slice, rx_area_virt(0)
-            + (size_t)rx_ring_scan * (size_t)pkt_bytes, (size_t)pkt_bytes);
-        int m = qpsk_frame_decode(slice, pkt_bytes, out, seq);
-        fslog_note(slice, m);
-        rx_ring_scan = (rx_ring_scan + 1u) % rx_ring_slots;
-        if (m < 0) { st.crc_drops++; framelog_record(0, framelog_seq(slice)); return 0; }
-        if (m == 0) { st.idle_rx++; return 0; }
-        rx_cyc_last = *seq; rx_cyc_have = 1;   /* keep the cursor coherent */
-        return m;
-    }
-    carve_copy_from(slice, rx_area_virt(0) + (size_t)rx_ring_scan * (size_t)pkt_bytes,
-                    (size_t)pkt_bytes);
-    int m = qpsk_frame_decode(slice, pkt_bytes, out, seq);
-    if (fslog_buf && modem_regs) {          /* CP1 comparator, as in the queued drain */
-        struct timespec fts;
-        clock_gettime(CLOCK_MONOTONIC, &fts);
-        struct fslog_rec *fre = &fslog_buf[fslog_head++ % FSLOG_N];
-        fre->t_ns = (uint64_t)fts.tv_sec * 1000000000ull + (uint64_t)fts.tv_nsec;
-        if ((modem_regs[0x1D8 / 4] & 0xFFFFu) > 0) {
-            fre->fs_lo = modem_regs[0x1D0 / 4];
-            fre->fs_hi = modem_regs[0x1D4 / 4];
-            modem_regs[0x1DC / 4] = ++fslog_pop_token;
-        } else
-            fre->fs_lo = fre->fs_hi = 0xFFFFFFFFu;
-        { uint32_t hck = 0;
-          for (int fb = 0; fb < pkt_bytes; fb++) hck += slice[fb];
-          fre->host_ck = (uint16_t)hck; }
-        fre->seq    = framelog_seq(slice);
-        fre->crc_ok = (uint16_t)(m >= 0);
-    }
-    if (m < 0) {
-        /* Ambiguous: mid-write (wait) or a GENUINELY corrupt frame (which would
-         * otherwise pin the scan cursor here forever -- a one-frame wedge). Peek
-         * the successor slot: the stream writes in address order, so if it
-         * already holds a FRESH frame, this slot's frame is corrupt-and-final --
-         * count it and step past. A mid-write slot's successor cannot be fresh. */
-        /* Peek up to 4 slots ahead (runs of adjacent corrupt frames -- doubles
-         * are a real class -- would deadlock a 1-deep peek). Any fresh frame
-         * ahead proves this slot is final; advance ONE slot per call so each
-         * dead slot is counted individually. */
-        unsigned char peek[QPSK_PKT_BYTES_MAX];
-        unsigned char pout[QPSK_PKT_BYTES_MAX];
-        uint32_t pseq;
-        for (unsigned pk = 1; pk <= 4 && pk < rx_ring_slots; pk++) {
-            unsigned nxt = (rx_ring_scan + pk) % rx_ring_slots;
-            carve_copy_from(peek, rx_area_virt(0) + (size_t)nxt * (size_t)pkt_bytes,
-                            (size_t)pkt_bytes);
-            if (qpsk_frame_decode(peek, pkt_bytes, pout, &pseq) >= 0 &&
-                rx_cyc_have && seq_after(pseq, rx_cyc_last)) {
-                st.crc_drops++;
-                framelog_record(0, framelog_seq(slice));
-                rx_ring_scan = (rx_ring_scan + 1u) % rx_ring_slots;
-                break;                     /* consumed the dead slot; deliver nothing */
-            }
-        }
-        return 0;
-    }
-    if (rx_cyc_have && !seq_after(*seq, rx_cyc_last))
-        return 0;                          /* stale slot (not refreshed this lap) -> wait */
-    if (rx_cyc_have && (*seq - rx_cyc_last) >= rx_ring_slots)
-        st.seq_gaps++;                     /* host fell >=1 full lap behind -> overrun */
-    rx_cyc_last = *seq; rx_cyc_have = 1;
-    rx_ring_scan = (rx_ring_scan + 1u) % rx_ring_slots;
-    if (m == 0) { st.idle_rx++; return 0; }  /* keepalive: consumed, deliver nothing */
-    return m;
-}
-
-/* Queue the next transfer for `area`. The regmap holds ONE pending request (SUBMIT
- * reads up_dma_req_valid, cleared when the transfer core accepts at SOT); programming
- * the request registers while a request is pending would corrupt it. If the slot is
- * still busy after a short bounded spin, DEFER: remember the area and retry on later
- * pump calls (never blocks the pump loop). In steady state the slot is long free (we
- * submit right after a drain completes, mid-way through the other area's transfer);
- * acceptance itself is a few fabric cycles. carve_zero BEFORE submit preserves the
- * "valid CRC = landed slice" eager invariant. */
-#ifdef QPSK_RXQ_STAT
-/* Clear only each slice's magic. qpsk_frame_decode rejects on p[0]!=0x51||p[1]!=0x4B
- * before touching anything else, so this preserves the "stale slice must fail to
- * decode" invariant that carve_zero provided -- at 8 bytes per slice, not pkt_bytes. */
-static void carve_zero_hdr(unsigned area, int nslots)
-{
-    int i;
-    for (i = 0; i < nslots; i++)
-        carve_zero(rx_area_virt(area) + (size_t)i * (size_t)pkt_bytes, 8);
-}
-#endif
-
-static void rx_q_submit(unsigned area)
-{
-    int spins = 64;                              /* acceptance is ~cycles on hardware */
-    while ((dmac_rd(&rxd, DMAC_SUBMIT) & 1) && --spins > 0)
-        ;
-    if (spins <= 0) {
-        rx_q_defer = (int)area;                  /* retry on a later pump call */
-#ifdef QPSK_RXQ_STAT
-        rxq_defers++;                            /* submit-slot contention (race side) */
-#endif
-        return;
-    }
-#ifdef QPSK_RXQ_STAT
-    { double _z0 = now_s();
-      if (rxq_zerohdr) carve_zero_hdr(area, rx_multi);
-      else             carve_zero(rx_area_virt(area), (size_t)(rx_multi * pkt_bytes));
-      { double _us = (now_s() - _z0) * 1e6;
-        rxq_zero_us_sum += (unsigned long long)_us; rxq_zero_n++;
-        if (_us > (double)rxq_zero_us_max) rxq_zero_us_max = (unsigned)_us; } }
-#else
-    carve_zero(rx_area_virt(area), (size_t)(rx_multi * pkt_bytes));
-#endif
-    dmac_wr(&rxd, DMAC_DEST_ADDRESS, rx_area_phys(area));
-    dmac_wr(&rxd, DMAC_X_LENGTH, (uint32_t)(rx_multi * pkt_bytes) - 1);
-    dmac_wr(&rxd, DMAC_FLAGS, 0);
-    dmac_wr(&rxd, DMAC_SUBMIT, 1);
-    rx_q_id[area] = rx_q_nsub++ & 3u;            /* IDs assigned at SOT in submit order */
-#ifdef QPSK_RXQ_STAT
-    rxq_queued_flag[area] = 1;                   /* queued; cleared when it starts running */
-#endif
-    if (rx_q_defer == (int)area)
-        rx_q_defer = -1;
-}
-
-/* One-time (and watchdog-recovery) arm: reset, then queue BOTH areas' transfers.
- * Area 0 starts filling at the first frame sync; area 1's request sits queued in
- * hardware and takes over the instant area 0's transfer ends -- no host in the gap. */
-static void rx_arm_queued(void)
-{
-    dmac_wr(&rxd, DMAC_CONTROL, 0);              /* reset: clears IDs + DONE bitmap */
-    dmac_wr(&rxd, DMAC_CONTROL, 1);
-    dmac_wr(&rxd, DMAC_IRQ_MASK, dmac_mask_val());
-    rx_q_nsub = 0;
-    rx_q_defer = -1;
-    /* carve split: every area gets CARVE/nareas bytes (nareas==2 -> historical stride) */
-    rx_area_stride = (uint32_t)(2u * RX_MULTI_MAX * SLOT_BYTES) / (uint32_t)rx_nareas;
-#ifdef QPSK_RXQ_STAT
-    { int _i; for (_i = 0; _i < RX_AREAS_MAX; _i++) rxq_queued_flag[_i] = 0; }
-#endif
-    /* areas 2..N-1 start clean and available; 0 runs, 1 is queued */
-    rx_clean_mask = 0;
-    { int _i; for (_i = 2; _i < rx_nareas; _i++) rx_clean_mask |= 1u << _i; }
-    rx_q_submit(0);
-    rx_q_submit(1);
-    rx_qd = 1;
-#ifdef QPSK_RXQ_STAT
-    /* area 0 begins RUNNING immediately -- no completion event will clear its flag, and
-     * leaving it set masks the first gap after every arm */
-    rxq_queued_flag[0] = 0;
-#endif
-    rx_fill = 0;
-    rx_fscan = 0;
-    rx_drain = -1;
-    rx_active = 1;
-    rx_t0 = now_s();
-    rx_q_progress = rx_q_delivered = rx_t0;
-}
-
-/* Per-ID completion: exact because the bitmap bit for an ID is cleared at that ID's
- * SOT (which precedes any check of a fill area) and set at its EOT. */
-static int rx_done_q(unsigned area)
-{
-    return (int)((dmac_rd(&rxd, DMAC_TRANSFER_DONE) >> rx_q_id[area]) & 1u);
-}
-
-/* Completion handling shared by the polled pump and the IRQ event loop: flip the fill
- * area (its transfer is already running in hardware), hand the leftover tail to the
- * drainer; the drained area is re-queued when its drain finishes (rx_pump_queued), or
- * immediately when there is nothing left to drain. */
-static void rx_q_on_complete(void)
-{
-    unsigned completed = rx_fill;
-    int from = rx_fscan;
-#ifdef QPSK_RXQ_STAT
-    /* The area about to take over is `completed ^ 1`. If it was not already queued the
-     * engine has nothing to start -> a gap at this boundary. Checked BEFORE any other
-     * work here so no early return can skip it. */
-    { int nxt = rx_qd;
-      if (nxt < 0 || !rxq_queued_flag[nxt]) rxq_engine_gaps++;
-      if (nxt >= 0) rxq_queued_flag[nxt] = 0;    /* now running, no longer queued */ }
-    /* occupancy at completion: how many slices the host had NOT yet consumed */
-    { unsigned bl = (from < rx_multi) ? (unsigned)(rx_multi - from) : 0u;
-      rxq_completions++;
-      rxq_backlog_sum += bl;
-      if (bl > rxq_backlog_max) rxq_backlog_max = bl;
-      if (bl == 0) rxq_full_eager++; }
-#endif
-    double per = (now_s() - rx_t0) / (double)rx_multi;
-    if (per > RX_PER_CAL_MIN && per < rx_per_cal_max)
-        rx_pkt_s = 0.85 * rx_pkt_s + 0.15 * per;
-    /* the queued area is the one the hardware has just started */
-    rx_fill = (rx_qd >= 0) ? (unsigned)rx_qd : (completed ^ 1u);
-    rx_qd = -1;
-    rx_fscan = 0;
-    rx_t0 = now_s();
-    /* H-6 fix (2026-08-28): stamp ONLY the engine clock here. Stamping rx_q_delivered on
-     * every completion neutralised the "completions but NO DELIVERY" watchdog -- the
-     * 13:23 wedge snapshot shows completions flowing, crc_drop climbing and dma_rx_ok
-     * frozen for minutes with no re-arm. rx_q_delivered is stamped only where a frame
-     * with payload OR a valid idle frame reaches the host (drain paths) -- v1 of this fix
-     * stamped payload frames only, which made the watchdog re-arm every 10 s on an IDLE
-     * link (03:00-03:46 on 08-28: recovery #295). */
-    rx_q_progress = rx_t0;
-    /* Submit a CLEAN area right now if one exists. With >=3 areas this is the whole
-     * point: the engine gets its next transfer queued immediately instead of waiting
-     * for `completed` to finish draining. With 2 areas the mask is always empty here,
-     * so the historical drain-then-submit order is preserved exactly. */
-    if (rx_clean_mask) {
-        int a = __builtin_ctz(rx_clean_mask);
-        rx_clean_mask &= ~(1u << a);
-        rx_q_submit((unsigned)a);
-        rx_qd = a;
-    }
-    if (from < rx_multi) {
-        rx_drain = (int)completed;
-        rx_dscan = from;
-    } else if (rx_qd < 0) {
-        rx_q_submit(completed);        /* fully consumed and nothing queued: requeue */
-        rx_qd = (int)completed;
-    } else {
-        rx_clean_mask |= 1u << completed;   /* fully consumed: return to the clean pool */
-    }
-}
-
-/* Queued-request pump: same drain->eager order as legacy multi, but the completion
- * step never touches CONTROL/reset -- the next transfer is already queued in hardware.
- * A no-progress watchdog (no delivery AND no completion for RX_Q_WDOG_S) recovers via
- * a full re-arm, so an undocumented never-reset wedge degrades to a legacy-style reset
- * instead of a permanent stall. */
-static int rx_pump_queued(unsigned char *out, uint32_t *seq)
-{
-    if (!rx_active) { rx_arm_queued(); return 0; }
-    /* 0a. WATCHDOG FIRST (2026-08-15). It used to live at the bottom (step 4),
-     * which made it unreachable in the wedge measured on 148 today: a stream of
-     * bogus completions makes step 3 (rx_done_q -> rx_q_on_complete) return on
-     * EVERY call, so control never reached the timeout check. Observed state was
-     * modem decoding at full line rate (0x104 +1240/s, framesync 1251, zero
-     * rstcs) with the fabric byte counter 0x1C0 FROZEN -- byte_rx_ready held low
-     * because the ring stopped re-submitting -- while the host re-consumed stale
-     * buffers: crc_drop climbing ~25k/window, idle_rx frozen, dma_rx_ok=2.
-     * rx_q_progress is only stamped on a DELIVERED frame, so the timeout had in
-     * fact long expired; the code simply never looked. Evaluating it on entry
-     * makes "completions without deliveries" recoverable, which is the whole
-     * point of the watchdog. */
-    {   double nowv = now_s();
-        int engine_stall = (nowv - rx_q_progress  > rx_q_wdog_s);
-        int deliv_stall  = (nowv - rx_q_delivered > rx_q_deliv_wdog_s);
-        if (engine_stall || deliv_stall) {
-            rx_q_resets++;
-            fprintf(stderr, "rx_queued: %s for %.1fs -- re-arming (recovery #%u)\n",
-                    engine_stall ? "no ENGINE event" : "completions but NO DELIVERY",
-                    engine_stall ? rx_q_wdog_s : rx_q_deliv_wdog_s, rx_q_resets);
-            rx_arm_queued();          /* re-stamps both clocks */
-            return 0;
-        }
-    }
-    /* 0. retry a deferred submit (pending slot was busy at the time) */
-    if (rx_q_defer >= 0)
-        rx_q_submit((unsigned)rx_q_defer);
-    /* 1. drain a completed area (in-order; fully landed slices).
-     *
-     * DRAIN BUDGET (QPSK_RX_DRAIN_BUDGET, 0 = unbounded = historical). The
-     * unbounded loop drains all rx_multi slices in ONE call; with the TX queue
-     * only max_inflight(2) deep (~1.6 ms of air at F1536) any drain that takes
-     * longer starves the transmitter, and expensive-to-score junk slices make
-     * the drain slower still -- a self-sustaining loop measured as the WEDGE:
-     * txlog showed ~84 ms all-junk drains repeating ~7/s with inflight_after=0
-     * at every gap end (wedgeck_102044). A budget caps slices per call so the
-     * caller can feed TX between chunks; state persists and the next call
-     * resumes the same area. */
-    if (rx_drain >= 0) {
-        int ck_budget = rx_drain_budget;
-        while (rx_dscan < rx_multi) {
-            if (rx_drain_budget > 0 && ck_budget-- <= 0)
-                return 0;              /* resume this area on the next call */
-            unsigned char slice[QPSK_PKT_BYTES_MAX];
-            const volatile unsigned char *ck_src = rx_area_virt((unsigned)rx_drain)
-                + (size_t)rx_dscan * (size_t)pkt_bytes;
-            uint64_t ck_c2 = 0;
-            int ck_this = ck_en && (ck_seen++ % ck_every) == 0;
-            if (ck_this) {
-                ck_c2 = ck_fold(ck_src, (size_t)pkt_bytes);
-                ck2_sum = ((ck2_sum << 1) | (ck2_sum >> 63)) ^ ck_c2;
-                ck2_bytes += (unsigned long long)pkt_bytes;
-            }
-            carve_copy_from(slice, ck_src, (size_t)pkt_bytes);
-            if (ck_this) {
-                uint64_t ck_c3 = ck_fold(slice, (size_t)pkt_bytes);
-                ck3_sum = ((ck3_sum << 1) | (ck3_sum >> 63)) ^ ck_c3;
-                ck3_bytes += (unsigned long long)pkt_bytes;
-                ck_slices++;
-                if (ck_c3 != ck_c2) ck_mismatch++;
-            }
-            if (rx_raw_tap) rx_raw_tap(slice);
-            int m = qpsk_frame_decode(slice, pkt_bytes, out, seq);
-#ifdef QPSK_RXQ_STAT
-            if (rxq_drain_delay_us > 0)
-                usleep((unsigned)rxq_drain_delay_us);
-            if (m < 0 && rxq_reread) {
-                rxq_reread_tries++;
-                carve_copy_from(slice, rx_area_virt((unsigned)rx_drain)
-                    + (size_t)rx_dscan * (size_t)pkt_bytes, (size_t)pkt_bytes);
-                m = qpsk_frame_decode(slice, pkt_bytes, out, seq);
-                if (m >= 0) rxq_reread_ok++;
-            }
-#endif
-            if (fslog_buf && modem_regs) {
-                struct timespec fts;
-                clock_gettime(CLOCK_MONOTONIC, &fts);
-                struct fslog_rec *fre = &fslog_buf[fslog_head++ % FSLOG_N];
-                fre->t_ns  = (uint64_t)fts.tv_sec * 1000000000ull
-                           + (uint64_t)fts.tv_nsec;
-                /* FRAMESTAT_NOTES.md protocol: BOTH head reads are non-popping;
-                 * pop = write a CHANGED token to 0x1DC, and only when the FIFO
-                 * has a record (level = 0x1D8[15:0]). The first comparator run
-                 * omitted the pop and read the same head 74k times. */
-                if ((modem_regs[0x1D8 / 4] & 0xFFFFu) > 0) {
-                    fre->fs_lo = modem_regs[0x1D0 / 4];
-                    fre->fs_hi = modem_regs[0x1D4 / 4];
-                    modem_regs[0x1DC / 4] = ++fslog_pop_token;
-                } else {
-                    fre->fs_lo = fre->fs_hi = 0xFFFFFFFFu;   /* FIFO empty */
-                }
-                { uint32_t hck = 0;
-                  for (int fb = 0; fb < pkt_bytes; fb++) hck += slice[fb];
-                  fre->host_ck = (uint16_t)hck; }
-                fre->seq    = framelog_seq(slice);
-                fre->crc_ok = (uint16_t)(m >= 0);
-            }
-            rx_dscan++;
-            if (m > 0) { rx_q_progress = rx_q_delivered = now_s(); return m; }
-            if (m == 0) { st.idle_rx++; rx_q_delivered = now_s(); continue; }   /* idle frame = delivery too (H-6 fix v2) */
-            st.crc_drops++;
-            framelog_record(0, framelog_seq(slice));
-        }
-        unsigned drained = (unsigned)rx_drain;
-        rx_drain = -1;
-        if (rx_qd < 0) {
-            rx_q_submit(drained);      /* nothing queued: this area takes the slot */
-            rx_qd = (int)drained;
-        } else {
-            rx_clean_mask |= 1u << drained;   /* keep it clean and ready for later */
-        }
-    }
-    /* 2. eager-deliver landed slices of the filling area (decode-fail = not yet
-     *    landed vs corrupt is ambiguous -> stop; resolved at completion) */
-    if (rx_fscan < rx_multi) {
-        unsigned char slice[QPSK_PKT_BYTES_MAX];
-        carve_copy_from(slice, rx_area_virt(rx_fill)
-            + (size_t)rx_fscan * (size_t)pkt_bytes, (size_t)pkt_bytes);
-        int m = qpsk_frame_decode(slice, pkt_bytes, out, seq);
-        if (m >= 0) {
-            rx_fscan++;
-            rx_q_progress = now_s();
-            if (m == 0) { st.idle_rx++; rx_q_delivered = now_s(); return 0; }   /* engine alive, no payload */
-            rx_q_delivered = now_s();
-            return m;
-        }
-    }
-    /* 3. completion: flip to the already-running transfer; no reset, no reprogram */
-    if (rx_done_q(rx_fill)) {
-        rx_q_on_complete();
-        return 0;
-    }
-    /* 4. (watchdog moved to entry -- see 0a. Leaving it here as well would double
-     *     the re-arm rate without adding coverage.) */
-    return 0;
-}
-
-#ifdef QPSK_RXQ_STAT
-static int rx_pump_frame(unsigned char *out, uint32_t *seq);   /* fwd for the wrapper */
-/* Times one rx_pump_frame call. Used at the tun-loop call site only, so the comparison
- * against the whole-iteration timer isolates the RX half of the loop. */
-static int rx_pump_timed(unsigned char *out, uint32_t *seq)
-{
-    double _t0 = now_s();
-    int _r = rx_pump_frame(out, seq);
-    double _us = (now_s() - _t0) * 1e6;
-    rxq_pump_n++; rxq_pump_us_sum += (unsigned long long)_us;
-    if (_us > (double)rxq_pump_us_max) rxq_pump_us_max = (unsigned)_us;
-    if (_us > 2000.0) rxq_pump_over2ms++;
-    return _r;
-}
-#else
-#define rx_pump_timed rx_pump_frame
-#endif
 
 /* Delivers at most one validated frame per call; returns 0 when nothing is
  * deliverable yet. CRC failures are counted internally.
@@ -1559,10 +564,6 @@ static int rx_pump_timed(unsigned char *out, uint32_t *seq)
  * never idle for a whole drain window). */
 static int rx_pump_frame(unsigned char *out, uint32_t *seq)
 {
-    if (rx_cyclic)
-        return rx_pump_cyclic(out, seq);
-    if (rx_queued)
-        return rx_pump_queued(out, seq);
     if (!rx_active) {
         rx_arm(0);
         rx_drain = -1;
@@ -1588,7 +589,7 @@ static int rx_pump_frame(unsigned char *out, uint32_t *seq)
               mo,gr,l0,s0,l0?pkt[12]:0,(unsigned)(s0&0xff));
             for(int i=0;i<pkt_bytes;i++){if(i%8==0)fprintf(stderr,"|");fprintf(stderr,"%02x",pkt[i]);} fprintf(stderr,"\n"); } }
         int m = qpsk_frame_decode(pkt, pkt_bytes, out, seq);
-        if (m < 0) { st.crc_drops++; framelog_record(0, framelog_seq(pkt)); return 0; }
+        if (m < 0) { st.crc_drops++; return 0; }
         if (m == 0) { st.idle_rx++; return 0; } /* peer keepalive: consume */
         return m;
     }
@@ -1605,7 +606,6 @@ static int rx_pump_frame(unsigned char *out, uint32_t *seq)
                 return m;
             if (m == 0) { st.idle_rx++; continue; } /* keepalive: keep draining */
             st.crc_drops++;
-            framelog_record(0, framelog_seq(slice));
         }
         rx_drain = -1;             /* fully drained */
     }
@@ -1650,7 +650,7 @@ static int rx_pump_frame(unsigned char *out, uint32_t *seq)
  * validated frame's seq jumps past the expected value, resubmit the
  * missing seqs from history. Delivery is deduplicated; IP tolerates the
  * reordering this introduces. */
-#define HIST_SZ    1024u  /* power of two; > episode + full NAK retry cycle at R3 rates */
+#define HIST_SZ    256u   /* power of two; > frames per episode + RTT */
 #define RETX_MAX   3      /* per-seq resubmission cap */
 #define RETXQ_SZ   512u
 #define DEDUP_SZ   512u
@@ -1707,12 +707,8 @@ static void dedup_mark(uint32_t seq)
     dedup_ring[dedup_pos++ % DEDUP_SZ] = seq;
 }
 
-/* resubmit queued seqs while the Tx DMA has capacity. PACED: every resend
- * consumes a matured pacing credit (tx_next), exactly like a data frame --
- * un-paced sends at R3's saturated 1245 f/s overflow the fabric TX FIFO and
- * corrupt the WHOLE stream mid-frame (the historical unpaced-fill lesson;
- * re-learned when un-paced NAK/retx injection collapsed both link directions). */
-static void retx_pump(double *tx_next)
+/* resubmit queued seqs while the Tx DMA has capacity */
+static void retx_pump(void)
 {
     /* promote due second copies, skipping any already delivered (the
      * dedup ring is RX-side knowledge, but this is one process) */
@@ -1722,8 +718,7 @@ static void retx_pump(double *tx_next)
             retx_request(s2);
         retx2_head++;
     }
-    while (retxq_head != retxq_tail && tx_capacity() &&
-           (!tx_next || now_s() >= *tx_next)) {
+    while (retxq_head != retxq_tail && tx_capacity()) {
         uint32_t seq = retxq[retxq_head++ % RETXQ_SZ];
         struct hist_ent *h = &tx_hist[seq % HIST_SZ];
         if (!h->valid || h->seq != seq || h->retries >= RETX_MAX)
@@ -1731,217 +726,12 @@ static void retx_pump(double *tx_next)
         h->retries++;
         if (tx_send(h->pkt) == 0) {
             st.retx++;
-            if (tx_next)
-                *tx_next += frame_period_s;   /* consumed a pacing credit */
             if (h->retries == 1 && retx2_tail - retx2_head < RETXQ_SZ) {
                 retx2q[retx2_tail % RETXQ_SZ].seq = seq;
                 retx2q[retx2_tail % RETXQ_SZ].due = rx_tick + RETX2_DELAY;
                 retx2_tail++;
             }
         }
-    }
-}
-
-/* ---- CROSS-LINK NAK ARQ (arq_x; two-radio -F/-G modes, enabled by -A) ----
- * The in-process ARQ above is meaningless across two radios: the board that
- * DETECTS a loss (RX side) is not the board that SENT the frame. Cross-link
- * flow: the RX side tracks per-seq HOLES; a small NAK control frame (payload
- * magic "QNK1" + seq list) rides its own TX back to the peer; the peer's NAK
- * parser feeds retx_request() and the EXISTING retx_pump/tx_hist/second-copy
- * machinery resends. Retransmits arrive late/out-of-order; a hole-fill is
- * delivered to tun (IP tolerates reordering), a non-hole old seq is a dup.
- * Control frames consume a normal tx_seq (the peer's hole logic sees a
- * contiguous stream) but are NOT hist-stored: a lost NAK costs one wasted
- * peer-side lookup (invalid hist entry -> skipped) and the hole re-NAKs.
- * Loss classes this absorbs (measured): DMA-boundary singles, DC-transient
- * 1-4-frame events, ADC-tick 5-100-frame bursts -- all << HIST_SZ deep. */
-#define AXR_MAGIC0 'Q'
-#define AXR_MAGIC1 'N'
-#define AXR_MAGIC2 'K'
-#define AXR_MAGIC3 '1'
-#define AXR_HOLE_CAP  4096u  /* table CAPACITY; the live size is axr_hole_sz below */
-#define AXR_NAK_MAX   24     /* seqs per NAK frame (fits K5's 116 B payload) */
-
-/* ---- runtime-tunable ARQ parameters (env; defaults reproduce the original) ----
- * Measured 2026-08-07 on the two-radio link: the NAK path works end to end (305 of
- * 354 NAKs arrive, the peer retransmits 3176 frames), but the hole bookkeeping is
- * overwhelmed -- arq_lost=27257 against recovered=1208, and dups=1307 means more
- * than half the retransmits land after their hole was already abandoned. With
- * tries=3 and renak=64 rx_ticks a hole lives only ~150 ms, which is plausibly
- * shorter than the retransmit round trip. These knobs make that testable without a
- * rebuild per point. Unset env => byte-identical behaviour to the original build. */
-static unsigned axr_hole_sz   = 512u;   /* QPSK_ARQ_HOLES     (<= AXR_HOLE_CAP) */
-static unsigned axr_nak_tries = 3u;     /* QPSK_ARQ_TRIES */
-static unsigned axr_renak     = 64u;    /* QPSK_ARQ_RENAK  (rx_ticks) */
-static unsigned axr_gap_clamp = 128u;   /* QPSK_ARQ_CLAMP */
-
-static void axr_tune_from_env(void)
-{
-    const char *s;
-    if ((s = getenv("QPSK_ARQ_HOLES")) && *s) {
-        unsigned v = (unsigned)strtoul(s, NULL, 0);
-        if (v >= 1 && v <= AXR_HOLE_CAP) axr_hole_sz = v;
-    }
-    if ((s = getenv("QPSK_ARQ_TRIES")) && *s) {
-        unsigned v = (unsigned)strtoul(s, NULL, 0);
-        if (v >= 1 && v <= 255) axr_nak_tries = v;
-    }
-    if ((s = getenv("QPSK_ARQ_RENAK")) && *s) {
-        unsigned v = (unsigned)strtoul(s, NULL, 0);
-        if (v >= 1 && v <= 100000) axr_renak = v;
-    }
-    if ((s = getenv("QPSK_ARQ_CLAMP")) && *s) {
-        unsigned v = (unsigned)strtoul(s, NULL, 0);
-        if (v >= 1 && v <= AXR_HOLE_CAP) axr_gap_clamp = v;
-    }
-}
-
-static int arq_x = 0;
-static struct { uint32_t seq; uint64_t due; uint8_t naks; uint8_t valid; }
-    axr_hole[AXR_HOLE_CAP];
-static uint32_t axr_expected = 0;   /* next in-order seq */
-static int axr_have = 0;
-
-static void axr_hole_add(uint32_t seq)
-{
-    unsigned free_i = axr_hole_sz;
-    for (unsigned i = 0; i < axr_hole_sz; i++) {
-        if (axr_hole[i].valid && axr_hole[i].seq == seq)
-            return;
-        if (!axr_hole[i].valid && free_i == axr_hole_sz)
-            free_i = i;
-    }
-    if (free_i == axr_hole_sz) { st.arq_lost++; return; }   /* table full */
-    axr_hole[free_i].seq = seq;
-    axr_hole[free_i].due = rx_tick;          /* NAK on the next pump */
-    axr_hole[free_i].naks = 0;
-    axr_hole[free_i].valid = 1;
-}
-
-static int axr_hole_fill(uint32_t seq)
-{
-    for (unsigned i = 0; i < axr_hole_sz; i++)
-        if (axr_hole[i].valid && axr_hole[i].seq == seq) {
-            axr_hole[i].valid = 0;
-            return 1;
-        }
-    return 0;
-}
-
-/* Bookkeep a delivered data seq. Returns 1 = deliver to tun, 0 = drop (dup). */
-static int axr_note(uint32_t seq)
-{
-    if (!axr_have) { axr_have = 1; axr_expected = seq + 1; return 1; }
-    int32_t d = (int32_t)(seq - axr_expected);
-    if (d == 0) { axr_expected = seq + 1; return 1; }
-    if (d > 0) {                              /* jump: open holes for the gap */
-        uint32_t miss = (uint32_t)d;
-        st.seq_gaps++;
-        if (miss > axr_gap_clamp) {           /* too far: count + resync */
-            st.arq_lost += miss - axr_gap_clamp;
-            miss = axr_gap_clamp;
-        }
-        for (uint32_t k = 1; k <= miss; k++)
-            axr_hole_add(seq - k);
-        axr_expected = seq + 1;
-        return 1;
-    }
-    if (axr_hole_fill(seq)) { st.recovered++; return 1; }   /* late fill */
-    st.dups++;
-    return 0;
-}
-
-#ifdef QPSK_ARQ_NAKSTAT
-/* ---- NAK-path observability (compile-time opt-in; -DQPSK_ARQ_NAKSTAT) --------
- * WHY: on the bad ARQ runs 148 reported naks_rx=0 while 146 reported naks_tx=1462.
- * naks_rx alone cannot distinguish "no frame ever reached the ARQ layer" from
- * "frames reached it but were not recognised as NAKs". These three counters split
- * that. NOTE the scope limit: axr_is_nak() only ever sees payloads that ALREADY
- * passed CRC and reached the ARQ layer, so nakstat_seen is NOT "NAK frames on the
- * wire" -- a NAK lost on air is invisible here. Pairing nakstat_seen on 148 with
- * naks_tx on 146 is what bounds the air loss.
- *   nakstat_seen   every payload inspected (data frames included)
- *   nakstat_magic  first four bytes matched 'QNK1'
- *   nakstat_parsed matched AND passed the count/length sanity test => a real NAK
- * magic-minus-parsed is malformed or truncated NAKs; seen-minus-magic is ordinary
- * data. Compiled out => this file is byte-identical to the uninstrumented build.
- * (The three counters are DEFINED up beside stats_dump(), which uses them first.) */
-static int axr_is_nak(const unsigned char *p, int m)
-{
-    nakstat_seen++;
-    /* guard on m>=4 before touching p[0..3]; the uninstrumented predicate's m>=5
-     * short-circuits first, so this must not read past the buffer on a 4-byte frame */
-    int magic = (m >= 4 && p[0] == AXR_MAGIC0 && p[1] == AXR_MAGIC1 &&
-                 p[2] == AXR_MAGIC2 && p[3] == AXR_MAGIC3);
-    if (magic) nakstat_magic++;
-    int ok = (m >= 5 && magic &&
-              p[4] <= AXR_NAK_MAX && m >= 5 + 4 * (int)p[4]);
-    if (ok) nakstat_parsed++;
-    return ok;
-}
-#else
-static int axr_is_nak(const unsigned char *p, int m)
-{
-    return m >= 5 && p[0] == AXR_MAGIC0 && p[1] == AXR_MAGIC1 &&
-           p[2] == AXR_MAGIC2 && p[3] == AXR_MAGIC3 &&
-           p[4] <= AXR_NAK_MAX && m >= 5 + 4 * (int)p[4];
-}
-#endif
-
-/* Peer asked for these seqs: feed the existing TX-side resend machinery. */
-static void axr_parse_nak(const unsigned char *p)
-{
-    unsigned n = p[4];
-    st.naks_rx++;
-    for (unsigned i = 0; i < n; i++) {
-        uint32_t s = (uint32_t)p[5 + 4*i] | ((uint32_t)p[6 + 4*i] << 8) |
-                     ((uint32_t)p[7 + 4*i] << 16) | ((uint32_t)p[8 + 4*i] << 24);
-        retx_request(s);
-    }
-}
-
-/* Send NAKs for due holes + expire hopeless ones. tx_seq is the caller's data
- * sequence counter (control frames consume one). Rare (~per loss event), so
- * they bypass pacing credits; tx_capacity() still bounds them. */
-static void axr_pump(uint32_t *tx_seq, double *tx_next)
-{
-    uint32_t batch[AXR_NAK_MAX];
-    unsigned n = 0;
-    /* expire hopeless holes regardless of TX capacity */
-    for (unsigned i = 0; i < axr_hole_sz; i++)
-        if (axr_hole[i].valid && rx_tick >= axr_hole[i].due &&
-            axr_hole[i].naks >= axr_nak_tries) {
-            axr_hole[i].valid = 0;
-            st.arq_lost++;
-        }
-    if (!tx_capacity() || (tx_next && now_s() < *tx_next))
-        return;               /* don't mark holes NAKed unless we can SEND (paced) */
-    for (unsigned i = 0; i < axr_hole_sz && n < AXR_NAK_MAX; i++) {
-        if (!axr_hole[i].valid || rx_tick < axr_hole[i].due)
-            continue;
-        batch[n++] = axr_hole[i].seq;
-        axr_hole[i].naks++;
-        axr_hole[i].due = rx_tick + axr_renak;
-    }
-    if (n == 0)
-        return;
-    unsigned char payload[5 + 4 * AXR_NAK_MAX];
-    unsigned char pkt[QPSK_PKT_BYTES_MAX];
-    payload[0] = AXR_MAGIC0; payload[1] = AXR_MAGIC1;
-    payload[2] = AXR_MAGIC2; payload[3] = AXR_MAGIC3;
-    payload[4] = (unsigned char)n;
-    for (unsigned i = 0; i < n; i++) {
-        payload[5 + 4*i] = (unsigned char)(batch[i] & 0xFF);
-        payload[6 + 4*i] = (unsigned char)((batch[i] >> 8) & 0xFF);
-        payload[7 + 4*i] = (unsigned char)((batch[i] >> 16) & 0xFF);
-        payload[8 + 4*i] = (unsigned char)((batch[i] >> 24) & 0xFF);
-    }
-    qpsk_frame_encode(pkt, pkt_bytes, payload, (int)(5 + 4 * n), *tx_seq);
-    if (tx_send(pkt) == 0) {
-        st.naks_tx++;
-        (*tx_seq)++;              /* consumed a data seq (not hist-stored) */
-        if (tx_next)
-            *tx_next += frame_period_s;   /* consumed a pacing credit */
     }
 }
 
@@ -2054,10 +844,6 @@ static void dma_open(void)
     rxd.regs = map_phys(memfd, RX_DMA_BASE, 0x1000);
     txbuf = map_phys(memfd, TX_BUF_PHYS, TX_SLOTS * TX_BATCH_STRIDE);
     rxbuf = map_phys(memfd, RX_BUF_PHYS, 2u * RX_MULTI_MAX * SLOT_BYTES);
-    if (framelog_path || fslog_path || rx_cyclic)
-        /* per-frame telemetry / CP1 comparator / cyclic write-pointer (0x1C0)
-         * all read the modem BAR inline */
-        modem_regs = map_phys(memfd, QPSK_MODEM_BASE, 0x1000);
     if (rx_multi) {
         gpio_regs = map_phys(memfd, GPIO_BASE, 0x1000);
         gpio_regs[0] = 0;   /* TLAST off: transfers bounded by X_LENGTH */
@@ -2079,8 +865,6 @@ static void echo_mode(int duration)
 
     dma_open();
     while (running && now_s() - t0 < duration) {
-        framelog_service();                              /* SIGUSR2 rotate */
-        if (dump_req) { dump_req = 0; framelog_flush(); } /* SIGUSR1 flush */
         if (tx_capacity()) {
             for (int i = 0; i < maxp; i++)
                 payload[i] = (unsigned char)(tx_seq + (uint32_t)i);
@@ -2092,7 +876,6 @@ static void echo_mode(int duration)
         int n;
         while ((n = rx_pump_frame(out, &seq)) > 0) {
             st.frames_rx_ok++;
-            framelog_record(1, seq);
             if (have_rx && seq != last_rx_seq + 1)
                 st.seq_gaps++;
             last_rx_seq = seq;
@@ -2107,16 +890,7 @@ static void echo_mode(int duration)
                 (unsigned long long)st.seq_gaps);
         }
         if (!rx_want_spin())
-#ifdef QPSK_RXQ_STAT
-            { double _n0 = now_s();
-              usleep((useconds_t)rx_nap_us);
-              { double _us = (now_s() - _n0) * 1e6;
-                rxq_nap_n++; rxq_nap_us_sum += (unsigned long long)_us;
-                if (_us > (double)rxq_nap_us_max) rxq_nap_us_max = (unsigned)_us;
-                if (_us > 2000.0) rxq_nap_over2ms++; } }
-#else
             usleep((useconds_t)rx_nap_us);
-#endif
     }
     if (rx_multi && gpio_regs)
         gpio_regs[0] = 1;   /* restore legacy per-packet TLAST */
@@ -2148,8 +922,6 @@ static void ber_run(int duration)
     tlast = t0;
 
     while (running && now_s() - t0 < duration) {
-        framelog_service();                              /* SIGUSR2 rotate */
-        if (dump_req) { dump_req = 0; framelog_flush(); } /* SIGUSR1 flush */
         /* keep the modulator continuously fed with the reference frame */
         while (tx_capacity())
             if (tx_send(ref) != 0)
@@ -2159,8 +931,7 @@ static void ber_run(int duration)
         if (rx_done()) {
             carve_copy_from(pkt, rx_area_virt(0), (size_t)pkt_bytes);  /* carve -> local */
             rx_arm(0);
-            int bkt = qpsk_ber_score_frame(pkt, ref, &bs);
-            framelog_record(bkt == QBER_CLEAN, framelog_seq(pkt));  /* good = 0 bit errors */
+            qpsk_ber_score_frame(pkt, ref, &bs);
         }
         if (now_s() - tlast >= 5.0) {
             tlast = now_s();
@@ -2201,85 +972,6 @@ static void seq_evt(void *ctx, const char *type, uint32_t seq, uint32_t n,
     }
 }
 
-/* LAYER B: tap target -- scores the raw slice the QUEUED pump just read, pre-CRC. */
-static struct qpsk_seq_stats *seq_ss;
-static void seq_raw_tap(const unsigned char *slice)
-{
-    if (seq_ss)
-        qpsk_seq_score_frame(seq_ss, slice, now_s() - seq_t0);
-}
-
-/* QPSK_SEQ_NOBATCH: -S submits one frame per transfer (tx_send) instead of a batch
- * (tx_send_batch). Set from the environment in seq_run; 0 = unchanged behaviour. */
-static int seq_nobatch = 0;
-
-/* Fill the TX ring with PN frames, PACED TO THE AIR FRAME PERIOD.
- *
- * LAYER B fix 4 -- the real defect behind three aborted runs. seq_run used to fill
- * to capacity with no pacing at all:  while (tx_capacity()) { ...send... }
- * Every other transmit path in this daemon is paced by a tx_next credit at
- * frame_period_s (see the -G loop's `while (tx_capacity() && now_s() >= tx_next)`,
- * and retx_pump/axr_pump which each consume one credit). -S was the sole exception.
- *
- * Unpaced, the feeder submits as fast as the DMA accepts rather than as fast as the
- * modem transmits, so queued frames are overwritten mid-transmission and the air
- * carries garbage. Measured directly: with an earlier "fill harder" change 148 ran
- * at 3013 f/s against a 1245 f/s air rate -- 242% -- and the receiver STILL framed
- * nothing. That falsified the under-feed explanation and pointed here: the fault is
- * the absence of pacing, not the rate.
- *
- * Called between drained RX slices as well as at the top of the loop, so credits are
- * consumed promptly and a long scoring pass cannot starve the air.
- */
-static void seq_tx_fill(uint32_t *tx_seq, unsigned char *batchf,
-                        unsigned char *payload, double *tx_next)
-{
-    /* CHEAP CHECK FIRST. tx_capacity() calls tx_reap(), which does a dmac_rd() MMIO
-     * read; now_s() is a vDSO clock read. This function is called after EVERY drained
-     * RX slice (up to rx_multi*2 = 64 per outer iteration), so evaluating
-     * tx_capacity() first meant up to 64 MMIO reads per iteration even when no pacing
-     * credit was due. Ordering the clock test first short-circuits nearly all of them.
-     * Measured before this: 604 f/s against a 1245 f/s air rate on the RX-heavy board
-     * while the TX-light peer managed 1186 f/s -- the asymmetry is the RX drain path,
-     * and this is the MMIO cost inside it. */
-    while (now_s() >= *tx_next && tx_capacity()) {
-        /* Per-frame tx_send() by default -- the path -G uses. QPSK_SEQ_BATCH=1
-         * selects the old tx_send_batch() path, kept only so the A/B is repeatable;
-         * it delivers ~11% of what it sends against ~66% per-frame (batch_ab.sh). */
-        int n = seq_nobatch ? 1 : tx_batch_max();
-                                 /* TX_BATCH frames don't always fit one
-                                  * TX_BATCH_STRIDE slot at F1536's larger
-                                  * tx_xfer_bytes -- see tx_batch_max() */
-        /* TX-seam checker leg (2026-08-18): QPSK_SEQ_TGENTX=<fill> sends
-         * TGEN-format frames (const CRC, PN fill) so the in-fabric
-         * tx_seam_checker can score the byte plane before the modulator. */
-        static int seq_tgentx = -2;
-        if (seq_tgentx == -2) {
-            const char *e = getenv("QPSK_SEQ_TGENTX");
-            seq_tgentx = (e && *e) ? atoi(e) : -1;
-        }
-        for (int f = 0; f < n; f++) {
-            if (seq_tgentx >= 0) {
-                qpsk_seq_tgen_frame(batchf + f * pkt_bytes, pkt_bytes,
-                                    *tx_seq + (uint32_t)f, seq_tgentx);
-            } else {
-                qpsk_seq_payload(payload, QPSK_SEQ_PAYLOAD_LEN, *tx_seq + (uint32_t)f);
-                qpsk_frame_encode(batchf + f * pkt_bytes, pkt_bytes, payload,
-                                  QPSK_SEQ_PAYLOAD_LEN, *tx_seq + (uint32_t)f);
-            }
-        }
-        if ((seq_nobatch ? tx_send(batchf) : tx_send_batch(batchf, n)) != 0)
-            break;
-        *tx_seq += (uint32_t)n;
-        *tx_next += (double)n * frame_period_s;   /* consumed n pacing credits */
-        /* Do not let credit accumulate without bound if the loop was stalled:
-         * a huge backlog would burst-flood the DMA exactly as the unpaced code
-         * did. Cap the arrears at one batch, mirroring the -G pace_lead clamp. */
-        if (now_s() - *tx_next > (double)n * frame_period_s)
-            *tx_next = now_s() - (double)n * frame_period_s;
-    }
-}
-
 static void seq_run(int duration)
 {
     unsigned char payload[QPSK_SEQ_PAYLOAD_LEN];
@@ -2291,37 +983,7 @@ static void seq_run(int duration)
     memset(&ss, 0, sizeof ss);
     ss.evt = seq_evt;
     ss.rawf = fopen("/dev/shm/seq_raw.log", "a");  /* errored-frame hex dumps */
-    /* batch_m is a REQUIRED reset parameter now: it used to be assigned afterwards and
-     * seq_run forgot, leaving BATCH_DROP unable to fire while the unit test passed
-     * because it set the field by hand. The compiler enforces it here. */
-    /* PER-FRAME SUBMIT IS NOW THE DEFAULT for -S (2026-08-11). The batched path was
-     * the instrument manufacturing the loss it was built to measure: an interleaved
-     * off-air A/B (batch_ab.sh, 3 cycles) measured delivery = ok/(ok+lost) at
-     * 11.1%/11.1%/11.1% batched against 66.3%/67.3%/66.5% per-frame -- 6.0x, 3/3 in
-     * each arm with no overlap, and batched sitting on exactly 1/9 across runs whose
-     * absolute ok differed by 2.5x. That loss was being reported as a DMA-boundary
-     * result. tx_send_batch() has exactly ONE caller (this function): every
-     * production path -- -G data/idle, retx_pump, axr_pump, -B reference -- already
-     * uses tx_send(), so this is an instrument correctness fix with no product
-     * exposure. QPSK_SEQ_BATCH=1 restores the old batched path for A/B work. */
-    { const char *e = getenv("QPSK_SEQ_BATCH"); seq_nobatch = !(e && *e != '0'); }
-    fprintf(stderr, "LAYER B: TX submit = %s\n",
-            seq_nobatch ? "per-frame tx_send() [default, matches -G]"
-                        : "BATCHED tx_send_batch() [QPSK_SEQ_BATCH=1 -- loses ~6x more]");
-    /* TGEN (2026-08-17): pure-scorer mode. The in-fabric traffic generator owns
-     * TX and holds the byte path's ready low toward the host, so -S TX submits
-     * would push against an intentionally stalled DMA. */
-    static int seq_rxonly;
-    { const char *e = getenv("QPSK_SEQ_RXONLY"); seq_rxonly = (e && *e != '0'); }
-    if (seq_rxonly)
-        fprintf(stderr, "LAYER B: TX DISABLED (QPSK_SEQ_RXONLY) -- pure scorer\n");
-    qpsk_seq_reset(&ss, pkt_bytes, rx_multi);
-    seq_ss = &ss;
-    if (rx_queued) {
-        rx_raw_tap = seq_raw_tap;   /* score pre-CRC slices from the QUEUED pump */
-        fprintf(stderr, "LAYER B: scoring the QUEUED DMA path via raw-slice tap "
-                        "(-M %d, batch_m=%d)\n", rx_multi, ss.batch_m);
-    }
+    qpsk_seq_reset(&ss, pkt_bytes);
     seq_evf = fopen("/dev/shm/seq_events.log", "a");
     if (seq_evf) {
         fprintf(seq_evf, "SEQSTART t_mono=%.6f pid=%d dur=%d\n",
@@ -2334,35 +996,21 @@ static void seq_run(int duration)
     tlast = seq_t0;
 
     static unsigned char batchf[TX_BATCH * QPSK_PKT_BYTES_MAX];
-    double tx_next = now_s();          /* air-frame pacing clock, as in the -G loop */
     while (running && now_s() - seq_t0 < duration) {
-        if (!seq_rxonly) seq_tx_fill(&tx_seq, batchf, payload, &tx_next);
-        /* LAYER B fix 2: when the QUEUED path is selected, drive it -- do not run the
-         * bespoke legacy drain below. That drain uses rx_done()/rx_arm() (reset per
-         * transfer), so with QPSK_SEQ_KEEPM=1 the earlier run set rx_multi but still
-         * measured the LEGACY path while announcing the batched one. The tap scores
-         * each raw slice pre-CRC from inside rx_pump_queued; the decoded return is
-         * discarded because scoring already happened. */
-        if (rx_queued) {
-            unsigned char dummy[QPSK_PKT_BYTES_MAX];
-            uint32_t dseq;
-            int guard = rx_multi ? rx_multi * 2 : 2;
-            /* LAYER B fix 4 (the underfeed): TOP THE TX UP BETWEEN DRAINED SLICES.
-             * Filling once per outer iteration and then draining up to rx_multi*2
-             * slices starves the transmitter: at F1536 tx_batch_max() is 5 frames
-             * (16384 stride / 3080 B) and polled max_inflight is 2, so only ~10
-             * frames -- about 8 ms of air -- are ever queued, while a full 64-slice
-             * drain takes longer than that. Measured result was 482-555 f/s against
-             * a 1245 f/s air rate (39-45% fed), so most air slots carried frames the
-             * feeder never wrote, and the RX found no frame structure at any offset
-             * in 3/3 gated attempts. Re-filling inside the drain keeps the air fed
-             * regardless of how long scoring takes. */
-            /* rx_pump_timed, not rx_pump_frame: the pump_us_max/loop_us_max
-             * perturbation observables are otherwise structurally zero in -S,
-             * which voided the first wedge_ckpt A/B */
-            while (guard-- > 0 && rx_pump_timed(dummy, &dseq) > 0)
-                if (!seq_rxonly) seq_tx_fill(&tx_seq, batchf, payload, &tx_next);
-        } else if (rx_done()) {
+        while (tx_capacity()) {
+            int n = tx_batch_max();  /* TX_BATCH frames don't always fit one
+                                     * TX_BATCH_STRIDE slot at F1536's larger
+                                     * tx_xfer_bytes -- see tx_batch_max() */
+            for (int f = 0; f < n; f++) {
+                qpsk_seq_payload(payload, QPSK_SEQ_PAYLOAD_LEN, tx_seq + (uint32_t)f);
+                qpsk_frame_encode(batchf + f * pkt_bytes, pkt_bytes, payload,
+                                  QPSK_SEQ_PAYLOAD_LEN, tx_seq + (uint32_t)f);
+            }
+            if (tx_send_batch(batchf, n) != 0)
+                break;
+            tx_seq += (uint32_t)n;
+        }
+        if (rx_done()) {
             if (rx_multi) {
                 /* tick-proof RX: one transfer spans rx_multi frames; a host
                  * stall (device-tick SPI/interconnect storms freeze this
@@ -2389,27 +1037,12 @@ static void seq_run(int duration)
             tlast = now_s();
             double ber = ss.total_bits
                 ? (double)ss.total_bit_errors / (double)ss.total_bits : 0.0;
-            /* LAYER B fix 3: show the TX rate against the air rate. The earlier run
-             * fed 467 f/s into a 1245 f/s air frame, so most air frames carried no PN
-             * and everything scored junk -- which looked like total link loss. An
-             * under-fed transmitter must be visible, not inferred afterwards. */
-            { double el = now_s() - seq_t0;
-              if (el > 0)
-                  fprintf(stderr, "seq: TXRATE %.0f f/s (air %.0f f/s -- %.0f%% fed)\n",
-                          tx_seq / el, 1.0 / frame_period_s,
-                          100.0 * (tx_seq / el) * frame_period_s); }
             fprintf(stderr,
                 "seq: t=%.0fs tx=%u ok=%llu biterr=%llu lost=%llu dup=%llu "
                 "junk=%llu BER=%.3e\n",
                 now_s() - seq_t0, tx_seq, (unsigned long long)ss.ok,
                 (unsigned long long)ss.biterr, (unsigned long long)ss.lost,
                 (unsigned long long)ss.dup, (unsigned long long)ss.junk, ber);
-            /* seq_run never reaches stats_dump(), so without these the rxq/ckpt
-             * instruments are invisible in exactly the -S runs that need them */
-#ifdef QPSK_RXQ_STAT
-            rxq_stats_dump();
-#endif
-            ckpt_stats_dump();
         }
     }
     printf("SEQTX frames=%u dur=%.2f\n", tx_seq, now_s() - seq_t0);
@@ -2506,16 +1139,7 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
     const int TUNA = 0, TUNB = 1, TXU = 2, RXU = 3;
 
     while (running) {
-#ifdef QPSK_RXQ_STAT
-        { static double _lt = 0; double _n = now_s();
-          if (_lt > 0) { double _us = (_n - _lt) * 1e6;
-            rxq_loop_n++;
-            if (_us > (double)rxq_loop_us_max) rxq_loop_us_max = (unsigned)_us;
-            if (_us > 2000.0) rxq_loop_over2ms++; }
-          _lt = _n; }
-#endif
-        if (dump_req) { dump_req = 0; stats_dump(); framelog_flush(); }
-        framelog_service();
+        if (dump_req) { dump_req = 0; stats_dump(); }
 
         /* only accept tun-A frames when the Tx DMA can take one AND a pacing
          * credit has matured (submission at the air rate, data first) */
@@ -2562,12 +1186,7 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
          * loss: without it the eager drain would delay the rearm by a whole
          * drain window. Legacy (rx_multi==0) keeps its own rearm-before-consume
          * inside rx_pump_frame. */
-        if (rx_active && rx_multi && rx_queued) {
-            /* queued mode: the next transfer is already in hardware; just flip +
-             * hand the tail to the drainer (requeue happens at drain-complete). */
-            if (rx_done_q(rx_fill))
-                rx_q_on_complete();
-        } else if (rx_active && rx_multi && rx_done()) {
+        if (rx_active && rx_multi && rx_done()) {
             unsigned completed = rx_fill;
             int from = rx_fscan;
             double per = (now_s() - rx_t0) / (double)rx_multi;
@@ -2598,7 +1217,7 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
                     st.oversize++;
                 } else {
                     qpsk_frame_encode(pkt, pkt_bytes, buf, (int)n, tx_seq);
-                    if (arq_on || arq_x)
+                    if (arq_on)
                         hist_store(tx_seq, pkt);
                     if (tx_send(pkt) == 0) {
                         double tn = now_s();
@@ -2625,17 +1244,8 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
             int m;
             while ((m = rx_pump_frame(out, &seq)) > 0) {
                 st.frames_rx_ok++;
-                framelog_record(1, seq);
                 rx_tick++;
-                if (arq_x) {
-                    if (axr_is_nak(out, m)) { axr_parse_nak(out); continue; }
-                    if (axr_note(seq)) {
-                        if (write(fdb, out, (size_t)m) == m)
-                            st.tun_b_tx++;
-                        else
-                            st.tun_drops++;
-                    }
-                } else if (arq_on) {
+                if (arq_on) {
                     if (dedup_seen(seq)) {
                         st.dups++;
                     } else {
@@ -2669,10 +1279,8 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
                         st.tun_drops++;
                 }
             }
-            if (arq_on || arq_x)
-                retx_pump(&tx_next);
-            if (arq_x)
-                axr_pump(&tx_seq, &tx_next);
+            if (arq_on)
+                retx_pump();
 
             /* PACED credit consumption: when a credit has matured and no
              * poll-admitted data claimed it, offer it to tun DATA FIRST via a
@@ -2700,7 +1308,7 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
                         st.oversize++;
                     } else {
                         qpsk_frame_encode(pkt, pkt_bytes, buf, (int)n, tx_seq);
-                        if (arq_on || arq_x)
+                        if (arq_on)
                             hist_store(tx_seq, pkt);
                         if (tx_send(pkt) == 0) {
                             double tn = now_s();
@@ -2712,25 +1320,15 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
                         tx_seq++;
                     }
                 } else if (k5_mode) {
-                    int nb = 1;
-                    if (tx_idle_batch > 1) {
-                        static unsigned char idles[TX_BATCH * QPSK_PKT_BYTES_MAX];
-                        nb = tx_idle_batch < tx_batch_max() ? tx_idle_batch : tx_batch_max();
-                        for (int f = 0; f < nb; f++)
-                            qpsk_frame_encode(idles + f * pkt_bytes, pkt_bytes, NULL, 0, tx_seq);
-                        if (tx_send_batch(idles, nb) != 0)
-                            break;
-                    } else {
-                        unsigned char idle[QPSK_PKT_BYTES_MAX];
-                        qpsk_frame_encode(idle, pkt_bytes, NULL, 0, tx_seq);
-                        if (tx_send(idle) != 0)
-                            break;
-                    }
-                    st.idle_tx += (uint64_t)nb;
+                    unsigned char idle[QPSK_PKT_BYTES_MAX];
+                    qpsk_frame_encode(idle, pkt_bytes, NULL, 0, tx_seq);
+                    if (tx_send(idle) != 0)
+                        break;
+                    st.idle_tx++;
                     double tn = now_s();
                     if (tx_next < tn - pace_lead)
                         tx_next = tn - pace_lead;
-                    tx_next += (double)nb * frame_period_s;
+                    tx_next += frame_period_s;
                 } else
                     break;
             }
@@ -2762,7 +1360,7 @@ int main(int argc, char **argv)
         case 'G': f1536_mode = 1; break;
         case 'e': echo = 1; break;
         case 'B': ber = 1; k5_mode = 1; break;   /* BER mode uses K5 geometry */
-        case 'S': seqmode = 1; break; /* geometry chosen below: K5 unless f1536 */
+        case 'S': seqmode = 1; k5_mode = 1; break; /* seq mode uses K5 geometry */
         case 'T': selftest = 1; break;
         case 'R': arq_on = 0; break;
         case 'A': arq_force = 1; break;
@@ -2790,21 +1388,9 @@ int main(int argc, char **argv)
     }
     if (rate_ksym <= 0.0)
         rate_ksym = RATE_KSYM_DEFAULT;
-    /* -S defaults to K5 geometry for backward compatibility, but may run at f1536
-     * (R3) -- which is the whole point of LAYER B: the DMA fault is an R3 phenomenon. */
-    if (seqmode && !f1536_mode)
-        k5_mode = 1;
-    /* -B keeps the legacy single-packet RX. -S does too UNLESS QPSK_SEQ_KEEPM=1, which
-     * keeps the multi-slot/queued path so the PN stream actually traverses the batched
-     * DMA under test. Without this, -S bypasses the very path we are bisecting. */
-    { const char *e = getenv("QPSK_SEQ_KEEPM");
-      int keepm = seqmode && e && atoi(e) != 0;
-      if (ber || (seqmode && !keepm))
-          rx_multi = 0;
-      if (keepm)
-          fprintf(stderr, "LAYER B: -S keeping multi-slot RX (-M %d) -- PN stream "
-                          "traverses the batched DMA path\n", rx_multi); }
-    if (f1536_mode && k5_mode && !seqmode) {
+    if (ber || seqmode)
+        rx_multi = 0;                   /* -B/-S use the legacy single-packet RX */
+    if (f1536_mode && k5_mode) {
         fprintf(stderr, "-F (K5) and -G/QPSK_FRAME=f1536 are mutually exclusive\n");
         return 2;
     }
@@ -2820,29 +1406,17 @@ int main(int argc, char **argv)
         tx_xfer_bytes = F1536_TX_XFER_BYTES;  /* pad TX to the 385-word air frame */
         k5_mode = 1;                          /* shares K5's two-radio bridging:
                                                * idle keepalive, ARQ default off */
-        arq_on = 0;                       /* in-process ARQ meaningless: 2 radios */
-        if (arq_force) {                  /* -A = CROSS-LINK NAK ARQ */
-            arq_x = 1;
-            axr_tune_from_env();
-            fprintf(stderr, "cross-link NAK ARQ ON (hist=%u, holes=%u, renak=%u ticks, "
-                    "tries=%u, clamp=%u)\n",
-                    HIST_SZ, axr_hole_sz, axr_renak, axr_nak_tries, axr_gap_clamp);
-        }
+        if (!arq_force)
+            arq_on = 0;
     } else if (k5_mode) {
         if (!p_set)
             pkt_bytes = K5_PKT_BYTES;   /* 12 B header + <=116 B payload */
         tx_xfer_bytes = K5_TX_XFER_BYTES;  /* pad TX to the 35-word air frame */
         /* the in-process ARQ needs both RF endpoints in this process;
          * across two radios it is meaningless -- default it off (code
-         * stays; -A now enables the CROSS-LINK NAK ARQ instead) */
-        arq_on = 0;
-        if (arq_force) {
-            arq_x = 1;
-            axr_tune_from_env();
-            fprintf(stderr, "cross-link NAK ARQ ON (hist=%u, holes=%u, renak=%u ticks, "
-                    "tries=%u, clamp=%u)\n",
-                    HIST_SZ, axr_hole_sz, axr_renak, axr_nak_tries, axr_gap_clamp);
-        }
+         * stays; -A forces it for single-process experiments) */
+        if (!arq_force)
+            arq_on = 0;
     }
     /* frame period is DERIVED from the selected profile's payload bits and
      * rate_ksym (240k default) -- never hardcoded per mode. Used for the rx
@@ -2909,90 +1483,9 @@ int main(int argc, char **argv)
     { const char *e;
       if ((e = getenv("QPSK_SPIN_W"))) rx_spin_w = atoi(e);
       if ((e = getenv("QPSK_NAP_US"))) rx_nap_us = atoi(e);
-      if ((e = getenv("QPSK_TX_QUEUED"))) { tx_idle_batch = atoi(e); if (tx_idle_batch < 0) tx_idle_batch = 0;
-          if (tx_idle_batch > TX_BATCH) tx_idle_batch = TX_BATCH;
-          fprintf(stderr, "qpsk_tun: TX idle batching ON: %d idle air frames per transfer (QPSK_TX_QUEUED)\n", tx_idle_batch); }
       if (rx_spin_w < 1) rx_spin_w = 1;
       if (rx_spin_w > RX_MULTI_MAX) rx_spin_w = RX_MULTI_MAX;
       if (rx_nap_us < 1) rx_nap_us = 1; }
-    /* QPSK_RX_CYCLIC=1: cyclic-ring RX (needs a CONFIG.CYCLIC 1 bitstream). Requires
-     * multi-drain (-M K>0). Default off -> legacy per-transfer rx_arm/rx_pump_frame.
-     * WARNING: on a CYCLIC-0 bitstream FLAGS bit0 is masked to 0, so the one-time arm
-     * receives exactly one transfer then stops -> RX dies after one ring. Only enable
-     * against a bitstream built with axi_adrv9001_rx1_dma CONFIG.CYCLIC 1. */
-    { const char *e = getenv("QPSK_RX_CYCLIC");
-      rx_cyclic = (e && atoi(e) != 0);
-      if (rx_cyclic && !rx_multi) {
-          fprintf(stderr, "QPSK_RX_CYCLIC requires multi-drain (-M K>0) -- ignoring\n");
-          rx_cyclic = 0;
-      }
-      if (rx_cyclic)
-          fprintf(stderr, "RX cyclic-ring mode ON -- REQUIRES a CONFIG.CYCLIC 1 bitstream\n"); }
-    /* QPSK_RX_QUEUED=1: queued-request RX (works on the CURRENT bitstream -- the
-     * axi_dmac's native one-ahead request queue; see rx_arm_queued). Removes the
-     * per-transfer-boundary reset window (~2% lag-M loss). Requires -M K>0; mutually
-     * exclusive with QPSK_RX_CYCLIC. Default off = legacy reset-per-transfer path. */
-    { const char *e = getenv("QPSK_RX_QUEUED");
-      rx_queued = (e && atoi(e) != 0);
-      if (rx_queued && rx_cyclic) {
-          fprintf(stderr, "QPSK_RX_QUEUED ignored (QPSK_RX_CYCLIC already selected)\n");
-          rx_queued = 0;
-      }
-      if (rx_queued && !rx_multi) {
-          fprintf(stderr, "QPSK_RX_QUEUED requires multi-drain (-M K>0) -- ignoring\n");
-          rx_queued = 0;
-      }
-      if (rx_queued) {
-          if ((e = getenv("QPSK_RX_AREAS")) && atoi(e) >= 2) {
-              int n = atoi(e);
-              if (n > RX_AREAS_MAX) n = RX_AREAS_MAX;
-              /* each area must still hold a whole M-slot batch */
-              { uint32_t span = (uint32_t)(2u * RX_MULTI_MAX * SLOT_BYTES) / (uint32_t)n;
-                if ((uint32_t)(rx_multi * pkt_bytes) > span) {
-                    fprintf(stderr, "QPSK_RX_AREAS=%d needs %u B/area but only %u B "
-                            "available -- staying at 2\n", n,
-                            (unsigned)(rx_multi * pkt_bytes), span);
-                } else {
-                    rx_nareas = n;
-                    fprintf(stderr, "RX queued ring: %d areas x %d slots "
-                            "(%u B/area) -- re-arm decoupled from drain\n",
-                            rx_nareas, rx_multi, span);
-                } }
-          }
-#ifdef QPSK_RXQ_STAT
-          if ((e = getenv("QPSK_RXQ_ZEROHDR")) && atoi(e) != 0) {
-              rxq_zerohdr = 1;
-              fprintf(stderr, "RXQ EXPERIMENT: header-only pre-submit zero\n");
-          }
-          if ((e = getenv("QPSK_RXQ_REREAD")) && atoi(e) != 0) {
-              rxq_reread = 1;
-              fprintf(stderr, "RXQ EXPERIMENT: re-read on drain CRC failure\n");
-          }
-          if ((e = getenv("QPSK_RXQ_DRAINDELAY_US")) && atoi(e) > 0) {
-              rxq_drain_delay_us = atoi(e);
-              fprintf(stderr, "RXQ EXPERIMENT: drain delay %d us/slice\n",
-                      rxq_drain_delay_us);
-          }
-#endif
-          if ((e = getenv("QPSK_RX_DELIV_WDOG_S")) && atof(e) > 0)
-              rx_q_deliv_wdog_s = atof(e);
-          if ((e = getenv("QPSK_RX_DRAIN_BUDGET")) && atoi(e) >= 0) {
-              rx_drain_budget = atoi(e);
-          }
-          fprintf(stderr, "RX drain budget: %d slices/pump call (0 = unbounded; "
-                  "TX can be fed between chunks)\n", rx_drain_budget);
-          if ((e = getenv("QPSK_CKPT")) && atoi(e) != 0) {
-              ck_en = 1;
-              if ((e = getenv("QPSK_CKPT_N")) && atoi(e) > 0)
-                  ck_every = (unsigned)atoi(e);
-              fprintf(stderr, "SEAM CKPT: CP2 (carve) / CP3 (copy) count+checksum on "
-                      "the queued drain, every %u slice(s)\n", ck_every);
-          }
-          if ((e = getenv("QPSK_RX_WDOG_S")) && atof(e) > 0)
-              rx_q_wdog_s = atof(e);
-          fprintf(stderr, "RX queued-request mode ON (no reset between transfers; wdog %.1fs)\n",
-                  rx_q_wdog_s);
-      } }
     if (mtu == 0)
         mtu = QPSK_FRAME_MAX_PAYLOAD(pkt_bytes);
     if (mtu < 1 || mtu > QPSK_FRAME_MAX_PAYLOAD(pkt_bytes)) {
@@ -3004,45 +1497,6 @@ int main(int argc, char **argv)
     signal(SIGTERM, on_term);
     signal(SIGUSR1, on_usr1);
     signal(SIGPIPE, SIG_IGN);
-
-    /* Per-frame telemetry logger (opt-in; default-disabled -> no behavior
-     * change). Open the sink before any mode runs; the modem BAR is mapped
-     * later in dma_open(). SIGUSR2 (rotate) is installed ONLY when enabled so
-     * the default SIGUSR2 disposition is unchanged. See the QPSK_FRAMELOG
-     * block above. */
-    { const char *e = getenv("QPSK_FSLOG");
-      if (e && *e) {
-          fslog_buf = calloc(FSLOG_N, sizeof *fslog_buf);
-          if (fslog_buf) {
-              fslog_path = e;
-              atexit(fslog_dump);
-              fprintf(stderr, "QPSK_FSLOG: CP1 comparator, ring of last %u slices -> %s\n",
-                      FSLOG_N, e);
-          }
-      } }
-    { const char *e = getenv("QPSK_TXLOG");
-      if (e && *e) {
-          txlog_buf = calloc(TXLOG_N, sizeof *txlog_buf);
-          if (txlog_buf) {
-              txlog_path = e;
-              atexit(txlog_dump);
-              fprintf(stderr, "QPSK_TXLOG: ring of last %u tx submits -> %s\n",
-                      TXLOG_N, e);
-          }
-      } }
-    { const char *e = getenv("QPSK_FRAMELOG");
-      if (e && *e) {
-          framelog_path = e;
-          framelog_fp = fopen(framelog_path, "ab");   /* append across runs */
-          if (!framelog_fp) {
-              fprintf(stderr, "QPSK_FRAMELOG %s: %s\n", framelog_path, strerror(errno));
-              return 2;
-          }
-          setvbuf(framelog_fp, NULL, _IOFBF, 1u << 20);
-          signal(SIGUSR2, on_usr2);                   /* rotate (only when enabled) */
-          atexit(framelog_close);
-          fprintf(stderr, "framelog: %s (48 B/frame)\n", framelog_path);
-      } }
 
     if (ber) {
         ber_run(duration);
@@ -3072,15 +1526,6 @@ int main(int argc, char **argv)
     if (!loopback) {
         const char *fp = getenv("QPSK_FORCE_POLLED");
         int forced = fp && atoi(fp) == 1;
-        if (rx_cyclic && !forced) {
-            /* Non-SG cyclic raises NO EOT IRQ ever (HOST_RING_REWRITE.md sect 0):
-             * the IRQ event loop would block forever waiting for RX interrupts.
-             * Measured 2026-08-12 (cycab_213522: one ring lap of records, then
-             * the reader never ran again; the manual devmem probe showed the
-             * engine itself re-issuing at line rate). Cyclic forces polled. */
-            fprintf(stderr, "QPSK_RX_CYCLIC: no EOT IRQ in cyclic mode -- forcing POLLED\n");
-            forced = 1;
-        }
         if (!forced) {
             int t = qpsk_uio_open("qpsk_tx_dma");
             int r = qpsk_uio_open("qpsk_rx_dma");
@@ -3143,16 +1588,7 @@ int main(int argc, char **argv)
     };
 
     while (running) {
-#ifdef QPSK_RXQ_STAT
-        { static double _lt = 0; double _n = now_s();
-          if (_lt > 0) { double _us = (_n - _lt) * 1e6;
-            rxq_loop_n++;
-            if (_us > (double)rxq_loop_us_max) rxq_loop_us_max = (unsigned)_us;
-            if (_us > 2000.0) rxq_loop_over2ms++; }
-          _lt = _n; }
-#endif
-        if (dump_req) { dump_req = 0; stats_dump(); framelog_flush(); }
-        framelog_service();
+        if (dump_req) { dump_req = 0; stats_dump(); }
 
         /* only read the A side when the Tx DMA can take a frame; spin
          * only when the rx rearm window demands it */
@@ -3177,7 +1613,7 @@ int main(int argc, char **argv)
                         st.frames_tx++;
                         st.frames_rx_ok++;
                     } else {
-                        if (arq_on || arq_x)
+                        if (arq_on)
                             hist_store(tx_seq, pkt);
                         (void)tx_send(pkt);
                     }
@@ -3210,19 +1646,10 @@ int main(int argc, char **argv)
             int m;
             /* drain everything deliverable this iteration (the poll may
              * sleep ~1 ms in multi mode) */
-            while ((m = rx_pump_timed(out, &seq)) > 0) {
+            while ((m = rx_pump_frame(out, &seq)) > 0) {
                 st.frames_rx_ok++;
-                framelog_record(1, seq);
                 rx_tick++;
-                if (arq_x) {
-                    if (axr_is_nak(out, m)) { axr_parse_nak(out); continue; }
-                    if (axr_note(seq)) {
-                        if (write(fdb, out, (size_t)m) == m)
-                            st.tun_b_tx++;
-                        else
-                            st.tun_drops++;
-                    }
-                } else if (arq_on) {
+                if (arq_on) {
                     if (dedup_seen(seq)) {
                         st.dups++;
                     } else {
@@ -3256,10 +1683,8 @@ int main(int argc, char **argv)
                         st.tun_drops++;
                 }
             }
-            if (arq_on || arq_x)
-                retx_pump(NULL);          /* polled loop: legacy unpaced TX */
-            if (arq_x)
-                axr_pump(&tx_seq, NULL);
+            if (arq_on)
+                retx_pump();
 
             /* -F idle-frame keepalive: when the tun is quiet the Tx byte path
              * starves and the fabric mux can underfill (the historical CW-tone
@@ -3276,16 +1701,6 @@ int main(int argc, char **argv)
                  * link. Real tun data still preempts via the poll path above; it
                  * waits at most a few frame periods for FIFO room. */
                 while (tx_capacity()) {
-                    if (tx_idle_batch > 1) {
-                        /* QPSK_TX_QUEUED=N: N idle air frames per transfer (see tx_send) */
-                        static unsigned char idles[TX_BATCH * QPSK_PKT_BYTES_MAX];
-                        int nb = tx_idle_batch < tx_batch_max() ? tx_idle_batch : tx_batch_max();
-                        for (int f = 0; f < nb; f++)
-                            qpsk_frame_encode(idles + f * pkt_bytes, pkt_bytes, NULL, 0, tx_seq);
-                        if (tx_send_batch(idles, nb) != 0) break;
-                        st.idle_tx += (uint64_t)nb;
-                        continue;
-                    }
                     unsigned char idle[QPSK_PKT_BYTES_MAX];
                     qpsk_frame_encode(idle, pkt_bytes, NULL, 0, tx_seq);
                     if (tx_send(idle) != 0) break;
@@ -3303,16 +1718,7 @@ int main(int argc, char **argv)
          * when the transfer completes (a 1 ms poll would drop ~1.6 packets
          * per transfer). Legacy and the drain/rearm windows spin. */
         if (!loopback && !rx_want_spin())
-#ifdef QPSK_RXQ_STAT
-            { double _n0 = now_s();
-              usleep((useconds_t)rx_nap_us);
-              { double _us = (now_s() - _n0) * 1e6;
-                rxq_nap_n++; rxq_nap_us_sum += (unsigned long long)_us;
-                if (_us > (double)rxq_nap_us_max) rxq_nap_us_max = (unsigned)_us;
-                if (_us > 2000.0) rxq_nap_over2ms++; } }
-#else
             usleep((useconds_t)rx_nap_us);
-#endif
     }
     /* leave the bitstream in legacy per-packet TLAST mode so the MATLAB
      * ByteDmaRegisters path (and any later daemon in legacy mode) behaves

@@ -1,2 +1,0 @@
-n2replay_tmr146: delivered=4 bad=4 good=0
-fail runs (start_outframe,len): [(0, 4)]

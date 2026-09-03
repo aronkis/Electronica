@@ -7,17 +7,6 @@ set kdir [file dirname [info script]]
 file copy -force $kdir/cdc_exceptions.xdc cdc_exceptions.xdc
 add_files -fileset constrs_1 -norecurse cdc_exceptions.xdc
 set_property USED_IN {implementation} [get_files cdc_exceptions.xdc]
-# T8.9 TMR stall fix: the triplicated accumulator registers MUST NOT be merged
-# by equivalent-register removal, or the fix is silently deleted from the
-# bitstream (netlist sim would still pass -- Verilator does not merge). Applied
-# only when the TMR overlay is in the build (env QPSK_MOVSUM_TMR set).
-if {[info exists ::env(QPSK_MOVSUM_TMR)] && $::env(QPSK_MOVSUM_TMR) ne ""} {
-  file copy -force $kdir/tmr_keep.xdc tmr_keep.xdc
-  add_files -fileset constrs_1 -norecurse tmr_keep.xdc
-  set_property USED_IN {synthesis implementation} [get_files tmr_keep.xdc]
-  set_property PROCESSING_ORDER LATE [get_files tmr_keep.xdc]
-  puts "TMR_XDC_ADDED tmr_keep.xdc (DONT_TOUCH on triplicated accumulator)"
-}
 # IMAGE A (30.72 MHz rungs R0/R1): re-time the fabric to 30.72 MHz. The ADI RD
 # constrains the SSI at 125 MHz, but the f1536 modem is sized for 30.72 MHz and
 # cannot close at 125 MHz (interleaver mod/idivide(1537) arithmetic). Applied only
@@ -76,15 +65,6 @@ puts "=== BYTE DMA path: connect DUT byte ports to the byte breakouts (June-prov
 foreach c {byte_breakout rx_byte_breakout tx_byte_dma rx_byte_dma byte_ctrl_gpio} {
   if {![llength [get_bd_cells -quiet $c]]} { puts "BYTE_FAIL: cell $c missing (wrong reference design?)"; exit 1 }
 }
-# CYCLIC-capable MODEM RX DMAC (two_jup/DMAC_IDENTIFIED.md): rx_byte_dma is the
-# modem byte-plane S2MM DMAC at 0x9D200000, instantiated by TransceiverToolbox
-# matlab_processors.tcl:1061 with CONFIG.CYCLIC 0. Flip it to 1 here. Safe to
-# bake: the axi_dmac register path is runtime-opt-in (up_dma_cyclic <=
-# up_wdata[0] & DMA_CYCLIC), so the current host runs unchanged until FLAGS
-# bit0 is set. Do NOT touch axi_adrv9001_rx1_dma (the ADI IQ-capture DMA at
-# 0x44A30000 -- the prior cyclic patch's wrong target).
-set_property CONFIG.CYCLIC 1 [get_bd_cells rx_byte_dma]
-puts "CYCLIC_RXBYTE_OK rx_byte_dma CONFIG.CYCLIC=[get_property CONFIG.CYCLIC [get_bd_cells rx_byte_dma]]"
 # proc: connect a DUT byte pin to a reference-design breakout pin (idempotent:
 # extend the breakout pin's existing net if present, else create a new net)
 proc bconn {inst dutpin blkpin} {

@@ -22,17 +22,7 @@
 #     boards radiate ROM (0x158=0) and BOTH RX sides must decode >= GATE_FPS
 #     within the probe window; otherwise auto re-arm (up to GATE_TRIES). Kills
 #     the arm-order lottery. Only then switch to byte source + start daemons.
-#  4. Host daemons: paced qpsk_tun -G -M 16 -r <ksym> (e50f88c pacing floor);
-#     RXM DEFAULT IS 16 (was 32) as of 2026-08-11. Measured, replicated across two
-#     sessions and 4/4 paired interleaved cycles: -M 16 gives 0.695% delivered PER
-#     (Clopper-Pearson 95% upper bound 0.730%) against the <1% acceptance gate, vs
-#     1.362% (UL 1.405%, gate NOT MET) at -M 32 -- at equal CPU (13.5% vs 13.4%) and
-#     equal goodput (14.04 vs 13.94 Mbit/s). The expected CPU penalty from more DMA
-#     transactions did not materialise. Details: RX_CONFIG_SWEEP_RESULTS.md.
-#     -M 8 is statistically indistinguishable (0.660%/0.691%); 16 is preferred only
-#     because it replicated across two sessions. Do NOT use -M 64 (wedged the link
-#     outright) and do NOT revert to the legacy path (RXQ=0 is 2-4x worse).
-#     Override with RXM=<n> for experiments.
+#  4. Host daemons: paced qpsk_tun -G -M 32 -r <ksym> (e50f88c pacing floor);
 #     -s 5 stats for measurement fidelity; tun0 MTU 1516.
 #
 # Usage: bringup_r2r3.sh r2      (lvds_30p72_fdd_jupiter, -r 7680, ~623 f/s)
@@ -52,21 +42,13 @@ GATE_FPS=${GATE_FPS:-$(( FPS * 90 / 100 ))}
 GATE_TRIES=${GATE_TRIES:-6}
 WHITEN=${WHITEN:-0}
 # CFO policy (see header): R2/R3 offsets, never the null
-LO_B_TX=2000000000; LO_B_RX=${LO_B_RX:-1900040000}  # 146 Rx rev; default +40k off-null (2026-08-28 sweep: 1.39 %/CP95UL 1.47 vs 1.99 %/2.09 at the old +2.5k; -20k 1.60, +20k 1.78, +80k 1.75, -40k 1.49). Reversible via LO_B_RX env.
-                                           # Override (e.g. 1900020000 = +20k) to move off
-                                           # the CFO~0 dead-zone -- the residual-regime capture.
-LO_A_TX=1900000000; LO_A_RX=${LO_A_RX:-2000020000}  # 148: Tx rev 1.9 GHz; Rx fwd DEFAULT +20k off-null (operator-acked 2026-08-26: comb 13.0%->6.0% steady, sign-asymmetric CFO response; old plain 2000000000 sits on the bad side of the asymmetry). Env-overridable.
+LO_B_TX=2000000000; LO_B_RX=1900002500     # 146: Tx fwd 2.0 GHz, Rx rev +2.4k off-null
+LO_A_TX=1900000000; LO_A_RX=2000000000     # 148: Tx rev 1.9 GHz, Rx fwd plain (-5.15k residual)
 
 # ---- radio arm (profile + LOs + regfile), ROM source, NO daemon yet ---------
-# CRITICAL (double-hang 2026-08-04 x2): arm_rom pkills [l]ock_watchdog+[s]tallpoll
-# BEFORE the profile reload -- a stale wd polling direct_reg_access across the
-# reload hard-hangs the board (both, since we arm in parallel). NOTE: comments
-# must stay OUT of the quoted remote string (anyssh flattens newlines; an inline
-# '#' comments out the whole rest of the arm sequence -- bit us on bringup5).
 arm_rom(){ # $1 ip $2 txlo $3 rxlo
   $W $1 "P=/sys/bus/iio/devices/iio:device2; DB=/sys/kernel/debug/iio/iio:device2
- pkill -x qpsk_tun 2>/dev/null
- pkill -f \"[l]ock_watchdog\" 2>/dev/null; pkill -f \"[s]tallpoll\" 2>/dev/null; sleep 1
+ pkill -x qpsk_tun 2>/dev/null; sleep 0.5
  cat /root/$PROF.bin > \$P/stream_config 2>/dev/null; cat /root/$PROF.json > \$P/profile_config 2>/dev/null; sleep 2
  echo calibrated > \$P/out_voltage1_ensm_mode 2>/dev/null; echo calibrated > \$P/in_voltage1_ensm_mode 2>/dev/null
  for g in 4 5 6 7; do echo 1 > \$DB/agpio\${g}_direction; echo 1 > \$DB/agpio\${g}_value; done; echo tx_a > \$P/out_voltage0_port_select
@@ -93,11 +75,7 @@ arm_rom $B $LO_B_TX $LO_B_RX &
 arm_rom $A $LO_A_TX $LO_A_RX &
 wait
 # SSI overrides (safe protocol; leaves boards armed ROM via AIR=1 re-arm inside)
-if [ "${SSI146:-3 4}" = skip ]; then
-  SSI158="SKIPPED (auto-tune delays stand -- per-image)"; echo "146: $SSI158"
-else
-  SSI158="$($D/apply_146_ssi_fix.sh $B ${SSI146:-3 4} 2>&1 | tail -1)"; echo "146: $SSI158"   # SSI146: per-image tx0 clk/dat
-fi
+SSI158="$($D/apply_146_ssi_fix.sh $B 3 4 2>&1 | tail -1)"; echo "146: $SSI158"
 if [ -n "$SSI148" ]; then
   set -- $SSI148
   R148="$(FORCE=1 $D/apply_146_ssi_fix.sh $A $1 $2 2>&1 | tail -1)"; echo "148: $R148"
@@ -119,14 +97,7 @@ while [ $try -le $GATE_TRIES ]; do
   sleep 4
   FA=$(probe $A); FB=$(probe $B)
   echo "gate try $try: 148 rx=${FA:-0} f/s  146 rx=${FB:-0} f/s (need >= $GATE_FPS)"
-  # GATE_DIR (default both): B = require only 146 RX (reverse dir, 148->146); A = only
-  # 148 RX. Used to validate ONE direction when the other is intentionally down (e.g.
-  # 146 on a CYCLIC bitstream with a forward-air regression -- reverse RX still valid).
-  case "${GATE_DIR:-both}" in
-    B) [ "${FB:-0}" -ge "$GATE_FPS" ] && { PASS=1; break; } ;;
-    A) [ "${FA:-0}" -ge "$GATE_FPS" ] && { PASS=1; break; } ;;
-    *) { [ "${FA:-0}" -ge "$GATE_FPS" ] && [ "${FB:-0}" -ge "$GATE_FPS" ]; } && { PASS=1; break; } ;;
-  esac
+  if [ "${FA:-0}" -ge "$GATE_FPS" ] && [ "${FB:-0}" -ge "$GATE_FPS" ]; then PASS=1; break; fi
   rearm_rom $B; rearm_rom $A
   sleep 3
   rearm_rom $B; rearm_rom $A     # double-tap (ARMCAUSE): re-roll against clean peers
@@ -143,28 +114,7 @@ echo "ARM GATE PASS (try $try)"
 # full re-arm to byte with the stream already continuous: measured flip from
 # 0%/0% to 551/602 f/s the moment this ordering was used.
 start_daemon(){ # $1 ip $2 tunaddr $3 peer
-  # QPSK_FRAMELOG passthrough (env-gated; empty when caller has not set it ->
-  # logger disabled -> behavior unchanged). capture_r3.sh exports it to get
-  # per-frame telemetry from the R3 daemons.
-  # DAEMON_EXTRA (env, default empty -> no change): extra qpsk_tun flags, e.g.
-  # -A to force the in-process ARQ on for arq_r3.sh's measurement.
-  # QPSK_RX_CYCLIC (env RXCYC, default 0): cyclic-ring RX. Applied ONLY to board B
-  # ($B=146, the CONFIG.CYCLIC 1 bitstream). NEVER to A (148, non-cyclic bitstream) --
-  # the cyclic host path on a non-cyclic bitstream dies after one ring. So A stays 0.
-  CYC=0; [ "$1" = "$B" ] && CYC=${RXCYC:-0}
-  # RXCYC_A (2026-08-14 overnight): 148 now runs the skid2/lean lineage which
-  # bakes CONFIG.CYCLIC=1 (complete_byte_t8.tcl) -- cyclic on A is a valid
-  # runtime opt-in. qpsk_tun still hardware-gates it at start.
-  [ "$1" != "$B" ] && CYC=${RXCYC_A:-0}
-  # QPSK_RX_QUEUED default flipped 0 -> 1 (2026-08-27, QUEUED_RX_MODE_VERDICT.md):
-  # queued-request RX (next S2MM transfer pre-armed in hardware) measured 8.73/8.89 %
-  # forward PER vs 13.93/13.98 % for reset-per-transfer on the identical protocol; no
-  # fabric change, watchdog re-arms 0, wedge rate unchanged (1/3 legs each), bidirectional
-  # collapse unchanged. RXQ=0 restores the legacy path (used explicitly by the FIFO A/B).
-  # DAEMON_ENV is a verbatim "K=V K=V" pass-through for daemon env knobs that are not
-  # part of the fixed list below (e.g. the QPSK_ARQ_* cross-link ARQ tuning). Unset =>
-  # the launch line is byte-identical to the original.
-  $W $1 "cd /root/host_app_k5; QPSK_WHITEN=$WHITEN QPSK_FRAMELOG=${QPSK_FRAMELOG:-} QPSK_RX_CYCLIC=$CYC QPSK_RX_QUEUED=${RXQ:-1} ${DAEMON_ENV:-} setsid chrt -f 50 ./qpsk_tun -G -M ${RXM:-16} -r $KSYM -i tun0 -s 5 ${DAEMON_EXTRA:-} </dev/null >/dev/shm/qpsk_tun.log 2>&1 &
+  $W $1 "cd /root/host_app_k5; QPSK_WHITEN=$WHITEN setsid chrt -f 50 ./qpsk_tun -G -M 32 -r $KSYM -i tun0 -s 5 </dev/null >/dev/shm/qpsk_tun.log 2>&1 &
  n=0; while [ \$n -lt 15 ]; do ip link show tun0 >/dev/null 2>&1 && break; sleep 1; n=\$((n+1)); done
  ip addr replace $2 peer $3 dev tun0; ip link set tun0 up mtu 1516; ip route replace $3 dev tun0 advmss 1476 rto_min 25ms 2>/dev/null
  echo '$1 daemon up (ROM still selected)'" 2>/dev/null
@@ -194,8 +144,7 @@ if [ "${WATCHDOG:-1}" = 1 ]; then
     WD=$($W $ip 'PF=/dev/shm/watchdog.pid
  [ -f $PF ] && kill "$(cat $PF)" 2>/dev/null; sleep 0.3
  chmod +x /root/lock_watchdog.sh 2>/dev/null; : > /dev/shm/watchdog.log
- DAEMON_CMD="./qpsk_tun -G -M 16 -r 15360 -i tun0 -s 5" DAEMON_LOG=/dev/shm/qpsk_tun.log \
-   setsid nohup /root/lock_watchdog.sh </dev/null >/dev/null 2>&1 &
+ setsid nohup /root/lock_watchdog.sh </dev/null >/dev/null 2>&1 &
  echo $! > $PF
  sleep 2
  if kill -0 "$(cat $PF)" 2>/dev/null && grep -q "STARTING" /dev/shm/watchdog.log; then

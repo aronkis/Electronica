@@ -1,13 +1,13 @@
 ============ jupiter_240k5_byte S1B NETLIST BYTE GATE ============
-date: 12-Aug-2026 10:32:42
+date: 26-Jul-2026 03:13:29
 result: PASS
 DUT: makehdl TxRxComposite netlist (s1_rtl/hdlsrc, cadence_rtl_patch applied),
   Verilator wrap_byte.v + sim_byte.cpp: internal loopback, tx_data_source=1,
   1-in-2 adc_validIn, skip=0, AXIS byte source (registered handshake) driving
-  the golden info frame (f1536: 385 words = 12292 info bits + fill).
-gates: air bits == f1536 ROM words from first golden frame on; cap_out 0x04922282;
-  bit_errors steady (end==70%); byte-rx steady packets == 191 golden info words
+  the golden info frame (k5: 35 words = 1084 info bits + fill).
+gates: air bits == k5 ROM words from first golden frame on; cap_out 0x04922282;
+  bit_errors steady (end==70%); byte-rx steady packets == 16 golden info words
   (magoff/good_word_rot = 0 -> magic at byte 0, i.e. NO free-run slip).
-s1b_rot0: frames=0 firstGold=NaN golden=0 tailGold=0 | cap=04922282 errs 153->153 pkts 10->14 | rx pkts=12 magoff=0 gwr=0 | PASS
-s1b_rot17: frames=0 firstGold=NaN golden=0 tailGold=0 | cap=04922282 errs 153->153 pkts 10->14 | rx pkts=12 magoff=0 gwr=0 | PASS
+s1b_rot0: frames=36 firstGold=3 golden=34 tailGold=1 | cap=04922282 errs 74->74 pkts 25->36 | rx pkts=34 magoff=0 gwr=0 | PASS
+s1b_rot17: frames=36 firstGold=3 golden=34 tailGold=1 | cap=04922282 errs 102->102 pkts 25->36 | rx pkts=34 magoff=0 gwr=0 | PASS
 ==================================================================

@@ -35,11 +35,6 @@ IP=${1:-10.0.0.146}
 CLK=${2:-3}
 DAT=${3:-4}
 AIR=${AIR:-1}
-# RXPIN="clk i q strobe" additionally PINS the rx0 delays. Unset (default) reproduces the
-# historical behaviour exactly: rx0 is preserved from the live read, i.e. left at whatever
-# this boot's auto-tune chose. See SW_BRINGUP_DESIGN.md -- the 16-arm experiment showed the
-# receive side re-runs auto-tune every arm while only tx0 was ever pinned.
-RXPIN=${RXPIN:-}
 if [ "$IP" != "10.0.0.146" ] && [ "${FORCE:-0}" != 1 ]; then
   echo "REFUSE: SSI delay override is per-unit (146 default); got $IP. FORCE=1 + explicit clk/dat to override." >&2
   exit 2
@@ -62,16 +57,6 @@ OUT=$($W "$IP" 'B=/sys/kernel/debug/iio/iio:device2
  echo '"$DAT"' > $B/tx0_ssi_i_data_delay
  echo '"$DAT"' > $B/tx0_ssi_q_data_delay
  echo '"$DAT"' > $B/tx0_ssi_strobe_delay
- # (c2) OPTIONAL rx0 pin (RXPIN="clk i q strobe"). Unset -> rx0 stays preserved from the
- # live read, i.e. whatever this boot auto-tune chose -- the historical behaviour.
- RXP='"$RXPIN"'
- if [ -n "$RXP" ]; then
-   RC=${RXP%% *}; r=${RXP#* }; RI=${r%% *}; r=${r#* }; RQ=${r%% *}; RS=${r##* }
-   echo "$RC" > $B/rx0_ssi_clk_delay
-   echo "$RI" > $B/rx0_ssi_i_data_delay
-   echo "$RQ" > $B/rx0_ssi_q_data_delay
-   echo "$RS" > $B/rx0_ssi_strobe_delay
- fi
  # (d) apply the full struct
  echo 1 > $B/ssi_delays
  # (e) verify against a fresh live read
@@ -80,16 +65,9 @@ OUT=$($W "$IP" 'B=/sys/kernel/debug/iio/iio:device2
  ok=1
  [ "$(g2 tx0_ClkDelay)" = "'"$CLK"'" ] || ok=0
  [ "$(g2 tx0_StrobeDelay)" = "'"$DAT"'" ] || ok=0
- if [ -z "$RXP" ]; then
-   for f in rx0_ClkDelay rx0_StrobeDelay rx0_rxIDataDelay rx0_rxQDataDelay; do
-     [ "$(g2 $f)" = "$(get $f)" ] || { ok=0; echo "PRESERVE-FAIL $f: live=$(g2 $f) want=$(get $f)"; }
-   done
- else
-   [ "$(g2 rx0_ClkDelay)"     = "$RC" ] || { ok=0; echo "RXPIN-FAIL rx0_ClkDelay: live=$(g2 rx0_ClkDelay) want=$RC"; }
-   [ "$(g2 rx0_rxIDataDelay)" = "$RI" ] || { ok=0; echo "RXPIN-FAIL rx0_rxIDataDelay: live=$(g2 rx0_rxIDataDelay) want=$RI"; }
-   [ "$(g2 rx0_rxQDataDelay)" = "$RQ" ] || { ok=0; echo "RXPIN-FAIL rx0_rxQDataDelay: live=$(g2 rx0_rxQDataDelay) want=$RQ"; }
-   [ "$(g2 rx0_StrobeDelay)"  = "$RS" ] || { ok=0; echo "RXPIN-FAIL rx0_StrobeDelay: live=$(g2 rx0_StrobeDelay) want=$RS"; }
- fi
+ for f in rx0_ClkDelay rx0_StrobeDelay rx0_rxIDataDelay rx0_rxQDataDelay; do
+   [ "$(g2 $f)" = "$(get $f)" ] || { ok=0; echo "PRESERVE-FAIL $f: live=$(g2 $f) want=$(get $f)"; }
+ done
  DRA=/sys/kernel/debug/iio/iio:device0/direct_reg_access; echo enabled > /sys/bus/iio/devices/iio:device0/reg_access
  echo "0x000 0x1">$DRA; sleep 0.5; echo "0x000 0x0">$DRA
  echo "0x158 0x1">$DRA; echo "0x118 0x0">$DRA; echo "0x114 0x'"$AIR"'">$DRA
