@@ -1,0 +1,34 @@
+ber: t=5s frames=395 clean=9 noisy=186 phase=88 rot=0 miss=112 BER=3.480e-02
+ber: t=10s frames=700 clean=16 noisy=314 phase=170 rot=0 miss=200 BER=3.464e-02
+ber: t=15s frames=1122 clean=28 noisy=515 phase=254 rot=0 miss=325 BER=3.493e-02
+ber: t=20s frames=1557 clean=36 noisy=739 phase=329 rot=0 miss=453 BER=3.508e-02
+ber: t=25s frames=1950 clean=39 noisy=929 phase=407 rot=0 miss=575 BER=3.599e-02
+ber: t=30s frames=2319 clean=48 noisy=1111 phase=494 rot=0 miss=666 BER=3.600e-02
+ber: t=35s frames=2707 clean=56 noisy=1286 phase=579 rot=0 miss=786 BER=3.588e-02
+ber: t=40s frames=3090 clean=61 noisy=1491 phase=662 rot=0 miss=876 BER=3.666e-02
+ber: t=45s frames=3505 clean=67 noisy=1720 phase=730 rot=0 miss=988 BER=3.649e-02
+ber: t=50s frames=3849 clean=73 noisy=1863 phase=830 rot=0 miss=1083 BER=3.659e-02
+ber: t=55s frames=4221 clean=82 noisy=2042 phase=913 rot=0 miss=1184 BER=3.636e-02
+=== qpsk_ber full-packet report (pkt=128 B / 1024 bits) ===
+frames_scored=4596  aligned(clean+noisy)=2309  total_bits=2364416  bit_errors=85956  BER=3.635e-02
+buckets: CLEAN=85(1.8%) NOISY=2224(48.4%) PHASE=996(21.7%) ROTATED=0(0.0%) MISS=1291(28.1%)
+per-offset bit errors (byte 0..127):
+  [  0]    625    210    205    261    275     15     94    892   1811   1508   2657   3509   2543   1843    901    596
+  [ 16]   1186   1363    960   1039   1550   3520   4641   2609   1701   1474   1960   1848   2086   1326    431    689
+  [ 32]    848    627    529    252    351    428    582    174    218    299    295    257     57    132    257    184
+  [ 48]    204     41     89    137    385    109     60    236    256    283    366    182    274    331    279     49
+  [ 64]    126    210     93    124    362    304    154    298    472    781    612    392    609   1254   1221   1665
+  [ 80]   1831   1194   1054    403    184    946    951    417    443    590    491    401    611    633    325    326
+  [ 96]    343    435    178    432    979   1170   1020    110    101    386    495    199     81    129    102    217
+  [112]    350    208    433    406    302    162    121     66     98    276    522    361    369    714    564     51
+burst-length histogram (run bits -> count):
+  len=1: 22973
+  len=2: 14026
+  len=3: 5960
+  len=4: 2562
+  len=5: 893
+  len=6: 260
+  len=7: 73
+  len=8: 24
+  len=9: 5
+  len=10: 3

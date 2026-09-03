@@ -1,0 +1,13 @@
+============ jupiter_240k5_byte MODEL-LEVEL BYTE GATE ============
+date: 18-Jul-2026 09:59:55
+result: PASS
+oracles: (a) air bits vs k5 ROM words (modulator symbol log, pi/4-Gray
+  inverse, 13-sym Barker frame find), (b) cap_out 0x04922282 + bit_errors
+  steady, (c) byte_rx = 16x uint64 info words/frame (WPP=16).
+run A (aligned, golden info): air(frames=49 firstGold=2 golden=48 tailGold=1) bist(cap=04922282 errsLate=0 pk=49) rx(47 complete packets, last 4 checked) => PASS
+run B (rotated idx0=18):      air(frames=49 firstGold=3 golden=47 tailGold=1) bist(cap=04922282 errsLate=0 pk=49) rx(47 complete packets, last 4 checked) => PASS
+run C (ALT pad discriminator):air(frames=49 firstGold=2 golden=48 tailGold=1) bist(cap=04922282 errsLate=0 pk=49) rx(47 complete packets, last 4 checked) => PASS
+run D (ROM path regression):  air(frames=49 firstGold=1 golden=49 tailGold=1) bist(cap=04922282 errsLate=0 pk=49) rx(47 complete packets, last 4 checked) => PASS
+byte-branch latency: air frame N carries encode(byte frame N-1) --
+  ping-pong interleaver, structural one-frame pipeline (documented).
+==================================================================

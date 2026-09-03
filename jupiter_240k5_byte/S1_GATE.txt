@@ -1,0 +1,77 @@
+================ jupiter_240k5 S1 GATE ================
+date: 18-Jul-2026 11:08:38
+result: PASS
+
+--- parameter diffs (old -> new) ---
+commhdlQPSKTxRxParameters.m:16  SamplesPerSymbol            4 -> 8
+commhdlQPSKTxRxParameters.m:45  CFOChangeDetectThreshold    0.0125 -> 0.0015625 (REVERT to stock; rxfix donor retune removed)
+commhdlQPSKTxRx.slx model edits (rate_240k_overlay.m, scripted; donors untouched):
+  Transmitter/Input Data mask Rsym                          1.92e6 -> 0.96e6
+    (model QPSK rail Rsym*sps stays 7.68e6 = the 1.92 Msps physical SSI stream -> true 240 ksym air)
+  4x hardcoded SampleTime 1/(Rsym*4) -> 1/(Rsym*SamplesPerSymbol):
+    Transmitter/QPSK Tx/Bit Packetizer/Data Bits FIFO/Constant
+    Transmitter/QPSK Tx/Bit Packetizer/Preamble Bits Generator/Preamble Bits Store/Constant
+    Transmitter/QPSK Tx/QPSK Modulator/Null
+    Receiver/QPSK Rx/Constant
+  5th disguised sps constant (FOUND BY THIS S1 SIM, fix RTL-validated then model-fixed):
+    Transmitter/QPSK Tx/Bit Packetizer/HDL Counter (dataReady producer pace): CountMax 1 ->
+    SamplesPerSymbol/2-1 + new DataReadyPaceCmp (dataReady = count==max; bit-identical to stock at sps=4).
+    Without it the msggen produced 2x the modulator drain at sps=8, the 2-frame bit-RAM frameCount
+    wrapped and the reader idled mid-frame -> 600..1100-symbol constant-payload stalls (cadence stayed
+    exact; only content died) -- the ROM comparison gate below now proves this fixed.
+  (RRC = rcosdesign(0.5,4,8) 33 taps via Params; Tx bit pacing CountMax=sps/2-1=3; SymbolSync decim
+   CountMax=sps-1=7; all derive from the single SamplesPerSymbol constant; no other Rsym/sps literal left)
+FEC (fec_insert_overlay_rxonly_k5.m replaces donor K=7 fec_insert_overlay.m; RX-ONLY: Tx is the pre-coded
+  ROM -- an in-FPGA encoder would double-encode):
+  trellis poly2trellis(7,[171 133]) -> poly2trellis(5,[35 23]); traceback 34 -> 25
+  info/tail 1080/6 -> 1084/4; CODED 2172 -> 2176; deinterleave ROWS 135 -> 136 (perm c*136+r;
+  Rx consumes the FIRST 2176 of the 2240 payload bits; 64-ones filler never read)
+  fec_capture_overlay.m CAP_OUT skip clamp 1080 -> 1084
+Tx ROM (msggen_rom_overlay_k5.m): k5_240/rom_words_70_k5.txt (word0 = 1204691830 = 0x47CE2376),
+  2-arg stock chart signature of THIS model (fullMessageLen 2240-1 hardcoded), scrambler OFF
+  (fec_remove_scrambler: EnableScrambling=false), NO PRBS, in-FPGA generator path (this donor has no
+  byte-DMA path, so the generator is structurally the only Tx bit source; no 0x11C tx_data_source reg --
+  0x11C remains the donor DBG sentinel 0xFEC0DB60)
+
+--- checkhdl / generated-HDL constant gates ---
+
+HDL grep gates: fi(0.0015625,1,22,21) SI 3277 PRESENT; rxfix 0.0125 SI 26214 ABSENT; ROM word0 1204691830 PRESENT
+
+--- tap registers added (taps_240k5_overlay.m + patch_hdlworkflow_taps.m) ---
+0x150 rstcs_count: uint32 rising-edge counter of the CFO-step-detector carrier-sync reset
+      (tap = Coarse Frequency Compensator outport 3 -> Carrier Synchronizer/3 internalRst, the signal
+       gated by the CFOChangeDetectThreshold compares; host-written 0x110 manualRst NOT counted;
+       reset by modem soft-reset 0x000)
+0x154 cfc_est: latest CFC normalized frequency estimate (FTS normCoarseFreqEst = Data Type Conversion3
+      out, sfix21_En21), registered (Delay 1), read as raw stored integer:
+      normEst = double(typecast(uint32(reg),'int32'))/2^21
+capture retarget: an AdcCap capture RAM is ABSENT in this donor (the variant_pre 'AdcCap' blocks are
+      Rx-datapath valid-qualifying registers, NOT a capture). The kit's existing Rx-capture path is the
+      debug DMA: composite debugI1/Q1 (IP Data 0/1 OUT) were RETARGETED from the raw-ADC duplicate to the
+      Receiver's iq_debug_mux taps -- write 0x10C=2 to capture the POST-CARRIER-SYNC symbol stream
+      (0=postAGC, 1=postSymbolSync, 2=postCarrierSync, 3=frame-sync dataOut). No new capture RAM built.
+      Raw ADC remains on IP Data 2/3 OUT.
+register map: 0x100..0x14C preserved bit-for-bit from the fec_jupiter_rxfix donor (0x104 packets,
+      0x108 errors, 0x110 rstCS, 0x114 rx_input_select, 0x118 tx_source_select, 0x11C sentinel,
+      0x120..0x134 counters, 0x138 skip, 0x13C/140/144 caps, 0x14C cap_cad); NEW = 0x150/0x154 only
+
+--- S1 gate lines (iverilog on the kit-generated Verilog, 27 air frames) ---
+1) decode (soak_decode_k5, SELFTEST-proven): frames=27 golden=27 infoErr=0 ;
+   CAP_OUT all frames = 0x04922282 (golden 0x04922282) -> PASS
+   (.iq synthesized with reproducible 35 dB-SNR AWGN, rng(240): the capture-hardened decoder deletes
+    exact-zero samples and its loops expect a noise floor -- noiseless RTL air has ~1900 interior (0,0)
+    samples that would corrupt the sample grid; 35 dB is far above any decode threshold.)
+1b) ROM-exact (symbol-domain, stronger): 27 full frames, payload bits vs ROM errors per frame = [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] -> PASS
+2) cadence: 28 frame starts, spacing min=9064 max=9064 std=0.000000 (gate ==9064 exactly, std=0) -> PASS
+   sample-domain spacings: [9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064 9064]
+   symbol-domain spacings (modulator stream): uniq 1133 (1133 expected)
+3) constellation: 4/4 points present; longest NON-junction constant-symbol run = 7 (<=34) -> PASS
+   NOTE: one deterministic zeros(1,0)-symbol (-,-) run per frame at the filler->preamble junction
+   (K5 contract: 64-ones filler = 32 symbols + 5 leading Barker ones of the NEXT frame + trailing coded
+   ones; ends exactly at preamble symbol 5 of every frame -- verified positionally). The legacy <=34
+   bound assumed the K7 68-zeros filler, which cannot join the preamble. This run is contract-implied,
+   position-locked and present in the golden host reference as well -- NOT a stall/CW.
+   One-time pre-first-frame FIFO-priming run (startup) excluded as in zed RTL_GROUNDTRUTH_FINDINGS.txt.
+4) per-frame CAP_OUT: 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282 04922282
+   per-frame infoErr: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+=======================================================

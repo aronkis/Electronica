@@ -1,0 +1,12 @@
+============ jupiter_240k5_byte S1B NETLIST BYTE GATE ============
+date: 18-Jul-2026 10:14:31
+result: PASS
+DUT: makehdl TxRxComposite netlist (s1_rtl/hdlsrc, cadence_rtl_patch applied),
+  Verilator wrap_byte.v + sim_byte.cpp: internal loopback, tx_data_source=1,
+  1-in-2 adc_validIn, skip=0, AXIS byte source (registered handshake) driving
+  the golden info frame (35 words: 1084 info bits + zero fill).
+gates: air bits == K5 ROM words from first golden frame on; cap_out 0x04922282;
+  bit_errors steady (end==70%); byte-rx steady packets == 16 golden info words.
+s1b_rot0: frames=36 firstGold=3 golden=34 tailGold=1 | cap=04922282 errs 102->102 pkts 25->36 | rx pkts=34 | PASS
+s1b_rot17: frames=36 firstGold=3 golden=34 tailGold=1 | cap=04922282 errs 102->102 pkts 25->36 | rx pkts=34 | PASS
+==================================================================

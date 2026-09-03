@@ -1,0 +1,4 @@
+ber: t=40s frames=6775 clean=4591 noisy=1940 phase=205 rot=0 miss=39 BER=2.760e-03
+ber: t=45s frames=7829 clean=5599 noisy=1977 phase=210 rot=0 miss=43 BER=2.450e-03
+ber: t=50s frames=8880 clean=6590 noisy=2029 phase=215 rot=0 miss=46 BER=2.224e-03
+ber: t=55s frames=9935 clean=7574 noisy=2084 phase=226 rot=0 miss=51 BER=2.071e-03

@@ -1,0 +1,7 @@
+=== ESRC frame accounting (148, direction 146->148) ===
+arm-PRE          : pkts=0x104 cap=0x0 biterr=0x18F1 rstcs=0xA cfc=0x1C87 fx=0xE010180 rssi=27.519
+BER-window PRE   : pkts=0x104 cap=0x0 biterr=0x18F1 rstcs=0xA cfc=0x1C87 fx=0xE010180 rssi=16.795
+BER-window POST  : pkts=0x2F6C cap=0xD28A biterr=0xA136C rstcs=0x0 cfc=0x7B3 fx=0xE010180 rssi=16.829
+BER-window wall  : 70 s (nominal -B -d 60)
+frame period     : 1133 sym / 240e3 = 4.721 ms -> ~211.8 frames/s
+note: expected-frames = window_s * 211.8 ; d_packets_out = 0x104(POST)-0x104(PRE) ; frames_scored from report

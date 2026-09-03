@@ -1,0 +1,6 @@
+--- 148 RX (forward 146->148) ---
+ber: t=40s frames=6764 clean=4145 noisy=2222 phase=356 rot=0 miss=41 BER=2.930e-03
+ber: t=45s frames=7818 clean=4608 noisy=2793 phase=365 rot=0 miss=52 BER=2.971e-03
+ber: t=50s frames=8872 clean=5162 noisy=3278 phase=375 rot=0 miss=57 BER=2.983e-03
+--- 146 RX (reverse 148->146) ---
+146 rstcs=0xBF cfc=0x8CC

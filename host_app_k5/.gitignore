@@ -1,0 +1,7 @@
+*.o
+qpsk_tun
+qpsk_capture
+test_frame
+test_k5
+test_ber
+test_whiten

@@ -1,0 +1,6 @@
+=== ROM-on-air gate (146 tx_data_source=0): does the golden pattern floor on HW? ===
+cap=0x4922282 biterr=0xC499B rstcs=0x42
+cap=0x4922282 biterr=0xC4A7E rstcs=0x42
+cap=0x4922282 biterr=0xC4AE3 rstcs=0x43
+cap=0x4922282 biterr=0xC4BAD rstcs=0x43
+cap=0x0 biterr=0xC4C04 rstcs=0x43

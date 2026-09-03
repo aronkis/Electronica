@@ -1,0 +1,12 @@
+PREFLIGHT 2026-07-01T20:07:43-04:00
+boards: ZED-UP b81bf7d22428  JUP-UP e508dd01d50b  (via anyssh wrapper, password auth)
+zed_fecrx/commhdlQPSKTxRx.slx md5=ccf7fbe25f03
+zed_fecrx/commhdlQPSKTxRxParameters.m md5=882111e78da3
+zed_msggenrom/commhdlQPSKTxRx.slx md5=ccf7fbe25f03
+zed_msggenrom/commhdlQPSKTxRxParameters.m md5=d5b4e218a6e0
+fec_jupiter_rxfix/commhdlQPSKTxRx.slx md5=bccd5303ffdf
+fec_jupiter_rxfix/commhdlQPSKTxRxParameters.m md5=882111e78da3
+jupiter_msggenrom/commhdlQPSKTxRx.slx md5=ccf7fbe25f03
+jupiter_msggenrom/commhdlQPSKTxRxParameters.m md5=d5b4e218a6e0
+zed BOOT=b81bf7d22428 
+jup BOOT=e508dd01d50b 
