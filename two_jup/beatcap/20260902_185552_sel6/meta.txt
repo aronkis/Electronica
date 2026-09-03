@@ -1,0 +1,5 @@
+sel=6 mux=0x60003
+T_trigger=1788389920.521065272
+mid bytes=536870912 pre=0xD71F70D3 post=0xBCF94856 credit=yes
+T_onset_pred=1788390039.2210653
+onset bytes=536870912 pre=0xBCF94856 post=0xBCF94856 credit=yes

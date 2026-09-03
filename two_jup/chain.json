@@ -1,0 +1,109 @@
+{
+ "blocks": {
+  "AGC out": {
+   "note": "Deviation is displacement, not corruption (sections 41-43). Note section 45: cannot yet say whether data or frame marker moved",
+   "positive_control": true,
+   "provenance": "[SILICON]",
+   "run": "two_jup/t6/20260831_225235",
+   "status": "MEASURED-DEVIATES"
+  },
+  "BIST comparator": {
+   "note": "120-bit window characterised; scores only first 120 of 2240 bits",
+   "positive_control": true,
+   "provenance": "[SILICON]",
+   "run": "two_jup/SESSION_20260830_AUTONOMOUS.md#5",
+   "status": "MEASURED-CLEAN"
+  },
+  "Bit_Packetizer": {
+   "note": "tap sim-gated + positive control PASSED (fixctl 14/15/17); no image built \u2014 4th witness dead",
+   "positive_control": false,
+   "provenance": "",
+   "run": "",
+   "status": "UNTESTED"
+  },
+  "Coarse freq comp": {
+   "note": "CFCAP UNSCOREABLE by golden-constancy: 4 quadrant rotations, period 16 frames, upstream of carrier resolution; needs quadrant-transition encoding",
+   "positive_control": false,
+   "provenance": "",
+   "run": "",
+   "status": "UNTESTED"
+  },
+  "Constellation (demod in)": {
+   "note": "DDR raw capture: burst frames match sim at 100.00% on BOTH rails at non-zero offsets (rungs 6176-6548); quiet at offset 0. Data bit-perfect, position wrong. sections 41-43",
+   "positive_control": true,
+   "provenance": "[SILICON]",
+   "run": "two_jup/t6/20260831_225235",
+   "status": "MEASURED-DEVIATES"
+  },
+  "Demod slice/serialise": {
+   "note": "Episode type 3 (section 44): demod INPUT bit-perfect (100.00%, 4 frames) while BIST reports 46,907 err/s -- errors arise DOWNSTREAM of this point. Defect span narrowed to demod-out..BIST",
+   "positive_control": true,
+   "provenance": "[SILICON]",
+   "run": "two_jup/t6/20260831_225235",
+   "status": "MEASURED-DEVIATES"
+  },
+  "FEC start / Viterbi reset": {
+   "note": "1.0000 startIn/vitReset/startOut per frame through 801k bit errors",
+   "positive_control": true,
+   "provenance": "[SILICON]",
+   "run": "two_jup/startcnt/20260830_152844",
+   "status": "MEASURED-CLEAN"
+  },
+  "Preamble delay FIFO": {
+   "note": "displacement / push-on-full falsified across 7 bursts",
+   "positive_control": true,
+   "provenance": "[SILICON]",
+   "run": "two_jup/SINGLES_CAMPAIGN.md#20260830-0022",
+   "status": "MEASURED-CLEAN"
+  },
+  "QPSK_Modulator": {
+   "note": "tap DEAD in sim: TX-side QPSKConstellationPoints reads zero in the FINAL lineage sim harness; cause not established",
+   "positive_control": false,
+   "provenance": "",
+   "run": "",
+   "status": "UNTESTED"
+  },
+  "RRC receive filter": {
+   "note": "RFCAP sim-gate PASS (0x5EA9540A, 126 frames) but positive control NOT DEMONSTRATED \u2014 forcing lever does not reach TX content; no image built",
+   "positive_control": false,
+   "provenance": "",
+   "run": "",
+   "status": "UNTESTED"
+  },
+  "Scrambler": {
+   "note": "tap sim-gated + positive control PASSED (fixctl 14/15/17); no image built \u2014 4th witness dead",
+   "positive_control": false,
+   "provenance": "",
+   "run": "",
+   "status": "UNTESTED"
+  },
+  "TX RRC filter": {
+   "note": "tap sim-gated + positive control PASSED (fixctl 14/15/17); no image built \u2014 4th witness dead",
+   "positive_control": false,
+   "provenance": "",
+   "run": "",
+   "status": "UNTESTED"
+  },
+  "Transmitter output": {
+   "note": "TXCAP 100% golden quiet AND burst \u2014 transmitter exonerated",
+   "positive_control": true,
+   "provenance": "[SILICON]",
+   "run": "two_jup/measure/20260831_113104",
+   "status": "MEASURED-CLEAN"
+  },
+  "postCarrierSync": {
+   "note": "Deviation is displacement, not corruption (sections 41-43); same ladder as every other RX witness",
+   "positive_control": true,
+   "provenance": "[SILICON]",
+   "run": "two_jup/t6/20260831_225235",
+   "status": "MEASURED-DEVIATES"
+  },
+  "postSymbolSync": {
+   "note": "Deviation is displacement, not corruption (sections 41-43); same ladder as every other RX witness",
+   "positive_control": true,
+   "provenance": "[SILICON]",
+   "run": "two_jup/t6/20260831_225235",
+   "status": "MEASURED-DEVIATES"
+  }
+ }
+}

@@ -22,9 +22,21 @@ validateattributes(Rsym,{'double'},{'finite','scalar','positive'},'','Rsym');
 
 Config = commhdlQPSKTxRxParameters;
 
+% The Input Data mask 'dataBits' is a FIXED stimulus whose length is locked to
+% a multiple of the k5 packet (2240). It is a mask DATA value, so A1's
+% Config-driven geometry parameterization did not reach it; and it is vestigial
+% in the composite byte build (the msggen ROM + byte DMA path drive the Tx, not
+% this stimulus). For a large-frame geometry (f1536: DataBitsPerPacket=24640,
+% and 24640=11*2240 so a k5-multiple is NOT a 24640-multiple) pad the stimulus
+% up to a whole packet multiple with zeros. CONDITIONAL: for k5 the remainder
+% is 0 so this is a no-op -> Nframes integer, downstream byte-identical (G0).
+r = mod(length(dataBits), Config.DataBitsPerPacket);
+if r ~= 0
+    dataBits = [dataBits; zeros(Config.DataBitsPerPacket - r, 1)];
+end
 Nframes             = length(dataBits)/Config.DataBitsPerPacket;
 if (Nframes - floor(Nframes)) ~= 0
-    error('Number of dataBits must be integer multiple of 2240');
+    error('Number of dataBits must be integer multiple of %d', Config.DataBitsPerPacket);
 end
 
 dataIn              = dataBits;

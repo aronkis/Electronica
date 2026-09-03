@@ -1,0 +1,13 @@
+{
+ "measured_period": 12320,
+ "frames_by_marker": 5445,
+ "frames_by_index": 5447,
+ "frames_by_tref": 5445,
+ "onset_beat_data": 23432846,
+ "d0": 12314,
+ "onset_beat_toff": null,
+ "delta_beats": null,
+ "toff_after": 12314,
+ "toff_delta_is_rung": false,
+ "verdict": "P2"
+}

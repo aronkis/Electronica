@@ -1,0 +1,36 @@
+{
+ "file": "beatcap/20260902_195819_sel15/mid.bin",
+ "n_clean_samples": 16744451,
+ "occupancy_min": 1,
+ "occupancy_max": 1,
+ "occupancy_median": 1.0,
+ "occupancy_distinct": [
+  1
+ ],
+ "level_first20_vs_last20": {
+  "uninformative": false,
+  "quiet": {
+   "median": 1.0,
+   "mad": 0.0,
+   "n": 3348890
+  },
+  "displaced": {
+   "median": 1.0,
+   "mad": 0.0,
+   "n": 3348891
+  },
+  "diff": 0.0,
+  "quiet_spread": 0.5,
+  "confirmed": false
+ },
+ "transition_score": {
+  "uninformative": false,
+  "search_lo": 29161852,
+  "search_hi": 31846206,
+  "baseline_median": 0.0,
+  "baseline_mad": 0.0,
+  "threshold": 10.0,
+  "window_events": [],
+  "confirmed": false
+ }
+}

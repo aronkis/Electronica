@@ -48,20 +48,30 @@ function rate_240k_overlay()
 %
 % Idempotent. Apply BEFORE build_composite_local (which clones the slx).
 
+cfg = frame_config_k5();
+sps = cfg.Sps;
+assert(sps==8 || sps==4, 'rate_240k_overlay: unsupported sps=%d (4 or 8)', sps);
+
 sys = 'commhdlQPSKTxRx';
 load_system(sys);
 
-% (1) T8 REVISION: Rsym = 1.92e6 on the Input Data mask (rail 15.36e6 model =
-%     1.92M physical -> TRUE 240 ksym at sps 8; see header). Handles both the
-%     stock model (already 1.92e6) and an S1-era model carrying 0.96e6.
+% (1) T8 REVISION + A3 rate-rung generalization: the model QPSK rail Rsym*sps is
+%     PINNED to the ADC bus rate 15.36e6 (UpsamplesRx=1, see (3b)); the ADC bus
+%     is fixed hardware, so Rsym = 15.36e6/sps. sps=8 -> Rsym 1.92e6 (240 ksym);
+%     sps=4 -> Rsym 3.84e6 (480 ksym, the 2x-rate rung). The four 1/(Rsym*sps)
+%     sample times below are thus invariant at 1/15.36e6 across rungs. This is
+%     CONVERGENT: any recognized carried Rsym {0.96e6 S1-era, 1.92e6, 3.84e6} is
+%     rewritten to the sps-derived target.
+RsymTgt = {'8','1.92e6'; '4','3.84e6'};
+RsymTgt = RsymTgt{strcmp(RsymTgt(:,1), num2str(sps)), 2};
 idb = [sys '/Transmitter/Input Data'];
 oldR = strtrim(get_param(idb, 'Rsym'));
-if strcmp(oldR, '1.92e6')
-    fprintf('rate_240k_overlay: Rsym already 1.92e6 -- (1) skipped\n');
+if strcmp(oldR, RsymTgt)
+    fprintf('rate_240k_overlay: Rsym already %s (sps=%d) -- (1) skipped\n', RsymTgt, sps);
 else
-    assert(strcmp(oldR, '0.96e6'), 'unexpected Rsym dialog "%s"', oldR);
-    set_param(idb, 'Rsym', '1.92e6');
-    fprintf('rate_240k_overlay: Input Data Rsym 0.96e6 -> 1.92e6 (T8 rate fix: rail 15.36e6)\n');
+    assert(any(strcmp(oldR, {'0.96e6','1.92e6','3.84e6'})), 'unexpected Rsym dialog "%s"', oldR);
+    set_param(idb, 'Rsym', RsymTgt);
+    fprintf('rate_240k_overlay: Input Data Rsym %s -> %s (rail 15.36e6, sps=%d)\n', oldR, RsymTgt, sps);
 end
 
 % (2) the four hardcoded 1/(Rsym*4) sample times -> 1/(Rsym*SamplesPerSymbol)
@@ -147,16 +157,16 @@ else
     fprintf('rate_240k_overlay: InitFcn UpsamplesRx 2 -> 1 (T8 rate fix)\n');
 end
 
-% (4) confirm the params file pair (sps=8) is the active one
+% (4) confirm the params file pair (matching sps) is the active one
 P = commhdlQPSKTxRxParameters();
-assert(P.SamplesPerSymbol == 8, ...
-    'commhdlQPSKTxRxParameters SamplesPerSymbol=%d (expected 8); which=%s', ...
-    P.SamplesPerSymbol, which('commhdlQPSKTxRxParameters'));
+assert(P.SamplesPerSymbol == sps, ...
+    'commhdlQPSKTxRxParameters SamplesPerSymbol=%d (expected %d); which=%s', ...
+    P.SamplesPerSymbol, sps, which('commhdlQPSKTxRxParameters'));
 assert(abs(P.CFOChangeDetectThreshold - 0.0125) < 1e-12, ...
     'CFOChangeDetectThreshold=%.7g (expected RXFIX 0.0125)', P.CFOChangeDetectThreshold);
-assert(numel(P.RRCCoef) == 4*8+1, 'RRC length %d != 33 (span 4, 8 sps)', numel(P.RRCCoef));
+assert(numel(P.RRCCoef) == 4*sps+1, 'RRC length %d != %d (span 4, %d sps)', numel(P.RRCCoef), 4*sps+1, sps);
 
 save_system(sys, [], 'OverwriteIfChangedOnDisk', true);
 fprintf('rate_240k_overlay: DONE (%d sample-time fixes; Rsym*sps rail = %g, sps = %d)\n', ...
-    nfix, 1.92e6 * 8, P.SamplesPerSymbol);
+    nfix, eval(RsymTgt) * sps, P.SamplesPerSymbol);
 end

@@ -1,0 +1,17 @@
+{
+ "uninformative": false,
+ "search_lo": 29161852,
+ "search_hi": 31846206,
+ "modal_cadence": 1,
+ "baseline_median": -0.001,
+ "baseline_mad": 1.006,
+ "threshold": 10.0,
+ "window": 1000,
+ "window_events": [],
+ "window_shift_rate": 0.0,
+ "background_shift_rate": 0.0,
+ "confirmed": false,
+ "total_records": 67108864,
+ "expected_onset_record": 30504029,
+ "file": "beatcap/20260902_192051_sel13/mid.bin"
+}

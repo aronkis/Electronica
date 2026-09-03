@@ -51,6 +51,15 @@ struct qpsk_seq_stats {
     uint64_t ok, biterr, junk, dup;
     uint64_t lost;                              /* seqs proven never received */
     uint64_t lost_events;                       /* distinct gap events */
+    /* ---- LAYER B: DMA-boundary failure-mode classification ----
+     * batch_m is the RX DMA batch depth (-M). Set it to attribute losses to whole
+     * dropped batches; 0 disables that test. The tear tests need no configuration. */
+    int      batch_m;
+    uint64_t torn_zero;      /* prefix good, tail all zero  -> slice never completed */
+    uint64_t torn_stale;     /* prefix good, tail = another seq -> half-old/half-new */
+    uint64_t scattered;      /* no aligned split -> decode-side, not DMA */
+    uint64_t batch_drop;     /* LOST runs that are an exact multiple of batch_m */
+    uint64_t tear_off_min, tear_off_max;  /* byte offset range of observed tears */
     uint64_t total_bits, total_bit_errors;      /* over OK+BITERR frames */
     uint64_t per_offset[QPSK_PKT_BYTES_MAX];    /* BITERR bit errors per byte */
     uint32_t first_seq, next_expect;
@@ -74,8 +83,13 @@ void qpsk_seq_payload(unsigned char *buf, int len, uint32_t seq);
 
 /* the full expected WIRE frame for seq (incl. CRC, PN9 pad, whitener-if-on) */
 void qpsk_seq_expected(unsigned char *frame, int pkt_bytes, uint32_t seq);
+void qpsk_seq_tgen_frame(unsigned char *frame, int pkt_bytes, uint32_t seq, int fill);
 
-void qpsk_seq_reset(struct qpsk_seq_stats *s, int pkt_bytes);
+/* batch_m is REQUIRED, not optional. It was previously set (or not) by the caller after
+ * reset, and seq_run forgot -- leaving BATCH_DROP structurally unable to fire while the
+ * unit test passed because it set the field by hand. Making it a parameter turns that
+ * whole failure mode into a compile error. Pass 0 only if there is genuinely no batching. */
+void qpsk_seq_reset(struct qpsk_seq_stats *s, int pkt_bytes, int batch_m);
 
 /* score one raw received packet; t is a caller timestamp passed to events.
  * Returns the QSEQ_* bucket. */

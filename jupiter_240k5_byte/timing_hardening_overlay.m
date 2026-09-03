@@ -30,6 +30,22 @@ function timing_hardening_overlay()
 %
 % CARRIER loop (Loop Filter of Carrier Synchronizer) is deliberately UNTOUCHED
 % (PI_GATE guards its constants).
+%
+% SPS PARAMETERIZATION (Task A3): the counter decrements by 1/sps per beat, so
+% the wedge threshold is Delta <= -1/sps and the entry clamp must be just under
+% 1/sps: wlim = (1024/sps - 1)/1024 (= 127/1024 at sps=8, 255/1024 at sps=4;
+% leaves exactly 1 LSB of guaranteed decrement). The counter-line anchor carries
+% fi(1/sps). All three belts are magnitude bounds ~4 orders above normal
+% operation, so in-lock behavior stays bit-identical at every sps. The clamp is
+% CONVERGENT on wlim: a model carried at the other sps's clamp value is corrected
+% (asserting the other-sps from-value first).
+
+cfg = frame_config_k5();
+sps = cfg.Sps;
+assert(sps==8 || sps==4, 'timing_hardening_overlay: unsupported sps=%d (4 or 8)', sps);
+decLit    = sprintf('fi(%g,1,11,10)', 1/sps);        % fi(0.125,..) @8, fi(0.25,..) @4
+wlimT     = sprintf('%d/1024', 1024/sps - 1);        % 127/1024 @8, 255/1024 @4
+wlimOther = sprintf('%d/1024', 1024/(12-sps) - 1);   % the OTHER sps's clamp value
 
 sys = 'commhdlQPSKTxRx';
 load_system(sys);
@@ -40,25 +56,35 @@ lf = [ss '/Loop Filter'];
 ic  = [ss '/Interpolation Control'];
 cfg = get_param(ic, 'MATLABFunctionConfiguration');
 code = cfg.FunctionScript;
+wlimDecl = sprintf('wlim = fi(%s,1,11,10);', wlimT);
 if contains(code, 'anti-wedge clamp')
-    fprintf('timing_hardening_overlay: IC Delta clamp already present -- skip\n');
+    if contains(code, wlimDecl)
+        fprintf('timing_hardening_overlay: IC Delta clamp already present (wlim=%s) -- skip\n', wlimT);
+    else
+        % clamp present but carried at the other-sps value -> correct it
+        assert(contains(code, sprintf('wlim = fi(%s,1,11,10);', wlimOther)), ...
+            'IC clamp present with unexpected wlim (neither %s nor %s)', wlimT, wlimOther);
+        code = strrep(code, wlimOther, wlimT);   % fixes both wlim= and -wlim occurrences
+        cfg.FunctionScript = code;
+        fprintf('timing_hardening_overlay: IC clamp wlim %s -> %s (sps=%d)\n', wlimOther, wlimT, sps);
+    end
 else
-    anchor = 'counter = bitand(mask,countReg)-Delta-fi(0.125,1,11,10);';
-    assert(contains(code, anchor), 'Interpolation Control: counter line not found (run ss8_fix_overlay first)');
+    anchor = sprintf('counter = bitand(mask,countReg)-Delta-%s;', decLit);
+    assert(contains(code, anchor), 'Interpolation Control: counter line %s not found (run ss8_fix_overlay first)', anchor);
     clampcode = sprintf([ ...
-        '   %% T8.4 anti-wedge clamp: if Delta <= -0.125 the decrementing counter\n' ...
+        '   %% T8.4 anti-wedge clamp: if Delta <= -1/sps the decrementing counter\n' ...
         '   %% never underflows (strobes stop FOREVER -- Class-4 wedge / Class-1\n' ...
         '   %% episode mechanism; see tb_timing_wedge.v). Bound Delta so the\n' ...
         '   %% counter always decrements by >= 1 LSB.\n' ...
-        '   wlim = fi(127/1024,1,11,10);\n' ...
+        '   wlim = fi(%s,1,11,10);\n' ...
         '   if Delta > wlim\n' ...
         '       Delta = wlim;\n' ...
         '   elseif Delta < -wlim\n' ...
-        '       Delta = fi(-127/1024,1,11,10);\n' ...
-        '   end\n   ']);
+        '       Delta = fi(-%s,1,11,10);\n' ...
+        '   end\n   '], wlimT, wlimT);
     code = strrep(code, anchor, [clampcode anchor]);
     cfg.FunctionScript = code;
-    fprintf('timing_hardening_overlay: IC Delta clamp inserted (+-127/1024)\n');
+    fprintf('timing_hardening_overlay: IC Delta clamp inserted (+-%s, sps=%d)\n', wlimT, sps);
 end
 
 % ---- (2) Loop Filter integrator saturation ----
@@ -92,6 +118,7 @@ end
 % ---- asserts (gate) ----
 cfg2 = get_param(ic, 'MATLABFunctionConfiguration');
 assert(contains(cfg2.FunctionScript, 'anti-wedge clamp'), 'IC clamp missing after apply');
+assert(contains(cfg2.FunctionScript, wlimDecl), 'IC clamp wlim != %s for sps=%d after apply', wlimT, sps);
 assert(~isempty(find_system(lf, 'SearchDepth', 1, 'Name', 'IntegClamp')), 'IntegClamp missing after apply');
 assert(strcmp(get_param(dtc, 'SaturateOnIntegerOverflow'), 'on'), 'DTC17 saturation not set');
 % carrier loop untouched (PI_GATE domain)

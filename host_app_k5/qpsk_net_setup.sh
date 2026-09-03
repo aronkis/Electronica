@@ -53,9 +53,26 @@ TXSRC_OFF=${QPSK_TXSRC_OFF:-0x158}
 PKT=${QPSK_PKT_BYTES:-280}
 MULTI=${QPSK_RX_MULTI:-0}
 DFLAGS=""
+# Positive-presence probe for byte_ctrl_gpio (AXI GPIO @ 0x9D300000): a claimed
+# 9d300000 region in /proc/iomem OR a qpsk_byte_gpio UIO node. Mirrors
+# qpsk_gpio_present() in qpsk_uio.c. Replaces the old blind devmem read-probe
+# (which "succeeds" even on a floating bus and could poke an absent peripheral).
+gpio_present() {
+    grep -qiE '(^|[[:space:]0]+)9d300000-' /proc/iomem 2>/dev/null && return 0
+    for n in /sys/class/uio/uio*/name; do
+        # uio_pdrv_genirq may name the node bare or WITH the @unit-address
+        # (kernel 6.12.77 uses "qpsk_byte_gpio@9d300000"). Accept both.
+        [ -r "$n" ] || continue
+        case "$(cat "$n" 2>/dev/null)" in
+            qpsk_byte_gpio|qpsk_byte_gpio@*) return 0 ;;
+        esac
+    done
+    return 1
+}
+
 detect() {
     DFLAGS="-p $PKT"
-    if [ "$MULTI" -gt 0 ] && $DEVMEM 0x9D300000 32 >/dev/null 2>&1; then
+    if [ "$MULTI" -gt 0 ] && gpio_present; then
         DFLAGS="-p $PKT -M $MULTI"   # opt-in multi-packet (lower CPU, some loss)
     fi
     MTU=$((PKT - 12))

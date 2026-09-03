@@ -1,0 +1,20 @@
+diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
+index 0e2902f38..a8fd17a30 100644
+--- a/arch/arm64/Kconfig
++++ b/arch/arm64/Kconfig
+@@ -2372,6 +2372,15 @@ config CMDLINE_FROM_BOOTLOADER
+ 	  the boot loader doesn't provide any, the default kernel command
+ 	  string provided in CMDLINE will be used.
+ 
++config CMDLINE_EXTEND
++	bool "Extend bootloader kernel arguments"
++	help
++	  The bootloader-supplied kernel command line will be appended
++	  with the string CONFIG_CMDLINE. (This backing behavior already
++	  exists in drivers/of/fdt.c; arm64 previously did not expose the
++	  menu entry. Added to deliver uio_pdrv_genirq.of_id=generic-uio
++	  without touching uEnv/mtd/chosen -- see qpsk f1536 deploy.)
++
+ config CMDLINE_FORCE
+ 	bool "Always use the default kernel command string"
+ 	help

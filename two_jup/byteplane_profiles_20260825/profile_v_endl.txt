@@ -1,0 +1,48 @@
+DCP /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_byte_tmr146_build/hdl_prj_jupiter_composite/vivado_ip_prj/vivado_prj.runs/v_endl/system_top_routed.dcp
+GLOBAL_WNS 0.230
+GLOBAL_WHS 0.010
+CELLCOUNT *ByteWordBuffer* 1644
+CELLCOUNT *ByteSerializer* 595
+CELLCOUNT *ByteBitShifter* 265
+CELLCOUNT *TxGateK5* 120
+BP_TOTAL 2624
+BP_PLACED 2620 BBOX_X 0-37 BBOX_Y 13-92 SPREAD 2923
+BP_DISTINCT_SITES 319
+BP_SETUP_MIN 1.655 N 200
+BP_SETUP_PATH slack=1.655 dp=6.238 skew=-0.096 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[13]/D
+BP_SETUP_PATH slack=1.685 dp=6.212 skew=-0.092 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[14]/D
+BP_SETUP_PATH slack=1.687 dp=6.210 skew=-0.092 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[15]/D
+BP_SETUP_PATH slack=1.689 dp=6.208 skew=-0.092 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[10]/D
+BP_SETUP_PATH slack=1.711 dp=6.184 skew=-0.094 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[12]/D
+BP_SETUP_PATH slack=1.717 dp=6.178 skew=-0.094 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[11]/D
+BP_SETUP_PATH slack=1.890 dp=6.007 skew=-0.092 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[8]/D
+BP_SETUP_PATH slack=1.938 dp=5.957 skew=-0.094 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[9]/D
+BP_SETUP_PATH slack=2.038 dp=5.869 skew=-0.083 lvl=13 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[7]/D
+BP_SETUP_PATH slack=2.107 dp=5.801 skew=-0.082 lvl=13 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[6]/D
+BP_HOLD_MIN 0.034 N 200
+BP_HOLD_PATH slack=0.034 skew=0.101 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/state_rd_reg[3]/D
+BP_HOLD_PATH slack=0.034 skew=0.101 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/state_rd_reg[0]_rep__1/D
+BP_HOLD_PATH slack=0.038 skew=0.116 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[55]/D
+BP_HOLD_PATH slack=0.042 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[36]/D
+BP_HOLD_PATH slack=0.042 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[43]/D
+BP_HOLD_PATH slack=0.042 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_ByteBitShifter/state_shiftWord_reg[23]/D
+BP_HOLD_PATH slack=0.042 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/word_last_value_reg[24]/D
+BP_HOLD_PATH slack=0.042 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_ByteBitShifter/state_shiftWord_reg[21]/D
+BP_HOLD_PATH slack=0.044 skew=0.097 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/state_count_reg[3]/D
+BP_HOLD_PATH slack=0.044 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[22]/D
+BP_CE_PINS 1355
+BP_CE_SETUP_MIN 2.660
+BP_CE_HOLD_MIN 0.201
+BP_CE_HOLD_SKEW_MIN 0.018 MAX 0.054
+BP_NETS 3003
+BP_NETDELAY_SUM 677587.000 over 3003 nets
+BP_NETDELAY 3506 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/Receiver_recBitValid
+BP_NETDELAY 3436 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_ByteBitShifter/lopt
+BP_NETDELAY 2696 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[7]_0
+BP_NETDELAY 2610 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/E[0]
+BP_NETDELAY 2369 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/dut_byte_data_in[12]
+BP_NETDELAY 2329 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/state_bitIdx_reg[1]_0
+BP_NETDELAY 2298 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/acc_temp3__0_carry_1
+BP_NETDELAY 2169 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/Delay2_out1
+BP_NETDELAY 2169 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_ByteBitShifter/state_aligned_reg_1
+BP_NETDELAY 2169 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_FEC_Tx_Encoder_K5/u_TxGateK5/frameValid_1_reg

@@ -198,6 +198,63 @@ kit targets the Jupiter ZU3EG (the K=7 fec_jupiter build with in-fabric
 encoder+Viterbi met timing and ran), but the first HW bring-up MUST verify a
 streaming metric (magCV / spectrum) BEFORE trusting BER, per that finding.
 
+## Loop-gain tuning registers (AXI 0x170–0x184, LEAN builds only — Task C3)
+
+`loop_gain_axi_overlay.m` makes six Rx loop constants **runtime-writable** so
+on-air EVM/BER tuning sweeps and per-rung loop retuning need no bitstream
+rebuild. Each is an AXI4-Lite **WRITE** register. Semantics: **value 0 ⇒ the
+compiled default is used, bit-for-bit** (the original Gain / Compare-To-Constant
+block stays on the mux's `reg==0` path, so the shipped 240k behavior is provably
+unchanged at reset — the added datapath is dead until written); **nonzero ⇒ the
+low _W_ bits of the 32-bit word are reinterpreted (stored-integer passthrough) in
+the register's fi type and drive the loop.** Host writes the **stored integer**
+(`round(value·2^F)`) of the desired fixed-point value in the register's fi type,
+in the low _W_ bits.
+
+| Addr  | Register        | Loop constant (block)                               | fi type       | S | W  | F  | compiled SI |
+|-------|-----------------|-----------------------------------------------------|---------------|---|----|----|-------------|
+| 0x170 | `cs_prop_gain`  | Carrier Sync Loop Filter/Gain1 (CSLoopFilterPropGain/2π)  | ufix16_En16 | 0 | 16 | 16 | 98 |
+| 0x174 | `cs_integ_gain` | Carrier Sync Loop Filter/Gain  (CSLoopFilterIntegGain/2π) | ufix16_En16 | 0 | 16 | 16 | 1 |
+| 0x178 | `ss_prop_gain`  | Symbol Sync Loop Filter/K1 (SSLoopFilterPropGain)   | sfix24_En24   | 1 | 24 | 24 | −163506 |
+| 0x17C | `ss_integ_gain` | Symbol Sync Loop Filter/K2 (SSLoopFilterIntegGain)  | sfix24_En24   | 1 | 24 | 24 | −2180 |
+| 0x180 | `agc_loop_gain` | AGC Loop Filter/Gain1 (AGCLoopGain)                 | ufix32_En31 † | 0 | 32 | 31 | 4294967 † |
+| 0x184 | `cfo_threshold` | Coarse Freq Comp/CFO step change detector (±thr)    | sfix22_En21   | 1 | 22 | 21 | ±26214 |
+
+† **AGC exception:** the AGC `Gain1` parameter is the *double* literal `LFG`
+(=`AGCLoopGain`=2e-3), so there is no native fixed-point "compiled constant" to
+match. The runtime type is therefore a **chosen** representation, ufix32_En31
+(full-word, range [0,2), ~4.7e-10 resolution); the exact compiled double is still
+preserved at `reg==0` because the untouched double-param Gain remains on the mux
+default path. Unlike the CS/SS gains, writing `SI(compiled)` (0x180=4294967) is
+*not* guaranteed byte-identical to `reg==0` (chosen fi ≠ the double) — it is a
+tunable knob, not a stored-int passthrough of a native fi. All other five are
+native-fi stored-int passthroughs.
+
+**LEAN-only / address reuse.** 0x170–0x184 are the offsets the debug-only canary
+telemetry **read** registers occupy in **non-LEAN** builds. The JUPITER regmap is
+a *unified* read/write space (no offset is shared across directions), so this
+overlay is applied **only in LEAN** (production/tuning) images, where the canary
+overlays are stripped and 0x170–0x184 are free. In non-LEAN builds the overlay is
+skipped (assemble prints a SKIP note) and the addresses remain the canaries'. The
+`hdlworkflow_loopback.m` mappings are block-existence-guarded, so LEAN and
+non-LEAN never both claim the offsets. Guard env: `QPSK_LOOP_GAIN_AXI=0` disables
+even in LEAN (default on).
+
+**Gates:** `assemble` gate (i) asserts the six inports + workflow mappings +
+stashed fi refs, and (with gate 2 compiling) that the mux Switch/Product/MLFB are
+in the datapath; `sim_byte_gate_k5.m` at reset (registers unconnected ⇒ 0) is the
+zero-default bit-identity proof (cap_out 0x04922282, all four A/B/C/D cases).
+`loop_gain_poke_test_k5.m` is *discriminating*: it drives each register and logs
+the **mux coefficient signal inside the DUT**, asserting its stored integer equals
+the driven value — this is what proves the threaded AXI value actually arrives at
+the intended constant with the exact fi (a mis-thread or wrong fraction length
+shows here; the decode oracle alone cannot, since the loop locks golden at 0,
+`SI(G)`, and `SI(2G)` alike in clean loopback). Covered kinds/fraction-lengths:
+CS ufix16, SS sfix24, AGC ufix32 (gain coeff tap), CFO (nz-arm tap). For the
+clean-fi gains `reg=SI(G)` additionally yields cap_out golden (runtime Product
+reproduces the compiled gain); `reg=SI(2G)` shows the loop still decodes.
+Writes `LOOP_GAIN_POKE_K5.txt`.
+
 ## Gates
 
 * `assemble_jupiter_240k5_byte.m` — hard pre-synth structural gates, incl.

@@ -1,0 +1,3 @@
+iq=pilot_r90.iq nsamp=600000 vphase=0 cadence=4 rstcs_end=8400 skip=0
+packets=12 biterr=675 frameStart=12 rstcs=0 cfc_est=-1523
+outFrames=11 capGoldFrames=0/11 nrxw=2131 nuser=12 goldAny=0 capEverGold=0

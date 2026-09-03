@@ -1,0 +1,9 @@
+RESULT mode=rxq1 upstream=RTL(orig64) ce_div=1 M=16 period=545 maskuser=0 nframes=1000 prearm=3000 jitter=50/-1
+SCORE transfers=61 offered=995 good=798 lost=197 junk_slots=178 dup=0 PER=19.799% lost_per_transfer=3.230
+HOLE_BINS 2:1 3:1 4:1 5:1 6:1 7:1 8:1 9:1 10:1 11:1 12:1 13:1 14:2 15:2 16:2 17:1
+HOLE_POS(slot in transfer) 0:19
+JUNK_POS(slot in transfer) 0:1 1:3 2:5 3:7 4:8 5:9 6:10 7:11 8:12 9:13 10:14 11:15 12:16 13:17 14:18 15:19
+RECON offered_words=190980 fifo_dropped=3610 accepted=187370 ddr_written=187360 in_flight(acc-written)=10 bad_addr=0 ser_emitted=190980 upstream_backlog=0 user_beats_accepted=1000
+WITNESS blocked_cycles_waiting_for_sync=0 blocked_cycles_engine_idle=0 (word period 545 clk)
+HANDOFF(active fall -> next active rise) n=0
+SYNCWAIT(active rise -> first accepted beat) n=1 min=14 mean=14.0 max=14 clk

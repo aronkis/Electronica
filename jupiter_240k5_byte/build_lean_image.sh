@@ -3,6 +3,13 @@
 # the fail-fast checkhdl passed both paths. Produces the lean BOOT.BIN. NO FLASH.
 set -u
 export QPSK_LEAN=1
+# Image-select params (frame geometry / samples-per-symbol / pre-impl timing-gate
+# target clock) must reach the MATLAB gate+codegen stages AND the Vivado timing_gate.tcl
+# child (sourced inside complete_byte_t8.tcl / ch2_build2.tcl, which read them from env).
+# Re-export whatever the launcher set so nothing downstream falls back to defaults.
+export QPSK_FRAME=${QPSK_FRAME:-}
+export QPSK_SPS=${QPSK_SPS:-}
+export QPSK_TARGET_MHZ=${QPSK_TARGET_MHZ:-}
 export PATH=/mnt/onetb/MATLAB/R2025b/bin:/tools/Xilinx/2025.1/Vivado/bin:/usr/local/bin:/usr/bin:/bin
 K=$(cd "$(dirname "$0")" && pwd)                       # this kit dir
 B=${LEAN_BUILD_DIR:-$(cd "$K/.." && pwd)/jupiter_byte_lean_build}

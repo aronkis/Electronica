@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="adi-figure no-background"
+     viewBox="0 0 1100 640" width="100%"
+     style="max-width: 1080px; height: auto;">
+  <style>
+    svg.adi-figure {
+      --adi-fill-info:   #d4e1ec;
+      --adi-fill-drv:    #cbd9e8;
+      --adi-fill-mcu:    #f4dca0;
+      --adi-fill-hw:     #f7c8a4;
+      --adi-fill-app:    #e0d0e8;
+      --adi-fill-blank:  #ffffff;
+      --adi-box-stroke:  #c9bfa9;
+      --adi-panel-bg:    #f7f1e6;
+      --adi-panel-stroke:#e3dcc9;
+      --adi-datax-bg:    #e4ecf6;
+      --adi-datax-stroke:#b6c4dc;
+      --adi-text-strong: #2b2a26;
+      --adi-text-muted:  #6b6660;
+      --adi-arrow:       #b3aa97;
+      --adi-accent:      #6b8aaa;
+    }
+    @media (prefers-color-scheme: dark) {
+      svg.adi-figure {
+        --adi-fill-info: #2a3a52; --adi-fill-drv: #243246;
+        --adi-fill-mcu: #4d402a;  --adi-fill-hw: #4d3525;
+        --adi-fill-app: #3d2e48;  --adi-fill-blank: #14181e;
+        --adi-box-stroke: #4a5260;
+        --adi-panel-bg: #1a2028;  --adi-panel-stroke: #3a424b;
+        --adi-datax-bg: #1f2a3d;  --adi-datax-stroke: #3a4960;
+        --adi-text-strong: #e5e5e5; --adi-text-muted: #aaaaaa;
+        --adi-arrow: #6a7484;      --adi-accent: #7da3c4;
+      }
+    }
+    body.dark svg.adi-figure {
+      --adi-fill-info: #2a3a52; --adi-fill-drv: #243246;
+      --adi-fill-mcu: #4d402a;  --adi-fill-hw: #4d3525;
+      --adi-fill-app: #3d2e48;  --adi-fill-blank: #14181e;
+      --adi-box-stroke: #4a5260;
+      --adi-panel-bg: #1a2028;  --adi-panel-stroke: #3a424b;
+      --adi-datax-bg: #1f2a3d;  --adi-datax-stroke: #3a4960;
+      --adi-text-strong: #e5e5e5; --adi-text-muted: #aaaaaa;
+      --adi-arrow: #6a7484;      --adi-accent: #7da3c4;
+    }
+    svg.adi-figure .adi-panel { fill: var(--adi-panel-bg); stroke: var(--adi-panel-stroke); stroke-width: 1.25; }
+    svg.adi-figure .adi-title { font: 600 18px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-strong); }
+    svg.adi-figure .adi-subtitle { font: 13px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); }
+    svg.adi-figure .adi-section-label { font: 600 11px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); letter-spacing: 0.04em; }
+    svg.adi-figure .box { stroke: var(--adi-box-stroke); stroke-width: 1.25; }
+    svg.adi-figure .box-text { font: 600 13px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-strong); }
+    svg.adi-figure .box-desc { font: 11px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); }
+    svg.adi-figure .arrow { stroke: var(--adi-arrow); stroke-width: 1.5; fill: none; }
+    svg.adi-figure .arrowhead-fill { fill: var(--adi-arrow); }
+    svg.adi-figure .note-text { font: italic 11px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); }
+    svg.adi-figure .accent-text { fill: var(--adi-accent); }
+  </style>
+
+  <defs>
+    <marker id="bf-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" class="arrowhead-fill"/>
+    </marker>
+  </defs>
+
+  <rect x="10" y="10" width="1080" height="620" rx="14" class="adi-panel"/>
+
+  <text x="550" y="38" class="adi-title" text-anchor="middle">Build, bank, flash, gate, measure</text>
+  <text x="550" y="58" class="adi-subtitle" text-anchor="middle">Every image is gated before flash and health-gated after flash — no exceptions survived contact with silicon</text>
+
+  <!-- Stage 1: model + netlist -->
+  <text x="60" y="90" class="adi-section-label">STAGE 1 — MODEL &#8594; NETLIST (MATLAB, env-gated overlays)</text>
+  <rect x="60" y="100" width="520" height="76" rx="8" class="box" fill="var(--adi-fill-info)"/>
+  <text x="320" y="123" class="box-text" text-anchor="middle">assemble_jupiter_240k5_byte.m + HDL Coder</text>
+  <text x="320" y="141" class="box-desc" text-anchor="middle">env picks the overlay set (QPSK_LEAN, QPSK_FRAME=f1536, QPSK_FRAMESTAT...)</text>
+  <text x="320" y="157" class="box-desc" text-anchor="middle">CAUTION: assemble re-saves the .slx in place — models are as-builts, not sources</text>
+
+  <line x1="580" y1="138" x2="620" y2="138" class="arrow" marker-end="url(#bf-arrow)"/>
+
+  <rect x="620" y="100" width="420" height="76" rx="8" class="box" fill="var(--adi-fill-hw)"/>
+  <text x="830" y="123" class="box-text" text-anchor="middle">Netlist gates (sim, pre-Vivado)</text>
+  <text x="830" y="141" class="box-desc" text-anchor="middle">checkhdl 0 errors &#183; S1B BIST &#183; real-IQ replay gate</text>
+  <text x="830" y="157" class="box-desc" text-anchor="middle">replay drive cadence = netlist generation property (HARNESS_AB)</text>
+
+  <line x1="320" y1="176" x2="320" y2="208" class="arrow" marker-end="url(#bf-arrow)"/>
+
+  <!-- Stage 2: Vivado -->
+  <text x="60" y="200" class="adi-section-label">STAGE 2 — VIVADO IMPLEMENTATION (TransceiverToolbox reference design)</text>
+  <rect x="60" y="208" width="520" height="76" rx="8" class="box" fill="var(--adi-fill-mcu)"/>
+  <text x="320" y="231" class="box-text" text-anchor="middle">build_cyclic_image.sh &#8594; synth + impl + bootgen</text>
+  <text x="320" y="249" class="box-desc" text-anchor="middle">netlist drops into the ADI/MathWorks BD (matlab_processors.tcl adds the byte DMAs)</text>
+  <text x="320" y="265" class="box-desc" text-anchor="middle">rail-re-hosting hazard: guard tc/addr-decoder hierarchy (DONT_TOUCH) + DCP gate</text>
+
+  <line x1="580" y1="246" x2="620" y2="246" class="arrow" marker-end="url(#bf-arrow)"/>
+
+  <rect x="620" y="208" width="420" height="76" rx="8" class="box" fill="var(--adi-fill-hw)"/>
+  <text x="830" y="231" class="box-text" text-anchor="middle">Implementation gates</text>
+  <text x="830" y="249" class="box-desc" text-anchor="middle">timing WNS/WHS clean &#183; static_rate_parity_gate vs known-good</text>
+  <text x="830" y="265" class="box-desc" text-anchor="middle">dcp_rail_dump.tcl: enb_1_2_0 driver must live in u_TxRxComposite_tc</text>
+
+  <line x1="320" y1="284" x2="320" y2="316" class="arrow" marker-end="url(#bf-arrow)"/>
+
+  <!-- Stage 3: bank -->
+  <text x="60" y="308" class="adi-section-label">STAGE 3 — BANK THE IMAGE (md5-tagged, never overwrite a proven image)</text>
+  <rect x="60" y="316" width="980" height="70" rx="8" class="box" fill="var(--adi-fill-app)"/>
+  <text x="550" y="339" class="box-text" text-anchor="middle">BOOT.BIN identified by md5 prefix, forever</text>
+  <text x="550" y="357" class="box-desc" text-anchor="middle">e49c011b = proven-good CP1/cyclic instrument (148) &#183; 433fd8da = TMR (146) &#183; f2e22135 = fsv2 witness &#183; c79b72d2 = wit3 &#183; 4be9286c = tmr146-v2 &#183; 64bb2476 = pre-instrument 148</text>
+  <text x="550" y="373" class="box-desc" text-anchor="middle">a banked image is BANKED, not flashed — flashing is a separate, operator-gated decision</text>
+
+  <line x1="320" y1="386" x2="320" y2="418" class="arrow" marker-end="url(#bf-arrow)"/>
+
+  <!-- Stage 4: flash -->
+  <text x="60" y="410" class="adi-section-label">STAGE 4 — FLASH (scp + verify + rollback rails)</text>
+  <rect x="60" y="418" width="520" height="76" rx="8" class="box" fill="var(--adi-fill-drv)"/>
+  <text x="320" y="441" class="box-text" text-anchor="middle">scp BOOT.BIN &#8594; /boot &#183; readback md5 verify &#183; reboot</text>
+  <text x="320" y="459" class="box-desc" text-anchor="middle">rollback staged FIRST: /root/BOOT.BIN.e49c011b.bak (+ host + in-repo copies)</text>
+  <text x="320" y="475" class="box-desc" text-anchor="middle">on ANY gate failure: roll back, verify md5, NO retry — bank the evidence and stop</text>
+
+  <line x1="580" y1="456" x2="620" y2="456" class="arrow" marker-end="url(#bf-arrow)"/>
+
+  <rect x="620" y="418" width="420" height="76" rx="8" class="box" fill="var(--adi-fill-hw)"/>
+  <text x="830" y="441" class="box-text" text-anchor="middle">Full bring-up + HEALTH GATE</text>
+  <text x="830" y="459" class="box-desc" text-anchor="middle">restore_known_good &#183; NAK check &#183; then reset-aware probe:</text>
+  <text x="830" y="475" class="box-desc" text-anchor="middle">fsync &#8805; 1100 f/s AND wordcnt &#8805; 1100 f/s before counting ANYTHING</text>
+
+  <line x1="550" y1="494" x2="550" y2="526" class="arrow" marker-end="url(#bf-arrow)"/>
+
+  <!-- Stage 5: measure -->
+  <text x="60" y="518" class="adi-section-label">STAGE 5 — MEASURE</text>
+  <rect x="60" y="526" width="980" height="60" rx="8" class="box" fill="var(--adi-fill-info)"/>
+  <text x="550" y="549" class="box-text" text-anchor="middle">Soaks, sweeps, witness runs — only on a health-gated link, only with reset-aware probes</text>
+  <text x="550" y="567" class="box-desc" text-anchor="middle">0x104 resets every ~5&#8211;7 s on a healthy link (rstcs cadence): a naive delta probe under-reads a healthy link by ~2&#215; (see BRINGUP_SEQUENCER rung 6)</text>
+
+  <text x="550" y="612" class="note-text" text-anchor="middle">RTL sim harness drive-cadence contract: Jul-25 netlist generation = 1 sample per 4 clks (CAD=4); post-Jul-29 generations = 1-in-2 (CAD=2). Wrong cadence = false 5/78 failure (HARNESS_AB.md).</text>
+</svg>

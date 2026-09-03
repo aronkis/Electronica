@@ -27,10 +27,15 @@ assert(strcmp(pwd, KITDIR), 'run from %s (pwd=%s)', KITDIR, pwd);
 sys  = 'commhdlQPSKTxRxLoopback';
 loop = [sys '/TxRxComposite'];
 
-% Hard-verify the kit params are the active ones (sps=8, stock threshold)
+% frame geometry + sps single source of truth (Task A1/A3); pre-synth gates
+% assert emitted chart text against these instead of hardcoded literals.
+cfg = frame_config_k5();
+
+% Hard-verify the kit params are the active ones (sps matches frame_config,
+% stock threshold). sps=8 default; sps=4 is the A3 2x-rate rung.
 Pchk = commhdlQPSKTxRxParameters();
-assert(Pchk.SamplesPerSymbol == 8, 'kit params NOT active: sps=%d which=%s', ...
-    Pchk.SamplesPerSymbol, which('commhdlQPSKTxRxParameters'));
+assert(Pchk.SamplesPerSymbol == cfg.Sps, 'kit params NOT active: params sps=%d != cfg sps=%d which=%s', ...
+    Pchk.SamplesPerSymbol, cfg.Sps, which('commhdlQPSKTxRxParameters'));
 assert(abs(Pchk.CFOChangeDetectThreshold - 0.0125) < 1e-12, ...
     'threshold=%.7g (expected RXFIX 0.0125)', Pchk.CFOChangeDetectThreshold);
 fprintf('240k5_byte params ACTIVE: sps=%d thr=%.7g (%s)\n', Pchk.SamplesPerSymbol, ...
@@ -40,6 +45,7 @@ fprintf('240k5_byte params ACTIVE: sps=%d thr=%.7g (%s)\n', Pchk.SamplesPerSymbo
 patch_hdlworkflow_counters('hdlworkflow_loopback.m');
 patch_hdlworkflow_taps('hdlworkflow_loopback.m');
 patch_hdlworkflow_forensic('hdlworkflow_loopback.m');   % T8.3: adc_forensic x"15C"
+patch_hdlworkflow_loopgain('hdlworkflow_loopback.m');   % C3: loop-gain regs 0x170-0x184 (block-guarded)
 
 % Phase 0b: rate restoration on the source model (idempotent, saves slx)
 rate_240k_overlay();
@@ -84,6 +90,17 @@ fec_remove_scrambler(sys, loop);
 fprintf('=== applying 240k5 observability taps overlay ===\n');
 taps_240k5_overlay(sys, loop);
 
+% Phase 2.11b: RX framing span scale (Task A2 f1536 RX-decode fix). The
+% base-model RX Packet Controller/End Generator hardcoded the k5 payload span
+% (1120 = DataBitsPerPacket/2 symbols) in its Compare To Constant + HDL Counter,
+% so at f1536 it ended each frame after 2240 bits and the deinterleaver read a
+% mostly-empty bank (cap_deint garbage). This overlay derives the span from the
+% QPSK Rx mask var dataBitsPerPacket (single-sourced from frame_config_k5), like
+% the proven TX Data Bits FIFO counter. k5 -> identical (1120-1, 11-bit); f1536
+% -> 12320-1, 14-bit. See rx_framing_overlay_k5.m header + task-A2-report.
+fprintf('=== applying RX framing span overlay (K5) ===\n');
+rx_framing_overlay_k5(sys, loop);
+
 % LEAN mode (QPSK_LEAN=1): production images STRIP the debug shadow/telemetry
 % overlays -- adc_forensic (0x15C), iq_debug state-pairs (0x160-0x16C),
 % canary/canary2/canary3/cfc, canary4 valid-census (0x1A0-0x1AC), p1b decision
@@ -95,8 +112,13 @@ LEAN = ~isempty(getenv('QPSK_LEAN'));
 if LEAN, fprintf('=== LEAN build: stripping adc_forensic/state-pairs/canary*/p1b ===\n'); end
 
 % Phase 2.12: T8.3 ADC ingest forensic register (0x15C) -- STRIP in LEAN.
-if ~LEAN
-fprintf('=== applying ADC forensic overlay ===\n');
+% EXCEPTION (burst-hunt instrument): QPSK_ADC_FORENSIC=1 re-adds JUST this overlay
+% to a LEAN build (small: one packed status register + counters; fits where the
+% full debug set does not). Used to catch SSI valid-cadence glitches (maxGap/
+% maxBurst) during the reverse 5-100-frame live-only bursts. The 0x15C mapping in
+% hdlworkflow is block-existence-guarded, so it self-syncs.
+if ~LEAN || ~isempty(getenv('QPSK_ADC_FORENSIC'))
+fprintf('=== applying ADC forensic overlay (LEAN=%d, QPSK_ADC_FORENSIC=%s) ===\n', LEAN, getenv('QPSK_ADC_FORENSIC'));
 adc_forensic_overlay(sys, loop);
 end
 
@@ -106,12 +128,64 @@ end
 fprintf('=== applying IQ debug tap overlay ===\n');
 iq_debug_tap_overlay(sys, loop);
 
-if ~LEAN
 % Phase 2.12d: T8.5 shadow timing loop + fabric canaries (0x170-0x188) --
-% direct on-chip live-vs-deterministic divergence measurement (Class 1/4)
-fprintf('=== applying canary instrumentation overlay ===\n');
-canary_instrumentation_overlay(sys, loop);
+% direct on-chip live-vs-deterministic divergence measurement (Class 1/4).
+% T8.9 STALL FIX (task #15): non-recursive preamble threshold sum -- removes the
+% Delay14 recursive-accumulator vulnerability (confirmed live stall mechanism,
+% FROZEN-class mutes). Env-gated for staged rollout; datapath-only, bit-exact
+% in uncorrupted operation (netlist A/B gated in the harness).
+if ~isempty(getenv('QPSK_MOVSUM_HARDEN'))
+fprintf('=== applying movsum hardening overlay (LEAN=%d) ===\n', LEAN);
+movsum_hardening_overlay(sys, loop);
+end
 
+% T9.0 LOOP-TUNE AXI REGISTERS (task #14): 6 runtime-writable receiver loop
+% constants at 0x1F0-0x204, each CLAMPED in fabric to a safe band around its
+% compiled default (a bad live write can mistune but cannot unlock the loop).
+% Zero-default = compiled constant, so an unwritten image is bit-identical.
+% Relocated off 0x170-0x184 (permanently held by the T8.5 canaries), so unlike
+% the old loop_gain overlay this coexists with the full instrument set.
+if ~isempty(getenv('QPSK_LOOP_TUNE'))
+fprintf('=== applying loop-tune AXI overlay (LEAN=%d) ===\n', LEAN);
+loop_tune_axi_overlay(sys, loop);
+end
+
+% T8.9 TMR stall fix (CHOSEN VARIANT, task #15): triplicated preamble-threshold
+% accumulator + bitwise majority voter with write-back reconverge. A single
+% upset of any copy is outvoted and corrected on the next enabled beat instead
+% of persisting forever (the confirmed live FROZEN-class stall mechanism).
+% REQUIRES tmr_keep.xdc in the Vivado flow (complete_byte_t8.tcl adds it when
+% QPSK_MOVSUM_TMR is set) or synthesis merges the copies and deletes the fix.
+if ~isempty(getenv('QPSK_MOVSUM_TMR'))
+fprintf('=== applying movsum TMR overlay (LEAN=%d) ===\n', LEAN);
+movsum_tmr_overlay(sys, loop);
+end
+
+% EXCEPTION (stall-catch instrument): QPSK_CANARY_T85=1 re-adds JUST this overlay to a
+% LEAN build. COLLIDES with the LEAN loop_gain regs (0x170-0x184) -- build with
+% QPSK_LOOP_GAIN_AXI=0. Purpose: shadow pdiv/idiv = state-TEAR detector; 0x184
+% strobe forensic {maxStrobeGap|skip} = enable-tree starvation detector -- the two
+% candidate physical mechanisms for the 5-100-frame delivery stall (the netlist
+% injection campaign proved the algorithmic core self-heals every coherent upset).
+if ~LEAN || ~isempty(getenv('QPSK_CANARY_T85'))
+if ~isempty(getenv('QPSK_CANARY_T85')) && LEAN
+    assert(strcmp(getenv('QPSK_LOOP_GAIN_AXI'),'0'), ...
+        'QPSK_CANARY_T85 on LEAN requires QPSK_LOOP_GAIN_AXI=0 (0x170-0x184 collision)');
+end
+fprintf('=== applying canary instrumentation overlay (LEAN=%d) ===\n', LEAN);
+canary_instrumentation_overlay(sys, loop);
+end
+
+% EXCEPTION (T8.8 stall finisher): QPSK_CANARY_TAOPS=1 exposes the SyncPulse
+% equality operands (TA timing_Reference / Unit_Delay_En_Sync3 / PS tref) at
+% 0x1E0-0x1E4 -- no address collision with loop_gain or T8.5. One mid-freeze
+% read identifies WHICH operand is wrong. Allowed on LEAN.
+if ~isempty(getenv('QPSK_CANARY_TAOPS'))
+fprintf('=== applying canary5 taops overlay (LEAN=%d) ===\n', LEAN);
+canary5_taops_overlay(sys, loop);
+end
+
+if ~LEAN
 % Phase 2.12e: T8.6 path canary + IC/carrier shadow extension (0x18C-0x1A0)
 fprintf('=== applying canary2 overlay ===\n');
 canary2_overlay(sys, loop);
@@ -199,15 +273,47 @@ p1e_comp_overlay(sys, loop);
 fprintf('=== applying phase-ambiguity resolver look-back fix ===\n');
 resolver_lookback_fix(sys, loop);
 
-% Bump Description so smart-build cannot claim "no changes".
-set_param(sys,'Description', sprintf('variant=%s pre=%s build=%s', ...
-    'jupiter_240k5_byte(sps8/Rsym1.92e6-T8ratefix,K5[35 23]TB25 rx+GATED-txenc,ROMk5+byteDMA,noscr+nodescr,taps 0x150/0x154/0x15C,agcEn10,txds 0x158,WPP16)', ...
+% Phase 2.18: C3 runtime-tunable loop-gain AXI registers (0x170-0x184).
+% LEAN-ONLY (the offsets are the canary telemetry registers' in non-LEAN; those
+% are env-guarded off in LEAN, freeing 0x170-0x184). Default ON in LEAN; set
+% QPSK_LOOP_GAIN_AXI=0 to disable. Zero-default is bit-identical (the original
+% Gain/Compare blocks stay on each mux's register==0 path) -- proven by the
+% sim_byte_gate zero-default gate + loop_gain_poke_test_k5.m.
+LOOPGAIN = LEAN && ~strcmp(getenv('QPSK_LOOP_GAIN_AXI'),'0');
+if LOOPGAIN
+    fprintf('=== applying loop-gain AXI overlay (C3, 0x170-0x184) ===\n');
+    loop_gain_axi_overlay(sys, loop);
+elseif ~LEAN
+    fprintf('=== loop-gain AXI overlay SKIPPED (non-LEAN: 0x170-0x184 = canaries) ===\n');
+end
+
+% Phase 2.19: per-frame status telemetry FIFO (0x1D0-0x1DC). ENV-GATED on
+% QPSK_FRAMESTAT with an EARLY RETURN inside the overlay -> byte-identical HDL
+% when unset (G0). Orthogonal to LEAN/debug: 0x1D0-0x1DC are free in both, and
+% do NOT collide with loop_gain (0x170-0x184). Applied AFTER byte_rxfifo AND
+% loop_gain so the composite port set + the p1d runningMax tap are stable.
+if ~isempty(getenv('QPSK_FRAMESTAT'))
+    fprintf('=== applying framestat per-frame telemetry overlay (0x1D0-0x1DC) ===\n');
+    framestat_overlay(sys, loop);
+end
+
+% Bump Description so smart-build cannot claim "no changes". The frame= token
+% lets the sim gate detect a stale slx built for the OTHER frame geometry (A2);
+% the sps%d/Rsym tag lets it tell an sps4 build from an sps8 one (A3). Both the
+% ROM (frame-driven) and WPP tokens are config-driven.
+RsymStr = evalin('base','num2str(Rsym)');   % base-ws Rsym set by the model InitFcn
+set_param(sys,'Description', sprintf('frame=%s variant=%s pre=%s build=%s', ...
+    cfg.Frame, ...
+    sprintf(['jupiter_240k5_byte(sps%d/Rsym%s-T8ratefix,K5[35 23]TB25 rx+GATED-txenc,' ...
+             'ROM%s+byteDMA,noscr+nodescr,taps 0x150/0x154/0x15C,agcEn10,txds 0x158,WPP%d)'], ...
+             cfg.Sps, RsymStr, cfg.Frame, cfg.WordsPerPacketRx), ...
     'variant_pre_composite_verif+cfc_a12+bytek5', char(datetime('now'))));
 save_system(sys,[],'OverwriteIfChangedOnDisk',true);
 
 % ---------------- hard pre-synth gates ----------------
-% (a) ROM literal in the DUT chart; stock ROM gone
-romLit = strtrim(fileread(fullfile(fileparts(KITDIR),'k5_240','rom_words_70_k5.txt')));
+% (a) ROM literal in the DUT chart; stock ROM gone (per-frame ROM word file)
+romLit = strtrim(fileread(fullfile(fileparts(KITDIR),'k5_240', ...
+    sprintf('rom_words_%d_%s.txt', cfg.RomWords32, cfg.Frame))));
 ch = sfroot().find('-isa','Stateflow.EMChart','Path', ...
     [loop '/Transmitter/Input Data/Message Generator/MATLAB Function']);
 assert(~isempty(ch), 'msggen chart not found for gate');
@@ -236,10 +342,18 @@ assert(~isempty(idxGuard) && ~isempty(idxShift) && idxGuard(1) < idxShift(1), ..
 % interleaver + PN9 filler markers (T8 fix 6bcaa62: filler = PN9 x^9+x^5+1
 % seed all-ones = golden payload(2177:2240); the legacy 64-ones filler's DC
 % dwell was notched by the TX LOL tracking cal)
-gFill = load(fullfile(fileparts(KITDIR),'k5_240','golden_k5.mat'),'payload');
-fillBits = double(gFill.payload(2177:2240));
-lfsrG = ones(9,1); fillRef = zeros(64,1);
-for fk = 1:64
+gFill = load(fullfile(fileparts(KITDIR),'k5_240', ...
+    sprintf('golden_%s.mat',cfg.Frame)),'payload');
+fillBits = double(gFill.payload(cfg.CodedBits+1:cfg.PayloadBits));   % filler tail
+% The FILLREF_LEN literal below is INTENTIONAL: the independent PN9 reference
+% length anchor (NOT derived from cfg), so a wrong cfg.CodedBits/PayloadBits
+% makes this length check fire rather than slide silently. Each frame supplies
+% its own PN reference length here (k5=64, f1536=48).
+FILLREF_LEN = 64;                                     % k5 PN9 filler length
+if strcmp(cfg.Frame,'f1536'), FILLREF_LEN = 48; end   % f1536 PN9 filler length
+assert(numel(fillBits)==FILLREF_LEN, 'GATE FAIL: golden filler length %d != %d', numel(fillBits), FILLREF_LEN);
+lfsrG = ones(9,1); fillRef = zeros(FILLREF_LEN,1);
+for fk = 1:FILLREF_LEN
     fbG = xor(lfsrG(9), lfsrG(5));
     fillRef(fk) = lfsrG(9);
     lfsrG = [fbG; lfsrG(1:8)]; %#ok<AGROW>
@@ -249,12 +363,27 @@ assert(isequal(fillBits(:), fillRef(:)), ...
 fillLitG = strjoin(arrayfun(@(b) sprintf('%d',b), fillBits(:).', 'UniformOutput', false), ' ');
 tiCh = sfroot().find('-isa','Stateflow.EMChart','Path', ...
     [loop '/Transmitter/Input Data/FEC Tx Encoder K5/TxInterleaveK5']);
-assert(~isempty(tiCh) && contains(tiCh(1).Script,'CODED=uint16(2176)') ...
-    && contains(tiCh(1).Script,'ROWS=uint16(136)') ...
-    && contains(tiCh(1).Script,'perm = r*COLS + c') ...
+assert(~isempty(tiCh) && contains(tiCh(1).Script,sprintf('CODED=uint16(%d)',cfg.CodedBits)) ...
+    && contains(tiCh(1).Script,sprintf('ROWS=uint16(%d)',cfg.InterleaveRows)) ...
+    && contains(tiCh(1).Script,'perm = rr*COLS + cc') ...          % divisionless incremental counters (was mod/idivide by ROWS)
+    && ~contains(tiCh(1).Script,'idivide') ...                     % NO division/modulo in the per-beat path
+    && ~contains(tiCh(1).Script,'mod(') ...
     && contains(tiCh(1).Script,['FILL = logical([' fillLitG ']);']) ...
     && contains(tiCh(1).Script,'dataOut = FILL('), ...
-    'GATE FAIL: TxInterleaveK5 does not carry the K5 2176/136x16/PN9-filler contract');
+    'GATE FAIL: TxInterleaveK5 does not carry the K5 2176/136x16/PN9-filler contract (divisionless counters)');
+% (c-rx) symmetric divisionless gate on the RX deinterleaver. The merge recipe's
+% lazy-union hazard is a surviving ROWS=uint16(idivide(...)) / mod() on the RX
+% read-address path; assert the counter rewrite is present AND that no division or
+% modulo leaked back in (mirror of the TX ~idivide/~mod gate above -- this catches
+% exactly the reintroduced-idivide regression the merge recipe warns about).
+rdCh = sfroot().find('-isa','Stateflow.EMChart','Path', ...
+    [loop '/Receiver/QPSK Rx/FEC Decoder Wrapper/RxDeint']);
+assert(~isempty(rdCh) && contains(rdCh(1).Script,sprintf('CODED=uint16(%d)',cfg.CodedBits)) ...
+    && contains(rdCh(1).Script,sprintf('ROWS=uint16(%d)',cfg.InterleaveRows)) ...  % literal-fold, NOT uint16(idivide(...))
+    && contains(rdCh(1).Script,'perm0 = cc*ROWS + rr') ...          % divisionless incremental counters (was mod/idivide)
+    && ~contains(rdCh(1).Script,'idivide') ...                      % NO division/modulo in the per-beat read path
+    && ~contains(rdCh(1).Script,'mod('), ...
+    'GATE FAIL: RxDeint does not carry the divisionless counter read-address (idivide/mod leaked back?)');
 % K=5 Viterbi still present with TB=25 (Rx chain untouched)
 vit = find_system(loop,'LookUnderMasks','all','FollowLinks','on','MaskType','Viterbi Decoder');
 assert(numel(vit) == 1, 'GATE FAIL: %d Viterbi decoders', numel(vit));
@@ -278,14 +407,22 @@ assert(~isempty(paefix), 'GATE FAIL: Phase Ambiguity Estimation and Correction s
 %     margin 45deg->14.3deg = THE deterministic ~2-3e-3 OTA BER floor;
 %   Carrier Sync loop-filter 'Gain'=fi(g/(2*pi)) -> 3.14x hot loop (307 vs 98).
 % Found 2026-07-11 by the float-vs-fixed capture-replay campaign.
+% LB = extra look-back sample-delays = max(0, 10*sps-40): 40@sps8, 0@sps4.
+% At sps=4 the native 40-sample window already spans 10 symbols, so the fix
+% is a no-op and the EstDataLookback/EstVldLookback blocks must be ABSENT.
+LBexp = max(0, 10*cfg.Sps - 40);
 for pk = 1:numel(paefix)
-    assert(~isempty(find_system(paefix{pk},'SearchDepth',1,'LookUnderMasks','all', ...
+    hasLB = ~isempty(find_system(paefix{pk},'SearchDepth',1,'LookUnderMasks','all', ...
         'FollowLinks','on','BlockType','Delay','Name','EstDataLookback')) && ...
         ~isempty(find_system(paefix{pk},'SearchDepth',1,'LookUnderMasks','all', ...
-        'FollowLinks','on','BlockType','Delay','Name','EstVldLookback')), ...
-        'GATE FAIL: resolver look-back fix (EstDataLookback/EstVldLookback) missing in %s', paefix{pk});
-    assert(strcmp(strtrim(get_param([paefix{pk} '/EstDataLookback'],'DelayLength')),'40'), ...
-        'GATE FAIL: EstDataLookback length != 40 in %s', paefix{pk});
+        'FollowLinks','on','BlockType','Delay','Name','EstVldLookback'));
+    if LBexp > 0
+        assert(hasLB, 'GATE FAIL: resolver look-back fix (EstDataLookback/EstVldLookback) missing in %s', paefix{pk});
+        assert(strcmp(strtrim(get_param([paefix{pk} '/EstDataLookback'],'DelayLength')),num2str(LBexp)), ...
+            'GATE FAIL: EstDataLookback length != %d in %s', LBexp, paefix{pk});
+    else
+        assert(~hasLB, 'GATE FAIL: sps=%d expects native look-back (LB=0) but EstDataLookback present in %s', cfg.Sps, paefix{pk});
+    end
 end
 clear pk
 % pi-integrity gate: bare-pi mask expressions (demod Ph, CS loop gains) compile
@@ -309,7 +446,43 @@ fprintf('gate(e3): debug tap mux wired + StatePairProbe + 4 state-pair outports 
 else
 fprintf('gate(e3): debug tap mux wired (LEAN: state-pairs stripped)\n');
 end
-fprintf('gate(e2): resolver look-back fix present (EstDataLookback/EstVldLookback len=40) on %d block(s)\n', numel(paefix));
+if LBexp > 0
+    fprintf('gate(e2): resolver look-back fix present (EstDataLookback/EstVldLookback len=%d) on %d block(s)\n', LBexp, numel(paefix));
+else
+    fprintf('gate(e2): resolver look-back NATIVE (sps=%d, LB=0, no EstDataLookback) on %d block(s)\n', cfg.Sps, numel(paefix));
+end
+% (e4) RX framing span (Task A2 f1536 fix): the Packet Controller/End Generator
+% frame-length elements must be DERIVED from dataBitsPerPacket, not a stale k5
+% literal. Assert both the Compare To Constant and HDL Counter (max + width) are
+% the config-driven expressions on EVERY End Generator in the DUT. This is what
+% makes the RX payload span scale to f1536 (12320 symbols) instead of 1120.
+egPCs = find_system(loop,'LookUnderMasks','all','FollowLinks','on', ...
+    'BlockType','SubSystem','Name','Packet Controller');
+nEG = 0;
+for ii = 1:numel(egPCs)
+    egs = find_system(egPCs{ii},'SearchDepth',1,'LookUnderMasks','all', ...
+        'FollowLinks','on','BlockType','SubSystem','Name','End Generator');
+    for jj = 1:numel(egs)
+        eg = egs{jj};
+        [cmpB, cntB] = deal({}, {});
+        for b = reshape(find_system(eg,'SearchDepth',1,'LookUnderMasks','all','FollowLinks','on','Type','block'),1,[])
+            pn = fieldnames(get_param(b{1},'ObjectParameters'));
+            if any(strcmp(pn,'const')) && any(strcmp(pn,'relop')), cmpB{end+1} = b{1}; end %#ok<AGROW>
+            if any(strcmp(pn,'CountMax')), cntB{end+1} = b{1}; end %#ok<AGROW>
+        end
+        assert(numel(cmpB)==1 && numel(cntB)==1, 'GATE FAIL: End Generator %s missing Compare/Counter', eg);
+        cst = strrep(get_param(cmpB{1},'const'),' ','');
+        cmx = strrep(get_param(cntB{1},'CountMax'),' ','');
+        cwl = strrep(get_param(cntB{1},'CountWordLen'),' ','');
+        assert(strcmp(cst,'dataBitsPerPacket/2-1'), 'GATE FAIL: End Generator const not config-driven (=%s)', get_param(cmpB{1},'const'));
+        assert(strcmp(cmx,'dataBitsPerPacket/2-1'), 'GATE FAIL: End Generator CountMax not config-driven (=%s)', get_param(cntB{1},'CountMax'));
+        assert(strcmp(cwl,'nextpow2(dataBitsPerPacket/2-1)'), 'GATE FAIL: End Generator CountWordLen not config-driven (=%s)', get_param(cntB{1},'CountWordLen'));
+        nEG = nEG + 1;
+    end
+end
+assert(nEG >= 1, 'GATE FAIL: no RX Packet Controller/End Generator found in DUT');
+fprintf('gate(e4): RX framing span config-driven (dataBitsPerPacket/2) on %d End Generator(s); f1536 span=%d symbols\n', ...
+    nEG, cfg.PayloadBits/2);
 % (f) threshold resolves to stock in the DUT mask ws (mask ws only exists after
 %     a compile -- resolve here if available, else defer to the post-Update
 %     assert in checkhdl_gate_240k5_byte.m)
@@ -356,10 +529,15 @@ for r = {'skip_count','byte_data','byte_valid','tx_data_source','byte_first','by
     assert(~isempty(find_system(loop,'SearchDepth',1,'BlockType','Inport','Name',r{1})), ...
         'GATE FAIL: inport %s missing', r{1});
 end
-% (g2) Transmitter byte boundary + shifter/mux structure present
+% (g2) Transmitter byte boundary + shifter/mux structure present.
+% framestat (phase 2.19, env-gated) adds ONE Transmitter outport (fs_txur, the
+% TX-underrun witness) -- account for it instead of hard-coding 9.
 txph = get_param([loop '/Transmitter'],'PortHandles');
-assert(numel(txph.Inport)==8 && numel(txph.Outport)==9, ...
-    'GATE FAIL: Transmitter ports %d/%d (expected 8/9)', numel(txph.Inport), numel(txph.Outport));
+nFsTx = double(~isempty(find_system([loop '/Transmitter'],'SearchDepth',1, ...
+    'BlockType','Outport','Name','fs_txur')));
+assert(numel(txph.Inport)==8 && numel(txph.Outport)==9+nFsTx, ...
+    'GATE FAIL: Transmitter ports %d/%d (expected 8/%d)', ...
+    numel(txph.Inport), numel(txph.Outport), 9+nFsTx);
 for n = {'ByteBitShifter','BitMux'}
     assert(~isempty(find_system([loop '/Transmitter/Input Data'],'SearchDepth',1, ...
         'LookUnderMasks','all','FollowLinks','on','Name',n{1})), 'GATE FAIL: %s missing', n{1});
@@ -368,10 +546,23 @@ for n = {'ByteWordBuffer','ByteSerializer','ByteRxFifo'}   % BeatGate replaced b
     assert(~isempty(find_system(loop,'SearchDepth',1,'LookUnderMasks','all', ...
         'FollowLinks','on','Name',n{1})), 'GATE FAIL: %s missing', n{1});
 end
-% (g3) serializer WORDS_PER_PACKET=16 literal (128 B/frame of the 1084 info bits)
+% (g3) serializer WORDS_PER_PACKET literal (128 B/frame k5 / 1536 B f1536 of
+%      the decoded info bits); counter widened uint8 -> uint16 (f1536 385>255)
 bsCh = sfroot().find('-isa','Stateflow.EMChart','Path',[loop '/ByteSerializer']);
-assert(~isempty(bsCh) && contains(bsCh(1).Script,'uint8(16)'), ...
-    'GATE FAIL: ByteSerializer WORDS_PER_PACKET literal is not 16');
+assert(~isempty(bsCh) && contains(bsCh(1).Script,sprintf('uint16(%d)',cfg.WordsPerPacketRx)), ...
+    'GATE FAIL: ByteSerializer WORDS_PER_PACKET literal is not uint16(%d)', cfg.WordsPerPacketRx);
+% (g3b) f1536 ONLY: ping-pong interleaver banks requested as BRAM. This is a
+% CODEGEN property the sim gate cannot exercise, so pin its PRESENCE here at
+% assemble time (BRAM-fit itself is verified at HDL build -- see task-A2-report).
+if strcmp(cfg.Frame,'f1536')
+    for ramBlk = { [loop '/Transmitter/Input Data/FEC Tx Encoder K5/TxInterleaveK5'], ...
+                   [loop '/Receiver/QPSK Rx/FEC Decoder Wrapper/RxDeint'] }
+        m = hdlget_param(ramBlk{1}, 'MapPersistentVarsToRAM');
+        assert(strcmpi(char(string(m)),'on'), ...
+            'GATE FAIL: %s MapPersistentVarsToRAM not on (f1536 BRAM request missing)', ramBlk{1});
+    end
+    fprintf('gate(g3b): f1536 TxInterleaveK5 + RxDeint MapPersistentVarsToRAM=on (BRAM requested)\n');
+end
 % (g4) hdlworkflow: byte maps present, tx_data_source at x"158", sentinel x"11C"
 wfTxt = fileread('hdlworkflow_loopback.m');
 assert(contains(wfTxt,'composite-byte mappings'), 'GATE FAIL: workflow byte mappings missing');
@@ -383,11 +574,32 @@ assert(~contains(wfTxt, '''JUPITER (RX & TX - RX IS FASTER OR HAS PRIORITY)'''),
     'GATE FAIL: ReferenceDesign not retargeted');
 assert(contains(wfTxt, '''JUPITER (RX & TX, BYTE DMA)'''), 'GATE FAIL: byte RD missing');
 assert(contains(wfTxt, '''multiple'',''2'''), 'GATE FAIL: ReferenceDesignParameter multiple=2 lost');
-% (h) Rsym/sps pair took (T8 RATE FIX): base-ws Rsym must be 1.92e6 so the
-%     QPSK rail Rsym*sps = 15.36e6 model = 1.92M physical -> TRUE 240 ksym Tx
-%     (the S1-era 0.96e6 put the Tx rail on the 0.96M rung = 120 ksym air)
+% (h) Rsym/sps pair took (T8 RATE FIX + A3 rung): the QPSK rail Rsym*sps is
+%     PINNED to the ADC bus 15.36e6 (UpsamplesRx=1), so base-ws Rsym must equal
+%     15.36e6/sps (1.92e6 @ sps8 = 240 ksym; 3.84e6 @ sps4 = 480 ksym, 2x rung).
 rs = evalin('base','Rsym');
-assert(abs(double(rs) - 1.92e6) < 1, 'GATE FAIL: Rsym=%g (expected 1.92e6, T8 rate fix)', double(rs));
-fprintf(['ASSEMBLE_240K5_BYTE PRE-SYNTH GATES OK (ROM k5 BIST + byte-DMA, GATED in-fabric K5 Tx encoder,\n' ...
+% Rsym/sps pinned to the ADC bus (A3 sps-aware): rail = Rsym*sps = 15.36e6.
+RsymExp = 15.36e6 / cfg.Sps;
+assert(abs(double(rs) - RsymExp) < 1, 'GATE FAIL: Rsym=%g (expected %g = 15.36e6/sps%d)', double(rs), RsymExp, cfg.Sps);
+assert(abs(double(rs)*cfg.Sps - 15.36e6) < 1, 'GATE FAIL: rail Rsym*sps=%g != 15.36e6 (ADC bus)', double(rs)*cfg.Sps);
+% (i) C3 loop-gain AXI regs present + mapped (LEAN + enabled only)
+if LOOPGAIN
+    for r = {'cs_prop_gain','cs_integ_gain','ss_prop_gain','ss_integ_gain','agc_loop_gain','cfo_threshold'}
+        assert(~isempty(find_system(loop,'SearchDepth',1,'BlockType','Inport','Name',r{1})), ...
+            'GATE FAIL: loop-gain inport %s missing', r{1});
+    end
+    wfLG = fileread('hdlworkflow_loopback.m');
+    assert(contains(wfLG,'loop-gain tuning mappings'), 'GATE FAIL: loop-gain workflow mappings missing');
+    for a = {'x"170"','x"174"','x"178"','x"17C"','x"180"','x"184"'}
+        assert(contains(wfLG, a{1}), 'GATE FAIL: loop-gain AXI address %s missing in workflow', a{1});
+    end
+    % zero-default structural proof: every original Gain/Compare is still the
+    % default (register==0) driver via its Switch third data port.
+    ud = get_param(loop,'UserData');
+    assert(isstruct(ud) && isfield(ud,'loopGainAxi'), 'GATE FAIL: loopGainAxi UserData not stashed');
+    fprintf('gate(i): C3 loop-gain regs 0x170-0x184 present + mapped + refs stashed\n');
+end
+fprintf(['ASSEMBLE_240K5_BYTE PRE-SYNTH GATES OK (frame=%s ROM BIST + byte-DMA, GATED in-fabric K5 Tx encoder,\n' ...
          '  noscr, K5 rx TB25, nodescr, 2^12, thr 0.0125, agc En10 +-32, regs 0x100..0x15C + txds 0x158,\n' ...
-         '  WPP16, byte RD, Rsym 1.92e6 x sps 8 -- T8 rate fix)\n']);
+         '  WPP%d, byte RD, Rsym %g x sps %d = rail 15.36e6 -- T8 rate fix + A3 rung)\n'], ...
+         cfg.Frame, cfg.WordsPerPacketRx, double(rs), cfg.Sps);

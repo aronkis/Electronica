@@ -1,0 +1,190 @@
+# TXFS edge clk=210 frame=0 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=1
+# frameCount change clk=98662 frame=0 0 -> 1
+# FRAME 0 complete: txFrameStart edges=1
+# TXFS edge clk=98874 frame=1 sampleCount=27 mark_now=1 mark_latch=1 ddrcapRecIdx=1
+# frameCount change clk=197222 frame=1 1 -> 2
+# FRAME 1 complete: txFrameStart edges=1
+# frameCount change clk=197430 frame=2 2 -> 1
+# TXFS edge clk=197538 frame=2 sampleCount=27 mark_now=1 mark_latch=1 ddrcapRecIdx=1
+# frameCount change clk=295782 frame=2 1 -> 2
+# FRAME 2 complete: txFrameStart edges=1
+# frameCount change clk=296094 frame=3 2 -> 1
+# TXFS edge clk=296202 frame=3 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=12274
+# frameCount change clk=394342 frame=3 1 -> 2
+# FRAME 3 complete: txFrameStart edges=1
+# frameCount change clk=394758 frame=4 2 -> 1
+# TXFS edge clk=394866 frame=4 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=24594
+# frameCount change clk=492902 frame=4 1 -> 2
+# FRAME 4 complete: txFrameStart edges=1
+# frameCount change clk=493422 frame=5 2 -> 1
+# TXFS edge clk=493530 frame=5 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=36914
+# frameCount change clk=591462 frame=5 1 -> 2
+# FRAME 5 complete: txFrameStart edges=1
+# frameCount change clk=592086 frame=6 2 -> 1
+# TXFS edge clk=592194 frame=6 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=49234
+# frameCount change clk=690022 frame=6 1 -> 2
+# FRAME 6 complete: txFrameStart edges=1
+# frameCount change clk=690750 frame=7 2 -> 1
+# TXFS edge clk=690858 frame=7 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=61554
+# frameCount change clk=788582 frame=7 1 -> 2
+# FRAME 7 complete: txFrameStart edges=1
+# frameCount change clk=789414 frame=8 2 -> 1
+# TXFS edge clk=789522 frame=8 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=73874
+# frameCount change clk=887142 frame=8 1 -> 2
+# FRAME 8 complete: txFrameStart edges=1
+# frameCount change clk=888078 frame=9 2 -> 1
+# TXFS edge clk=888186 frame=9 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=86194
+# frameCount change clk=985702 frame=9 1 -> 2
+# FRAME 9 complete: txFrameStart edges=1
+# frameCount change clk=986742 frame=10 2 -> 1
+# TXFS edge clk=986850 frame=10 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=98514
+# frameCount change clk=1084262 frame=10 1 -> 2
+# FRAME 10 complete: txFrameStart edges=1
+# frameCount change clk=1085406 frame=11 2 -> 1
+# TXFS edge clk=1085514 frame=11 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=110834
+# frameCount change clk=1182822 frame=11 1 -> 2
+# FRAME 11 complete: txFrameStart edges=1
+# frameCount change clk=1184070 frame=12 2 -> 1
+# TXFS edge clk=1184178 frame=12 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=123154
+# frameCount change clk=1281382 frame=12 1 -> 2
+# FRAME 12 complete: txFrameStart edges=1
+# frameCount change clk=1282734 frame=13 2 -> 1
+# TXFS edge clk=1282842 frame=13 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=135474
+# frameCount change clk=1379942 frame=13 1 -> 2
+# FRAME 13 complete: txFrameStart edges=1
+# frameCount change clk=1381398 frame=14 2 -> 1
+# TXFS edge clk=1381506 frame=14 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=147794
+# frameCount change clk=1478502 frame=14 1 -> 2
+# FRAME 14 complete: txFrameStart edges=1
+# frameCount change clk=1480062 frame=15 2 -> 1
+# TXFS edge clk=1480170 frame=15 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=160114
+# frameCount change clk=1577062 frame=15 1 -> 2
+# FRAME 15 complete: txFrameStart edges=1
+# frameCount change clk=1578726 frame=16 2 -> 1
+# TXFS edge clk=1578834 frame=16 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=172434
+# frameCount change clk=1675622 frame=16 1 -> 2
+# FRAME 16 complete: txFrameStart edges=1
+# frameCount change clk=1677390 frame=17 2 -> 1
+# TXFS edge clk=1677498 frame=17 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=184754
+# frameCount change clk=1774182 frame=17 1 -> 2
+# FRAME 17 complete: txFrameStart edges=1
+# frameCount change clk=1776054 frame=18 2 -> 1
+# TXFS edge clk=1776162 frame=18 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=197074
+# frameCount change clk=1872742 frame=18 1 -> 2
+# FRAME 18 complete: txFrameStart edges=1
+# frameCount change clk=1874718 frame=19 2 -> 1
+# TXFS edge clk=1874826 frame=19 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=209394
+# frameCount change clk=1971302 frame=19 1 -> 2
+# FRAME 19 complete: txFrameStart edges=1
+# frameCount change clk=1973382 frame=20 2 -> 1
+# TXFS edge clk=1973490 frame=20 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=221714
+# frameCount change clk=2069862 frame=20 1 -> 2
+# FRAME 20 complete: txFrameStart edges=1
+# frameCount change clk=2072046 frame=21 2 -> 1
+# TXFS edge clk=2072154 frame=21 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=234034
+# frameCount change clk=2168422 frame=21 1 -> 2
+# FRAME 21 complete: txFrameStart edges=1
+# frameCount change clk=2170710 frame=22 2 -> 1
+# TXFS edge clk=2170818 frame=22 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=246354
+# frameCount change clk=2266982 frame=22 1 -> 2
+# FRAME 22 complete: txFrameStart edges=1
+# frameCount change clk=2269374 frame=23 2 -> 1
+# TXFS edge clk=2269482 frame=23 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=258674
+# frameCount change clk=2365542 frame=23 1 -> 2
+# FRAME 23 complete: txFrameStart edges=1
+# frameCount change clk=2368038 frame=24 2 -> 1
+# TXFS edge clk=2368146 frame=24 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=270994
+# frameCount change clk=2464102 frame=24 1 -> 2
+# FRAME 24 complete: txFrameStart edges=1
+# frameCount change clk=2466702 frame=25 2 -> 1
+# TXFS edge clk=2466810 frame=25 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=283314
+# frameCount change clk=2562662 frame=25 1 -> 2
+# FRAME 25 complete: txFrameStart edges=1
+# frameCount change clk=2565366 frame=26 2 -> 1
+# TXFS edge clk=2565474 frame=26 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=295634
+# frameCount change clk=2661222 frame=26 1 -> 2
+# FRAME 26 complete: txFrameStart edges=1
+# frameCount change clk=2664030 frame=27 2 -> 1
+# TXFS edge clk=2664138 frame=27 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=307954
+# frameCount change clk=2759782 frame=27 1 -> 2
+# FRAME 27 complete: txFrameStart edges=1
+# frameCount change clk=2762694 frame=28 2 -> 1
+# TXFS edge clk=2762802 frame=28 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=320274
+# frameCount change clk=2858342 frame=28 1 -> 2
+# FRAME 28 complete: txFrameStart edges=1
+# frameCount change clk=2861358 frame=29 2 -> 1
+# TXFS edge clk=2861466 frame=29 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=332594
+# frameCount change clk=2956902 frame=29 1 -> 2
+# FRAME 29 complete: txFrameStart edges=1
+# frameCount change clk=2960022 frame=30 2 -> 1
+# TXFS edge clk=2960130 frame=30 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=344914
+# frameCount change clk=3055462 frame=30 1 -> 2
+# FRAME 30 complete: txFrameStart edges=1
+# frameCount change clk=3058686 frame=31 2 -> 1
+# TXFS edge clk=3058794 frame=31 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=357234
+# frameCount change clk=3154022 frame=31 1 -> 2
+# FRAME 31 complete: txFrameStart edges=1
+# frameCount change clk=3157350 frame=32 2 -> 1
+# TXFS edge clk=3157458 frame=32 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=369554
+# frameCount change clk=3252582 frame=32 1 -> 2
+# FRAME 32 complete: txFrameStart edges=1
+# frameCount change clk=3256014 frame=33 2 -> 1
+# TXFS edge clk=3256122 frame=33 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=381874
+# frameCount change clk=3351142 frame=33 1 -> 2
+# FRAME 33 complete: txFrameStart edges=1
+# frameCount change clk=3354678 frame=34 2 -> 1
+# TXFS edge clk=3354786 frame=34 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=394194
+# frameCount change clk=3449702 frame=34 1 -> 2
+# FRAME 34 complete: txFrameStart edges=1
+# frameCount change clk=3453342 frame=35 2 -> 1
+# TXFS edge clk=3453450 frame=35 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=406514
+# frameCount change clk=3548262 frame=35 1 -> 2
+# FRAME 35 complete: txFrameStart edges=1
+# frameCount change clk=3552006 frame=36 2 -> 1
+# TXFS edge clk=3552114 frame=36 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=418834
+# frameCount change clk=3646822 frame=36 1 -> 2
+# FRAME 36 complete: txFrameStart edges=1
+# frameCount change clk=3650670 frame=37 2 -> 1
+# TXFS edge clk=3650778 frame=37 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=431154
+# frameCount change clk=3745382 frame=37 1 -> 2
+# FRAME 37 complete: txFrameStart edges=1
+# frameCount change clk=3749334 frame=38 2 -> 1
+# TXFS edge clk=3749442 frame=38 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=443474
+# frameCount change clk=3843942 frame=38 1 -> 2
+# FRAME 38 complete: txFrameStart edges=1
+# frameCount change clk=3847998 frame=39 2 -> 1
+# TXFS edge clk=3848106 frame=39 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=455794
+# frameCount change clk=3942502 frame=39 1 -> 2
+# FRAME 39 complete: txFrameStart edges=1
+# frameCount change clk=3946662 frame=40 2 -> 1
+# TXFS edge clk=3946770 frame=40 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=468114
+# frameCount change clk=4041062 frame=40 1 -> 2
+# FRAME 40 complete: txFrameStart edges=1
+# frameCount change clk=4045326 frame=41 2 -> 1
+# TXFS edge clk=4045434 frame=41 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=480434
+# frameCount change clk=4139622 frame=41 1 -> 2
+# FRAME 41 complete: txFrameStart edges=1
+# frameCount change clk=4143990 frame=42 2 -> 1
+# TXFS edge clk=4144098 frame=42 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=492754
+# frameCount change clk=4238182 frame=42 1 -> 2
+# FRAME 42 complete: txFrameStart edges=1
+# frameCount change clk=4242654 frame=43 2 -> 1
+# TXFS edge clk=4242762 frame=43 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=505074
+# frameCount change clk=4336742 frame=43 1 -> 2
+# FRAME 43 complete: txFrameStart edges=1
+# frameCount change clk=4341318 frame=44 2 -> 1
+# TXFS edge clk=4341426 frame=44 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=517394
+# frameCount change clk=4435302 frame=44 1 -> 2
+# FRAME 44 complete: txFrameStart edges=1
+# frameCount change clk=4439982 frame=45 2 -> 1
+# TXFS edge clk=4440090 frame=45 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=529714
+# frameCount change clk=4533862 frame=45 1 -> 2
+# FRAME 45 complete: txFrameStart edges=1
+# frameCount change clk=4538646 frame=46 2 -> 1
+# TXFS edge clk=4538754 frame=46 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=542034
+# frameCount change clk=4632422 frame=46 1 -> 2
+# FRAME 46 complete: txFrameStart edges=1
+# frameCount change clk=4637310 frame=47 2 -> 1
+# TXFS edge clk=4637418 frame=47 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=554354
+# frameCount change clk=4730982 frame=47 1 -> 2
+# FRAME 47 (final, possibly partial) txFrameStart edges=1

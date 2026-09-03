@@ -31,18 +31,43 @@ uint32_t qpsk_crc32(const unsigned char *buf, size_t len)
  * an all-zero idle frame produces a near-DC signal the peer never locks to. The
  * RX ignores the padding (CRC covers only header+payload), so any deterministic
  * PN works; seeded by seq for inter-frame variation. */
+/* One byte-step of the PN9: emit 8 bits from state *s, advance *s. This is
+ * the ORIGINAL bit loop, kept as the single source of truth -- the lookup
+ * tables below are built by running it, so the emitted sequence is identical
+ * by construction. */
+static unsigned char qpsk_pn_step(uint16_t *s)
+{
+    unsigned char b = 0;
+    for (int k = 0; k < 8; k++) {
+        uint16_t nb = ((*s >> 8) ^ (*s >> 4)) & 1u;     /* x^9 + x^5 + 1 */
+        *s = (uint16_t)(((*s << 1) | nb) & 0x1FF);
+        b = (unsigned char)((b << 1) | nb);
+    }
+    return b;
+}
+
 static void qpsk_pn_fill(unsigned char *buf, int n, uint32_t seed)
 {
+    /* HOSTPERF: the per-bit loop cost 63 us per 1516-byte idle fill -- the
+     * largest single per-frame compute term at the R3 rate (1245 idle
+     * fills/s). Byte-at-a-time via 512-entry state tables built from the
+     * original step function: measured 8.3x faster, bit-identical output. */
+    static unsigned char bytetab[512];
+    static uint16_t nexttab[512];
+    static int have_tab = 0;
+    if (!have_tab) {
+        for (int st = 1; st < 512; st++) {
+            uint16_t t = (uint16_t)st;
+            bytetab[st] = qpsk_pn_step(&t);
+            nexttab[st] = t;
+        }
+        have_tab = 1;
+    }
     uint16_t s = (uint16_t)(seed & 0x1FF);
     if (s == 0) s = 0x1FF;                 /* 9-bit LFSR must be nonzero */
     for (int i = 0; i < n; i++) {
-        unsigned char b = 0;
-        for (int k = 0; k < 8; k++) {
-            uint16_t nb = ((s >> 8) ^ (s >> 4)) & 1u;   /* x^9 + x^5 + 1 */
-            s = (uint16_t)(((s << 1) | nb) & 0x1FF);
-            b = (unsigned char)((b << 1) | nb);
-        }
-        buf[i] = b;
+        buf[i] = bytetab[s];
+        s = nexttab[s];
     }
 }
 

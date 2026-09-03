@@ -25,9 +25,25 @@
 #include <stddef.h>
 
 #define QPSK_PKT_BYTES_DEFAULT 280
-#define QPSK_PKT_BYTES_MAX     1024
+/* F1536: 1528 B host frame (12 B header + 1516 B MTU payload) -- see
+ * k5_240/PACKET_F1536.txt and jupiter_240k5_byte/frame_config_k5.m's 'f1536'
+ * case. QPSK_PKT_BYTES_MAX must cover the largest deployed frame; F1536 (1528)
+ * is currently the largest, so it sets the ceiling. */
+#define QPSK_PKT_BYTES_MAX     1528
 #define QPSK_FRAME_HDR_BYTES   12
 #define QPSK_FRAME_MAX_PAYLOAD(pkt_bytes) ((pkt_bytes) - QPSK_FRAME_HDR_BYTES)
+
+/* F1536 large-frame geometry (runtime MODE selected in qpsk_tun.c via -G or
+ * QPSK_FRAME=f1536; k5 stays the default -- see qpsk_tun.c's K5_* constants
+ * for the two-radio 240k/K5 geometry these sit alongside):
+ *   PKT_BYTES     = host-delivered logical frame (WPP=191*64/8 = 1528 B,
+ *                   12 B header + 1516 B payload, MTU 1516).
+ *   TX_XFER_BYTES = the full air-frame TX transfer (385*8 = 3080 B; the
+ *                   fabric's per-transfer wordFirst/TLAST must land on the
+ *                   air-frame boundary, same padding contract as K5's
+ *                   128 B logical / 280 B air-frame pair). */
+#define F1536_PKT_BYTES      1528
+#define F1536_TX_XFER_BYTES  3080
 
 /* fills pkt[pkt_bytes]; returns pkt_bytes or -1 on bad length.
  * len==0 encodes an idle/keepalive frame (payload may be NULL). */

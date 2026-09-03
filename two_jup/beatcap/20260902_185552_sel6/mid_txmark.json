@@ -1,0 +1,88 @@
+{
+ "file": "beatcap/20260902_185552_sel6/mid.bin",
+ "period": 12320,
+ "n_mark_fec_total": 5449,
+ "n_regular": 5445,
+ "n_extra": 4,
+ "extra_positions": [
+  12481193,
+  27797072,
+  40405574,
+  56009257
+ ],
+ "regular_cadence_offset_to_next_demod_mark_sample": [
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48
+ ],
+ "positive_control": {
+  "modal_offset": 48,
+  "modal_fraction": 1.0,
+  "n": 5445,
+  "pass": true
+ },
+ "positive_control_pass": true,
+ "extra_pulse_count_status": "VALID",
+ "initial_record": 2778,
+ "initial_class": "0",
+ "d_data_transitions": [
+  {
+   "record": 12481194,
+   "from": "0",
+   "to": "rung",
+   "nearest_extra_pulse": 12481193,
+   "distance_to_nearest_extra": 1,
+   "extra_pulse_immediately_precedes": true
+  },
+  {
+   "record": 27797073,
+   "from": "rung",
+   "to": "None",
+   "nearest_extra_pulse": 27797072,
+   "distance_to_nearest_extra": 1,
+   "extra_pulse_immediately_precedes": true
+  },
+  {
+   "record": 27809393,
+   "from": "None",
+   "to": "0",
+   "nearest_extra_pulse": 27797072,
+   "distance_to_nearest_extra": 12321,
+   "extra_pulse_immediately_precedes": false
+  },
+  {
+   "record": 40405575,
+   "from": "0",
+   "to": "None",
+   "nearest_extra_pulse": 40405574,
+   "distance_to_nearest_extra": 1,
+   "extra_pulse_immediately_precedes": true
+  },
+  {
+   "record": 56021578,
+   "from": "None",
+   "to": "0",
+   "nearest_extra_pulse": 56009257,
+   "distance_to_nearest_extra": 12321,
+   "extra_pulse_immediately_precedes": false
+  }
+ ],
+ "transitions_immediately_preceded_by_extra_pulse": "3/5"
+}

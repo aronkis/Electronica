@@ -80,6 +80,26 @@ for dd = {{'I'},{'Q'}}
         'roundingMode','Nearest', 'overflowMode','on', ...
         'outputMode','Same as input', ...
         'Position',[470 220+40*(d=='Q') 510 240+40*(d=='Q')]);
+    % --- firpipe: pipeline the polyphase FIR adder tree (Image B 122.88 MHz) ---
+    % The default fully-parallel FIR generates a single-cycle combinational
+    % MAC adder cascade (add_add_temp_0..10 -> 13-deep DSP48 ALU chain,
+    % ~12.3 ns logic) that cannot close at 122.88/125 MHz. The LOAD-BEARING
+    % properties are AdderChainArchitecture='tree' (balances the 11-deep linear
+    % add cascade) and the output pipelines: MultiplierOutputPipeline registers
+    % the products off the combinational path and AdderOutputPipeline registers
+    % the tree output. Together they collapse the critical path to a single
+    % registered DSP MAC stage (verified 18.384 ns/55 levels -> 2.028 ns/6
+    % levels; isolated OOC WNS -10.539 -> +5.965 ns @ 8.0 ns).
+    % NOTE: AddPipelineRegisters='on' emits ZERO registers for this legacy
+    % dspmlti4/FIR Interpolation block under the HDLDataPath architecture (it is
+    % a no-op here, kept only as belt-and-braces); do not rely on it.
+    % Codegen-architecture change only: full 37-bit intermediate precision (no
+    % internal saturation) keeps the arithmetic bit-identical -- only pipeline
+    % latency is added, which HDL Coder delay balancing compensates.
+    hdlset_param([loop '/REP_Tx' d], 'AdderChainArchitecture',    'tree');
+    hdlset_param([loop '/REP_Tx' d], 'AddPipelineRegisters',      'on');   % no-op here (see note)
+    hdlset_param([loop '/REP_Tx' d], 'MultiplierOutputPipeline',  1);
+    hdlset_param([loop '/REP_Tx' d], 'AdderOutputPipeline',       1);
     add_line(loop, sprintf('Transmitter/%d', 1+(d=='Q')), ['REP_Tx' d '/1'], 'autorouting','on');
     % T8 RATE FIX: loopback taps the TRANSMITTER output (rail 15.36e6, sps8 =
     % exactly the air contract after the DAC picks 1/beat from the 30.72e6 REP

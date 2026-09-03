@@ -1,13 +1,18 @@
 // sim_byte.cpp -- S1B netlist byte gate driver (Verilator, wrap_byte.v).
 // Internal loopback (rx_input_select=0), tx_data_source=1, 1-in-2
 // adc_validIn cadence (Tx pacing), skip_count=0. A registered-handshake AXIS
-// byte source feeds the golden 35-word frames (word file, one hex per line);
+// byte source feeds the golden frame words (word file, one hex per line);
 // the start index emulates the cyclic-DMA word phase (0 = aligned).
 //
+// FRAME-AGNOSTIC (RXALIGN task, 2026-07-25): the source word count NW is read
+// from the hex file (k5=35, f1536=385); rotation is mod NW. This is the sole
+// geometry dependency in the driver (frame clks come in via total_clks). k5
+// behaviour is byte-identical (NW resolves to 35).
+//
 // argv: tx_words.hex total_clks rot out_prefix
-//   tx_words.hex : 35 lines, 16-hex-digit uint64 (LSB byte = first byte)
-//   total_clks   : sim length in clk cycles (frame = 18128 clks, T8 rail)
-//   rot          : source start index 0..34 (word phase rotation)
+//   tx_words.hex : NW lines, 16-hex-digit uint64 (LSB byte = first byte)
+//   total_clks   : sim length in clk cycles (k5 frame=18128 clks, f1536=197328)
+//   rot          : source start index 0..NW-1 (word phase rotation)
 //   out_prefix   : writes <prefix>_sym.csv  (modI,modQ per valid symbol)
 //                         <prefix>_rxw.txt (accepted byte-rx words: hex,last,user)
 //                         <prefix>_res.txt (final regs + steady-state error check)
@@ -20,14 +25,15 @@
 int main(int argc, char** argv){
     Verilated::commandArgs(argc,argv);
     if(argc < 5){ fprintf(stderr,"usage: sim_byte tx_words.hex total_clks rot out_prefix\n"); return 2; }
-    // load the 35-word frame
+    // load the frame source words (NW read from file: k5=35, f1536=385)
     std::vector<unsigned long long> words;
     { FILE* f=fopen(argv[1],"r"); if(!f){ fprintf(stderr,"no %s\n",argv[1]); return 2; }
       char ln[128];
       while(fgets(ln,sizeof ln,f)){ if(ln[0]=='\n') continue;
           words.push_back(strtoull(ln,nullptr,16)); }
       fclose(f); }
-    if(words.size()!=35){ fprintf(stderr,"expected 35 words, got %zu\n",words.size()); return 2; }
+    const unsigned NW = (unsigned)words.size();
+    if(NW==0){ fprintf(stderr,"empty word file %s\n",argv[1]); return 2; }
     long total=atol(argv[2]); int rot=atoi(argv[3]);
     char fn[512];
     snprintf(fn,sizeof fn,"%s_sym.csv",argv[4]); FILE* fs=fopen(fn,"w");
@@ -49,7 +55,7 @@ int main(int argc, char** argv){
         // sampled at the PREVIOUS posedge outputs (legal AXIS: accept happens
         // on the beat where both are high).
         if(t->byte_ready && t->byte_valid){
-            idx = (idx+1)%35;
+            idx = (idx+1)%NW;
         }
         t->byte_data=words[idx]; t->byte_first=(idx==0); t->byte_valid=1;
         // 1-in-2 adc_validIn cadence (Tx pacing via DS_TxValid)

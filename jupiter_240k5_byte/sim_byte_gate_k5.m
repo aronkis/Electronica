@@ -47,6 +47,7 @@ KITDIR=fileparts(mfilename('fullpath'));
 run('/home/tcollins/dev/qpsk_ai/TransceiverToolbox/setup.m');
 addpath('/home/tcollins/dev/qpsk_ai/TransceiverToolbox');
 cd(KITDIR); addpath(KITDIR);   % kit LAST -> its params win
+cfg = frame_config_k5();       % single source of truth for frame geometry
 
 logf='sim_byte_gate_k5.log'; if exist(logf,'file'), delete(logf); end
 diary(logf);
@@ -59,57 +60,140 @@ need=true;
 if exist(fullfile(KITDIR,'commhdlQPSKTxRxLoopback.slx'),'file')
     load_system(sys);
     d=get_param(sys,'Description');
-    if contains(d,'jupiter_240k5_byte') && contains(d,'T8ratefix'), need=false; end
+    % require the byte variant AND the matching frame geometry (A2) AND the
+    % matching sps (A3): a stale slx assembled for the OTHER frame OR a stale
+    % sps8 model reused for an sps4 run must both trigger a reassemble. The
+    % assemble stamps both frame=%s and sps%d/ in the Description.
+    if contains(d,'jupiter_240k5_byte') && contains(d,'T8ratefix') ...
+            && contains(d,['frame=' cfg.Frame]) ...
+            && contains(d, sprintf('sps%d/', cfg.Sps)), need=false; end
 end
 if need
     fprintf('model is not the assembled byte variant -- running assemble\n');
+    % release the stale in-memory copy loaded above: build_composite_local
+    % delete+copyfiles this .slx on disk, and a lingering in-memory load would
+    % make its save_system fail with "changed on disk since loaded".
+    if bdIsLoaded(sys), close_system(sys,0); end
     run('assemble_jupiter_240k5_byte.m');
 end
 load_system(sys);
+% Pin the current system: the model InitFcn calls qpskFindTxInputData(gcs), and
+% a preceding assemble leaves gcs pointing at a comm library it loaded
+% (commcnvcod2) rather than this model -> "cannot find Transmitter/Input Data".
+set_param(0,'CurrentSystem',sys);
 evalin('base', get_param(sys,'InitFcn'));
 
 % ---------------- (1) goldens + host-side contract self-check -------------
-G = load(fullfile(fileparts(KITDIR),'k5_240','golden_k5.mat'));
+G = load(fullfile(fileparts(KITDIR),'k5_240',sprintf('golden_%s.mat',cfg.Frame)));
 info    = double(G.info(:));  msgBitsG = double(G.msgBits(:));
 CAPG    = uint32(G.capOut);
-assert(numel(info)==1084 && isequal(info(1:120),msgBitsG) ...
-    && CAPG==uint32(hex2dec('04922282')), 'golden_k5.mat sanity failed');
-romLit = strtrim(fileread(fullfile(fileparts(KITDIR),'k5_240','rom_words_70_k5.txt')));
+assert(numel(info)==cfg.InfoBits && isequal(info(1:120),msgBitsG) ...
+    && CAPG==cfg.CapGolden, 'golden_%s.mat sanity failed (cap 0x%08X vs 0x%08X)', ...
+    cfg.Frame, CAPG, cfg.CapGolden);
+romLit = strtrim(fileread(fullfile(fileparts(KITDIR),'k5_240', ...
+    sprintf('rom_words_%d_%s.txt', cfg.RomWords32, cfg.Frame))));
 romW = eval(romLit); %#ok<EVLDIR>
 rombits = unpack_words32(romW);                       % 2240x1 (0/1)
 % PN9 filler (T8 fix 6bcaa62): golden payload tail; hard-reject a stale
 % pre-PN9 golden/ROM pair (64-ones filler)
-fillBits = double(G.payload(2177:2240));
-assert(numel(fillBits)==64 && ~all(fillBits==1), 'STALE golden_k5.mat: filler is 64 ones (pre-6bcaa62)');
-assert(isequal(rombits(2177:2240), fillBits(:)), 'ROM file vs golden_k5.mat filler mismatch');
+fillBits = double(G.payload(cfg.CodedBits+1:cfg.PayloadBits));   % 2177:2240
+assert(numel(fillBits)==cfg.FillerBits && ~all(fillBits==1), 'STALE golden_k5.mat: filler is 64 ones (pre-6bcaa62)');
+assert(isequal(rombits(cfg.CodedBits+1:cfg.PayloadBits), fillBits(:)), 'ROM file vs golden_k5.mat filler mismatch');
 encFrame = host_encode_k5(info, fillBits);
 assert(isequal(encFrame(:), rombits(:)), ...
     'HOST-CONTRACT FAIL: host encode(info) != ROM payload');
-fprintf('host K5 contract self-check OK (encode(info)+PN9 filler == ROM payload, 2240 bits)\n');
+fprintf('host K5 contract self-check OK (encode(info)+PN9 filler == ROM payload, %d bits)\n', cfg.PayloadBits);
 infoAlt = info; infoAlt(121:end) = 1 - infoAlt(121:end);   % message kept, pad inverted
 encAlt = host_encode_k5(infoAlt, fillBits);
 assert(~isequal(encAlt(:), rombits(:)), 'alt-pad frame degenerately equals ROM?!');
-txWordsG   = pack_bits64([info;    zeros(2240-1084,1)]);   % 35x1 uint64
-txWordsAlt = pack_bits64([infoAlt; zeros(2240-1084,1)]);
-rxGoldG    = pack_bits64(info(1:1024));                    % 16x1 uint64
-rxGoldAlt  = pack_bits64(infoAlt(1:1024));
+txWordsG   = pack_bits64([info;    zeros(cfg.PayloadBits-cfg.InfoBits,1)]);   % 35x1 uint64
+txWordsAlt = pack_bits64([infoAlt; zeros(cfg.PayloadBits-cfg.InfoBits,1)]);
+rxGoldG    = pack_bits64(info(1:cfg.WordsPerPacketRx*64));                    % 16x1 uint64
+rxGoldAlt  = pack_bits64(infoAlt(1:cfg.WordsPerPacketRx*64));
+
+% MID-CHAIN STAGE GOLDENS (LSB-first pack, matching fec_capture E8): cap_in =
+% first 32 coded bits into the deint (= air payload first 32 = rombits(1:32)),
+% cap_deint = first 32 deint-output bits (= the pre-interleave coded stream =
+% G.coded(1:32)). Compared against the logged cap_in/cap_deint to binary-search
+% the first divergent RX stage (demod -> deint -> Viterbi/RxAlign).
+lsbp = @(b) uint32(sum(uint64(double(b(:)').*2.^(0:numel(b)-1))));
+capInGold    = lsbp(rombits(1:32));
+capDeintGold = lsbp(double(G.coded(1:32)));
+fprintf('MID-CHAIN GOLDENS: cap_in=0x%08X cap_deint=0x%08X cap_out=0x%08X\n', ...
+    capInGold, capDeintGold, CAPG);
 
 % ---------------- (2) harness ----------------
 h = build_harness_k5(sys, loop);
-T = 0.030;   % ~50 frames (frame = 9064 rail beats @15.36M = 590 us, T8 rate fix)
-% debug-only short-run override (plumbing shakeout; gates WILL fail short):
+% Sim length is BOTH frame-aware (A2) and sps-aware (A3), composed to validate a
+% comparable FRAME COUNT at every (frame,sps) rung -- not a fixed sim-time.
+%  * sps (A3): the rail is fixed at the ADC bus 15.36M, so the frame PERIOD scales
+%    with sps (frame = (13 + PayloadBits/2) symbols * sps rail beats). A fixed T
+%    would run 2x more frames at sps4. Holding the frame count fixed also keeps the
+%    stock Bit Packetizer Data Bits FIFO -- a pre-existing, sps-INDEPENDENT slow
+%    drift (dataReady fires 1133*sps/(sps/2)=2266 times/frame at EVERY sps, vs 2240
+%    payload bits consumed) that trips its sim-only overflow assertion at ~frame 86
+%    regardless of sps -- below that limit (see FIFO_DRIFT_FINDING.md).
+%  * frame (A2): an f1536 frame is ~11x longer than a k5 frame (Symbols/frame
+%    12333 vs 1133), so f1536 targets far fewer frames (the reduced-frame-count
+%    mechanism) with lowered COUNT thresholds; k5 targets ~50.
+% Only the COUNTS relax for f1536; the oracle CONTENT stays strict for both frames
+% (firstGold<=startAllow, tailGold, cap==golden, zero new errors in the tail,
+% byte-rx words==golden). Historical values are preserved EXACTLY: (k5,sps8)
+% T=0.030, (f1536,sps8) T=0.060; other sps rungs scale by framePeriod (~ sps) to
+% hold the frame count fixed.
+FRAMES_TARGET = 50;
+framePeriod = (13 + cfg.PayloadBits/2) * cfg.Sps / 15.36e6;   % rail beats/frame / 15.36e6
+switch cfg.Frame
+    case 'f1536'
+        % An f1536 frame is ~6.4 ms (11x k5) and the model sims the same DSP per
+        % rail-step, so wall time is dominated by T. Use a short T (~9 frames)
+        % with lowered COUNT thresholds. Run B (rotated word-phase) is SKIPPED
+        % for f1536 (see runB below) because its shifter-realign needs many long
+        % frames; A/C/D still cover all three oracles at a few frames.
+        if cfg.Sps == 8
+            T = 0.060;                 % historical A2 f1536 value (~9 frames), unchanged
+        else
+            T = 0.060 * cfg.Sps / 8;   % same ~9-frame depth at other sps (framePeriod ~ sps)
+        end
+        lim = struct('minFrames',4,'minGold',3,'minPk',4,'pkTailAdv',1,'minNpk',3);
+    otherwise
+        % k5: validate a comparable ~50-frame depth at every sps.
+        if cfg.Sps == 8
+            T = 0.030;                       % historical sps8 value (~50 frames), unchanged
+        else
+            T = FRAMES_TARGET * framePeriod; % ~50 frames at any other rung (sps4 -> ~0.0148)
+        end
+        lim = struct('minFrames',15,'minGold',10,'minPk',10,'pkTailAdv',4,'minNpk',4);
+end
+% debug/override hook (also the manual reduced-frame-count control; gates WILL
+% fail short):
 ovT = getenv('BYTEGATE_T');
 if ~isempty(ovT), T = str2double(ovT); fprintf('DEBUG: T override = %g s\n', T); end
+fprintf('sim window T=%g s (~%.0f frames @ sps%d, framePeriod=%.1f us)\n', ...
+    T, T/framePeriod, cfg.Sps, framePeriod*1e6);
 
 % ---------------- (3) runs + judgments ----------------
 resA = run_case_k5(h, 'A aligned/golden ', txWordsG,   1, 1, T);
-[okA, sumA] = judge_case(resA, rombits, rxGoldG,  CAPG, 3, 'A', rombits);
-resB = run_case_k5(h, 'B rotated/golden ', txWordsG,  18, 1, T);
-[okB, sumB] = judge_case(resB, rombits, rxGoldG,  CAPG, 8, 'B', rombits);
+[okA, sumA] = judge_case(resA, rombits, rxGoldG,  CAPG, 3, 'A', rombits, lim);
+% Run B (rotated word phase) exercises the byte shifter's in-band first-word
+% realign, which must consume up to a full DMA transfer to converge -- fine at
+% k5's ~50 frames, but at f1536's few (very long) frames it cannot converge in
+% the tractable window. The realign mechanism is WPP-parameterized and
+% geometry-INDEPENDENT (k5-proven), so B is k5-only; f1536 relies on A/C/D
+% (which cover all three oracles + the encoder discriminator + the ROM path).
+runB = strcmp(cfg.Frame,'k5');
+if runB
+    resB = run_case_k5(h, 'B rotated/golden ', txWordsG,  18, 1, T);
+    [okB, sumB] = judge_case(resB, rombits, rxGoldG,  CAPG, 8, 'B', rombits, lim);
+else
+    okB = true;
+    sumB = 'SKIPPED (f1536: rotated-realign needs many long frames; WPP-parameterized, geometry-independent, k5-proven)';
+    fprintf('[B] SKIPPED for f1536 (rotated word-phase realign; k5-proven plumbing)\n');
+end
 resC = run_case_k5(h, 'C aligned/ALTpad ', txWordsAlt, 1, 1, T);
-[okC, sumC] = judge_case(resC, encAlt,  rxGoldAlt, CAPG, 3, 'C', rombits);
+[okC, sumC] = judge_case(resC, encAlt,  rxGoldAlt, CAPG, 3, 'C', rombits, lim);
 resD = run_case_k5(h, 'D ROM regression ', txWordsG,   1, 0, T);
-[okD, sumD] = judge_case(resD, rombits, rxGoldG,  CAPG, 2, 'D', rombits);
+[okD, sumD] = judge_case(resD, rombits, rxGoldG,  CAPG, 2, 'D', rombits, lim);
 
 allPass = okA && okB && okC && okD;
 fid=fopen(fullfile(KITDIR,'SIM_BYTE_GATE_K5.txt'),'w');
@@ -224,11 +308,24 @@ add_line(h,'StartIdxConst/1','ByteSrc/3');
 connect_in(h, im, 'byte_data',  'ByteSrc/1');
 connect_in(h, im, 'byte_valid', 'ByteSrc/2');
 connect_in(h, im, 'byte_first', 'ByteSrc/3');
-% byte_ready feedback DUT -> ByteSrc
-add_line(h, sprintf('DUT/%d', om('byte_ready')), 'ByteSrc/1', 'autorouting','on');
+% byte_ready feedback DUT -> ByteSrc. f1536 (TXMUX 2026-07-25): the source
+% must see byte_ready the way the axi_dmac does on silicon -- delayed by the
+% codegen delayMatch pipeline (qpskByteSkidLag) that qpskByteWordBufferSkid's
+% push gate replicates. Without this the model-level handshake is FRESHER
+% than the netlist pin and the skid semantics diverge (drops/dups in model
+% only). k5 keeps the direct feedback (legacy buffer, lag-0; G0 unchanged).
+cfgSkid = frame_config_k5();   % local scope (build_harness_k5 is a subfunction)
+if strcmp(cfgSkid.Frame, 'f1536')
+    add_block('built-in/Delay', [h '/SkidLagDly'], ...
+        'DelayLength', num2str(qpskByteSkidLag()), 'Position',[110 470 140 490]);
+    add_line(h, sprintf('DUT/%d', om('byte_ready')), 'SkidLagDly/1', 'autorouting','on');
+    add_line(h, 'SkidLagDly/1', 'ByteSrc/1', 'autorouting','on');
+else
+    add_line(h, sprintf('DUT/%d', om('byte_ready')), 'ByteSrc/1', 'autorouting','on');
+end
 % --- terminate every other DUT outport; enable logging on the oracles ---
 ph = get_param([h '/DUT'],'PortHandles');
-logNames = {'packets_out','bit_errors_out','cap_out', ...
+logNames = {'packets_out','bit_errors_out','cap_out','cap_in','cap_deint', ...
             'byte_rx_data','byte_rx_valid','byte_rx_last','byte_rx_user'};
 for k=1:numel(ph.Outport)
     if k ~= om('byte_ready')
@@ -318,8 +415,17 @@ res.rxu = logical(pick_ts(els,'byte_rx_user').Data(bv));
 res.pk  = double(res.pkTs.Data(end));
 res.err = double(res.errTs.Data(end));
 res.cap = uint32(res.capTs.Data(end));
-fprintf('%s: packets=%d errors=%d cap_out=0x%08X syms=%d rxwords=%d\n', ...
-    strtrim(label), res.pk, res.err, res.cap, numel(res.sym), numel(res.rxw));
+% MID-CHAIN STAGE ORACLES (fec_capture E8 taps, already in the DUT): cap_in =
+% first 32 coded bits INTO the deint (post-demod/descrambler), cap_deint =
+% first 32 deint-OUTPUT coded bits, cap_out = first 32 RxAlign-output decoded
+% bits. Comparing each to its golden binary-searches the first divergent RX
+% stage (demod vs deint vs Viterbi/RxAlign) in this one run.
+ciIdx = find(strcmp(els(:,1),'cap_in'),1); cdIdx = find(strcmp(els(:,1),'cap_deint'),1);
+res.capIn    = uint32(0); res.capDeint = uint32(0);
+if ~isempty(ciIdx), res.capIn    = uint32(els{ciIdx,2}.Data(end)); end
+if ~isempty(cdIdx), res.capDeint = uint32(els{cdIdx,2}.Data(end)); end
+fprintf('%s: packets=%d errors=%d cap_in=0x%08X cap_deint=0x%08X cap_out=0x%08X syms=%d rxwords=%d\n', ...
+    strtrim(label), res.pk, res.err, res.capIn, res.capDeint, res.cap, numel(res.sym), numel(res.rxw));
 end
 
 function ts = pick_ts(els, nm)
@@ -329,13 +435,14 @@ ts = els{idx,2};
 assert(isa(ts,'timeseries'), 'log %s is a %s, expected timeseries', nm, class(ts));
 end
 
-function [ok, summary] = judge_case(res, refbits, rxGold, CAPG, startAllow, tag, rombits)
+function [ok, summary] = judge_case(res, refbits, rxGold, CAPG, startAllow, tag, rombits, lim)
+cfg = frame_config_k5();   % byte-RX packet word count (WordsPerPacketRx)
 % (a) air oracle
 [nFrames, firstGold, nGold, tailGold, frErr] = air_frames_k5(res.sym, refbits);
 fprintf('[%s] air: %d full frames, firstGolden=%d, golden=%d, all-after-first-golden=%d, perFrameErr=%s\n', ...
     tag, nFrames, firstGold, nGold, tailGold, mat2str(frErr(1:min(end,30))));
-gate_air = (nFrames >= 15) && ~isnan(firstGold) && (firstGold <= startAllow) ...
-           && tailGold && (nGold >= 10);
+gate_air = (nFrames >= lim.minFrames) && ~isnan(firstGold) && (firstGold <= startAllow) ...
+           && tailGold && (nGold >= lim.minGold);
 % discriminator (run C): steady-state frames must NOT be the ROM frame
 gate_disc = true;
 if ~isequal(refbits(:), rombits(:))
@@ -347,7 +454,7 @@ end
 tLate = 0.70*res.T;
 eLate = double(res.errTs.Data(find(res.errTs.Time<=tLate,1,'last')));
 pLate = double(res.pkTs.Data(find(res.pkTs.Time<=tLate,1,'last')));
-gate_bist = (res.cap == CAPG) && (res.err == eLate) && (res.pk >= pLate+4) && (res.pk >= 10);
+gate_bist = (res.cap == CAPG) && (res.err == eLate) && (res.pk >= pLate+lim.pkTailAdv) && (res.pk >= lim.minPk);
 fprintf('[%s] bist: cap=0x%08X (golden 0x%08X) errs@70%%=%d errs@end=%d pkts %d->%d -> %s\n', ...
     tag, res.cap, CAPG, eLate, res.err, pLate, res.pk, string(gate_bist));
 % (c) byte-rx packets
@@ -365,10 +472,10 @@ if numel(li) >= 3
     for k = npk-ncheck+1 : npk
         seg = pkts{k};
         wv = res.rxw(seg); uv = res.rxu(seg); lv = res.rxl(seg);
-        okp = okp && numel(seg)==16 && isequal(wv(:), rxGold(:)) ...
+        okp = okp && numel(seg)==cfg.WordsPerPacketRx && isequal(wv(:), rxGold(:)) ...
              && uv(1) && ~any(uv(2:end)) && lv(end) && ~any(lv(1:end-1));
     end
-    gate_rx = okp && npk >= 4;
+    gate_rx = okp && npk >= lim.minNpk;
     rxdetail = sprintf('%d complete packets, last %d checked', npk, ncheck);
 end
 fprintf('[%s] byte-rx: %s -> %s\n', tag, rxdetail, string(gate_rx));
@@ -381,6 +488,7 @@ end
 
 function [nFrames, firstGold, nGold, tailGold, frErr] = air_frames_k5(sym, refbits)
 % symbol stream -> quadrants -> Barker frame starts -> payload bits vs refbits
+payloadSyms = frame_config_k5().PayloadBits/2;   % 1120 QPSK symbols/frame
 sI = real(sym)>0; sQ = imag(sym)>0;
 q  = double(sI)*2 + double(sQ);
 bark = logical([1 1 1 1 1 0 0 1 1 0 1 0 1]);
@@ -394,8 +502,8 @@ bitI = double(~sQ); bitQ = double(~sI);  % pi/4-Gray inverse (s1_analyze convent
 nFrames=0; frErr=[];
 for i=1:numel(starts)
     s0 = starts(i);
-    if s0+13+1120-1 > n, break; end
-    idx = s0+13 : s0+13+1120-1;
+    if s0+13+payloadSyms-1 > n, break; end
+    idx = s0+13 : s0+13+payloadSyms-1;
     bits = reshape([bitI(idx) bitQ(idx)].',[],1);
     frErr(end+1) = sum(bits(:) ~= refbits(:)); %#ok<AGROW>
     nFrames = nFrames+1;
@@ -439,10 +547,11 @@ function payload = host_encode_k5(infoVec, fillBits)
 % [info; 4 zero tail] -> convenc(poly2trellis(5,[35 23])) -> 2176 -> legacy
 % interleave (perm r*16+c over ROWS=136) -> + 64-bit PN9 filler (T8 fix
 % 6bcaa62; passed in from golden_k5.mat payload tail) -> 2240.
+cfg = frame_config_k5();
 trellis = poly2trellis(5,[35 23]);
-encIn = [infoVec(:); zeros(4,1)];
-coded = convenc(encIn, trellis); assert(numel(coded)==2176);
-ROWS=136; COLS=16; CODED=2176;
+encIn = [infoVec(:); zeros(cfg.TailBits,1)];
+coded = convenc(encIn, trellis); assert(numel(coded)==cfg.CodedBits);
+ROWS=cfg.InterleaveRows; COLS=cfg.InterleaveCols; CODED=cfg.CodedBits;
 il = zeros(CODED,1);
 for beat=0:CODED-1
     r = mod(beat,ROWS); c = floor(beat/ROWS); perm = r*COLS+c;

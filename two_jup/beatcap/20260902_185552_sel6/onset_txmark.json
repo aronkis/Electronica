@@ -1,0 +1,105 @@
+{
+ "file": "beatcap/20260902_185552_sel6/onset.bin",
+ "period": 12320,
+ "n_mark_fec_total": 5450,
+ "n_regular": 5445,
+ "n_extra": 5,
+ "extra_positions": [
+  10306769,
+  23432845,
+  38579674,
+  51372965,
+  66820094
+ ],
+ "regular_cadence_offset_to_next_demod_mark_sample": [
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48,
+  48
+ ],
+ "positive_control": {
+  "modal_offset": 48,
+  "modal_fraction": 1.0,
+  "n": 5445,
+  "pass": true
+ },
+ "positive_control_pass": true,
+ "extra_pulse_count_status": "VALID",
+ "initial_record": 11959,
+ "initial_class": "rung",
+ "d_data_transitions": [
+  {
+   "record": 10306770,
+   "from": "rung",
+   "to": "None",
+   "nearest_extra_pulse": 10306769,
+   "distance_to_nearest_extra": 1,
+   "extra_pulse_immediately_precedes": true
+  },
+  {
+   "record": 10319090,
+   "from": "None",
+   "to": "0",
+   "nearest_extra_pulse": 10306769,
+   "distance_to_nearest_extra": 12321,
+   "extra_pulse_immediately_precedes": false
+  },
+  {
+   "record": 23432846,
+   "from": "0",
+   "to": "rung",
+   "nearest_extra_pulse": 23432845,
+   "distance_to_nearest_extra": 1,
+   "extra_pulse_immediately_precedes": true
+  },
+  {
+   "record": 38579675,
+   "from": "rung",
+   "to": "None",
+   "nearest_extra_pulse": 38579674,
+   "distance_to_nearest_extra": 1,
+   "extra_pulse_immediately_precedes": true
+  },
+  {
+   "record": 38591995,
+   "from": "None",
+   "to": "0",
+   "nearest_extra_pulse": 38579674,
+   "distance_to_nearest_extra": 12321,
+   "extra_pulse_immediately_precedes": false
+  },
+  {
+   "record": 51372966,
+   "from": "0",
+   "to": "None",
+   "nearest_extra_pulse": 51372965,
+   "distance_to_nearest_extra": 1,
+   "extra_pulse_immediately_precedes": true
+  },
+  {
+   "record": 66832415,
+   "from": "None",
+   "to": "0",
+   "nearest_extra_pulse": 66820094,
+   "distance_to_nearest_extra": 12321,
+   "extra_pulse_immediately_precedes": false
+  }
+ ],
+ "transitions_immediately_preceded_by_extra_pulse": "4/7"
+}

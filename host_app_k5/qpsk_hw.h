@@ -53,7 +53,11 @@
 #    define QPSK_GPIO_BASE    0x9D300000u
 #  endif
 #  ifndef QPSK_DMA_BUF_BASE
-#    define QPSK_DMA_BUF_BASE 0x7FF00000u   /* reserved carve near top of 2 GB */
+#    ifdef QPSK_CARVE_2MB
+#      define QPSK_DMA_BUF_BASE 0x7FE00000u /* NEW image: 2 MB carve (1536 B frames) */
+#    else
+#      define QPSK_DMA_BUF_BASE 0x7FF00000u /* deployed image: top 1 MB reserved */
+#    endif
 #  endif
 #endif
 
@@ -110,17 +114,72 @@
 #define QPSK_CS_LF_DIV_CNT_OFF   0x19Cu /* carrier LF divergence episodes   */
 #define QPSK_NCO_DIV_BEAT_OFF    0x1A0u /* NCO twin-replica first div beat  */
 
-/* DMA ring sub-regions, derived from the buffer base. The Tx ring sits at the
- * base; the Rx ring offset differs per tool (kept as it was historically:
- * qpsk_capture uses +0x80000, qpsk_tun uses +0x40000). */
+/* ---- DMA slot geometry + carve layout -------------------------------------
+ *
+ * TWO carve layouts share this header, selected at COMPILE time:
+ *
+ *   DEFAULT (no -DQPSK_CARVE_2MB): the DEPLOYED-image layout. The current boot
+ *     image reserves ONLY the top 1 MB (0x7FF00000..0x7FFFFFFF), so this MUST
+ *     stay exactly as it was historically -- fixed offsets, SLOT_BYTES 1024.
+ *     This is the polled fallback's safety net; it is byte-for-byte identical
+ *     to prior builds. DO NOT change these values.
+ *
+ *   -DQPSK_CARVE_2MB: the NEW-image geometry for 1536 B frames. This ONE switch
+ *     bundles: 2 MB carve based at 0x7FE00000, SLOT_BYTES 2048, TX batch stride
+ *     16 KB, and size-DERIVED (stacked) sub-region offsets. Enabling it against
+ *     the deployed image is unsafe -- the extra 1 MB is NOT reserved there and
+ *     the DMA engines would scribble live kernel RAM. Only build with it once
+ *     the 2 MB reserved-memory node is in the device tree.
+ *
+ * Per-rung K / inflight guidance (RX -M K multi-packet, TX MAX_INFLIGHT):
+ *   In IRQ mode -M K is pure interrupt coalescing: one EOT interrupt per K
+ *   frames. Latency <= K * frame_period (the eager mid-transfer CRC scan keeps
+ *   effective latency well below that). Pick K so K*frame_period comfortably
+ *   exceeds the worst host stall (device-tick storms freeze the loop 10-40 ms):
+ *     240k5 (frame ~4.72 ms): K=16 -> ~75 ms coalesce window, robust; K=8 lean.
+ *     1536 B / higher-rate rungs: raise K so K*frame_period stays >= ~50 ms.
+ *   TX inflight: polled keeps MAX 2 (the silicon-tuned bounded-spin depth);
+ *   IRQ mode raises it to TX_SLOTS (8) so ~8 air frames stay queued across a
+ *   host stall (the Class-1 tick-loss origin). Both bounded by TX_SLOTS.
+ */
+#ifdef QPSK_CARVE_2MB
+#  define QPSK_SLOT_BYTES      2048u
+#  define QPSK_TX_BATCH_STRIDE 16384u
+#else
+#  define QPSK_SLOT_BYTES      1024u
+#  define QPSK_TX_BATCH_STRIDE 4096u
+#endif
+#define QPSK_TX_SLOTS          8u
+#define QPSK_RX_MULTI_MAX      64u
+
+/* Sub-region SIZES (bytes). Used to DERIVE the 2 MB carve offsets by stacking,
+ * so the layout stays consistent when SLOT_BYTES / strides change. */
+#define QPSK_TX_REGION_BYTES         (QPSK_TX_SLOTS * QPSK_TX_BATCH_STRIDE)
+#define QPSK_TUN_RX_REGION_BYTES     (2u * QPSK_RX_MULTI_MAX * QPSK_SLOT_BYTES)
+#define QPSK_CAPTURE_RX_REGION_BYTES (512u * 1024u)
+
+/* DMA ring sub-regions. The Tx ring sits at the carve base.
+ *   2 MB carve : TX 128 KB, then tun-RX 256 KB, then capture 512 KB (stacked,
+ *                size-derived -- no magic offsets, fits well inside 2 MB).
+ *   deployed   : historical FIXED offsets (qpsk_capture +0x80000, qpsk_tun
+ *                +0x40000) -- MUST NOT change (byte-for-byte on the 1 MB carve). */
 #ifndef QPSK_TX_BUF_PHYS
 #  define QPSK_TX_BUF_PHYS         (QPSK_DMA_BUF_BASE + 0x00000u)
 #endif
-#ifndef QPSK_CAPTURE_RX_BUF_PHYS
-#  define QPSK_CAPTURE_RX_BUF_PHYS (QPSK_DMA_BUF_BASE + 0x80000u)
-#endif
-#ifndef QPSK_TUN_RX_BUF_PHYS
-#  define QPSK_TUN_RX_BUF_PHYS     (QPSK_DMA_BUF_BASE + 0x40000u)
+#ifdef QPSK_CARVE_2MB
+#  ifndef QPSK_TUN_RX_BUF_PHYS
+#    define QPSK_TUN_RX_BUF_PHYS     (QPSK_TX_BUF_PHYS + QPSK_TX_REGION_BYTES)
+#  endif
+#  ifndef QPSK_CAPTURE_RX_BUF_PHYS
+#    define QPSK_CAPTURE_RX_BUF_PHYS (QPSK_TUN_RX_BUF_PHYS + QPSK_TUN_RX_REGION_BYTES)
+#  endif
+#else
+#  ifndef QPSK_CAPTURE_RX_BUF_PHYS
+#    define QPSK_CAPTURE_RX_BUF_PHYS (QPSK_DMA_BUF_BASE + 0x80000u)
+#  endif
+#  ifndef QPSK_TUN_RX_BUF_PHYS
+#    define QPSK_TUN_RX_BUF_PHYS     (QPSK_DMA_BUF_BASE + 0x40000u)
+#  endif
 #endif
 
 #endif /* QPSK_HW_H */

@@ -25,10 +25,15 @@ function [word, wordValid, wordLast, drop, state] = qpskByteSerializer(state, bi
 % inside the composite overlay's ByteSerializer MATLAB Function block.
 
 if nargin >= 1 && nargin < 6
-    wordsPerPacket = uint8(35);
+    % default = full-payload words (frame_config_k5.PayloadWords64 = 35 k5 /
+    % 385 f1536). Only reached when a caller omits wordsPerPacket; the
+    % model/tests pass it explicitly, so this branch is codegen-dead there.
+    % wordCnt/wordsPerPacket are uint16: f1536 PayloadWords64=385 overflows
+    % uint8 and WordsPerPacketRx=192 is widened for consistency.
+    wordsPerPacket = uint16(frame_config_k5().PayloadWords64);
 end
 if nargin == 0
-    word = struct('acc', uint64(0), 'bitIdx', uint8(0), 'wordCnt', uint8(0));
+    word = struct('acc', uint64(0), 'bitIdx', uint8(0), 'wordCnt', uint16(0));
     return
 end
 
@@ -41,7 +46,7 @@ if start
     % packet boundary: discard any partial word, restart word counting
     state.acc     = uint64(0);
     state.bitIdx  = uint8(0);
-    state.wordCnt = uint8(0);
+    state.wordCnt = uint16(0);
 end
 
 if bitValid
@@ -59,12 +64,12 @@ if bitValid
         if ready
             word      = state.acc;
             wordValid = true;
-            wordLast  = state.wordCnt >= uint8(wordsPerPacket);
+            wordLast  = state.wordCnt >= uint16(wordsPerPacket);
         else
             drop = true;
         end
-        if state.wordCnt >= uint8(wordsPerPacket)
-            state.wordCnt = uint8(0);
+        if state.wordCnt >= uint16(wordsPerPacket)
+            state.wordCnt = uint16(0);
         end
         state.acc    = uint64(0);
         state.bitIdx = uint8(0);

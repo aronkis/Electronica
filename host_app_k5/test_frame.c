@@ -1,7 +1,7 @@
 /* test_frame.c -- contract tests for the QPSK packet framing library,
  * exercised at all deployed packet sizes (280 B / 2240-bit build, 560 B /
- * 4480-bit build, 128 B / two-radio K5 build). Build/run on the dev
- * host: make test */
+ * 4480-bit build, 128 B / two-radio K5 build, 1528 B / two-radio F1536
+ * large-frame build). Build/run on the dev host: make test */
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,9 +76,18 @@ int main(void)
     CHECK(QPSK_FRAME_MAX_PAYLOAD(280) == 268, "280B max payload");
     CHECK(QPSK_FRAME_MAX_PAYLOAD(560) == 548, "560B max payload");
     CHECK(QPSK_FRAME_MAX_PAYLOAD(128) == 116, "128B (K5) max payload");
+    CHECK(QPSK_FRAME_MAX_PAYLOAD(F1536_PKT_BYTES) == 1516,
+          "1528B (F1536) max payload == MTU 1516");
+    CHECK(F1536_PKT_BYTES == 1528, "F1536 host frame is 1528 B");
+    CHECK(F1536_TX_XFER_BYTES == 3080, "F1536 TX air-frame transfer is 3080 B");
+    CHECK(F1536_TX_XFER_BYTES % 8 == 0 && F1536_TX_XFER_BYTES / 8 == 385,
+          "F1536 TX transfer is 385 x 64-bit words");
+    CHECK(QPSK_PKT_BYTES_MAX >= F1536_PKT_BYTES,
+          "QPSK_PKT_BYTES_MAX covers the F1536 frame");
     run_suite(128);
     run_suite(280);
     run_suite(560);
+    run_suite(F1536_PKT_BYTES);
     printf("frame tests: %d run, %d failed\n", tests, fails);
     return fails ? 1 : 0;
 }

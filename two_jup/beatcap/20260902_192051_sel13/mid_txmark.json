@@ -1,0 +1,38 @@
+{
+ "file": "beatcap/20260902_192051_sel13/mid.bin",
+ "period": 49332,
+ "n_mark_fec_total": 1364,
+ "n_regular": 1364,
+ "n_extra": 0,
+ "extra_positions": [],
+ "regular_cadence_offset_to_next_demod_mark_sample": [
+  246,
+  246,
+  246,
+  29258,
+  246,
+  246,
+  246,
+  246,
+  34991,
+  246,
+  246,
+  246,
+  246,
+  246,
+  246,
+  246,
+  246,
+  246,
+  246,
+  246
+ ],
+ "positive_control": {
+  "modal_offset": 246,
+  "modal_fraction": 0.8717,
+  "n": 1364,
+  "pass": false
+ },
+ "positive_control_pass": false,
+ "extra_pulse_count_status": "UNINFORMATIVE (positive control failed)"
+}

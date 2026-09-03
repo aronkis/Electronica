@@ -1,6 +1,28 @@
 /* qpsk_seq -- loss-proof sequence-streaming scorer. See qpsk_seq.h. */
+#include <stdlib.h>
 #include <string.h>
 #include "qpsk_seq.h"
+
+/* The in-fabric traffic generator (qpsk_traffic_gen, 2026-08-17) has no CRC
+ * engine: it writes this CONSTANT in the frame's CRC field (design Approach 1,
+ * mirrored in tgen_golden.c). qpsk_frame_decode() therefore can never accept a
+ * generator frame; the structural-accept path below scores them instead. */
+#define QPSK_TGEN_CRC_CONST 0x54474E21u
+
+static int tgen_force;          /* selftest hook, bypasses the env gate */
+static int tgen_on(void)
+{
+    static int v = -1;
+    if (tgen_force)
+        return 1;
+    if (v < 0) {
+        /* QPSK_SEQ_RXONLY exists only for scoring the in-fabric generator
+         * (qpsk_tun.c seq_rxonly), so it doubles as the tgen-frame gate. */
+        const char *e = getenv("QPSK_SEQ_RXONLY");
+        v = (e && *e != '0');
+    }
+    return v;
+}
 
 void qpsk_seq_payload(unsigned char *buf, int len, uint32_t seq)
 {
@@ -22,13 +44,14 @@ void qpsk_seq_expected(unsigned char *frame, int pkt_bytes, uint32_t seq)
     qpsk_frame_encode(frame, pkt_bytes, payload, QPSK_SEQ_PAYLOAD_LEN, seq);
 }
 
-void qpsk_seq_reset(struct qpsk_seq_stats *s, int pkt_bytes)
+void qpsk_seq_reset(struct qpsk_seq_stats *s, int pkt_bytes, int batch_m)
 {
     void (*evt)(void *, const char *, uint32_t, uint32_t, double) = s->evt;
     void *ctx = s->evt_ctx;
     FILE *rawf = s->rawf;
     memset(s, 0, sizeof *s);
     s->pkt_bytes = pkt_bytes;
+    s->batch_m   = batch_m;
     s->evt = evt;
     s->evt_ctx = ctx;
     s->rawf = rawf;
@@ -79,6 +102,48 @@ static int bitdiff(struct qpsk_seq_stats *s, const unsigned char *raw,
     return errs;
 }
 
+/* generator frame ground truth: header (QK, len=fill, seq, CRC const) + PN
+ * over fill bytes + zero pad to pkt_bytes -- mirror of tgen_golden.c build() */
+static void tgen_expected(unsigned char *f, int pkt_bytes, uint32_t seq, int fill)
+{
+    memset(f, 0, (size_t)pkt_bytes);
+    f[0] = 0x51; f[1] = 0x4B;
+    f[2] = (unsigned char)(fill & 0xFF);
+    f[3] = (unsigned char)((fill >> 8) & 0xFF);
+    f[4] = (unsigned char)(seq & 0xFF);
+    f[5] = (unsigned char)((seq >> 8) & 0xFF);
+    f[6] = (unsigned char)((seq >> 16) & 0xFF);
+    f[7] = (unsigned char)((seq >> 24) & 0xFF);
+    f[8]  = (unsigned char)(QPSK_TGEN_CRC_CONST & 0xFF);
+    f[9]  = (unsigned char)((QPSK_TGEN_CRC_CONST >> 8) & 0xFF);
+    f[10] = (unsigned char)((QPSK_TGEN_CRC_CONST >> 16) & 0xFF);
+    f[11] = (unsigned char)((QPSK_TGEN_CRC_CONST >> 24) & 0xFF);
+    qpsk_seq_payload(f + QPSK_FRAME_HDR_BYTES, fill, seq);
+}
+
+/* public: build a TGEN-format frame (host TX leg of the TX-seam checker) */
+void qpsk_seq_tgen_frame(unsigned char *frame, int pkt_bytes, uint32_t seq, int fill)
+{
+    if (fill < 0) fill = 0;
+    if (fill > QPSK_FRAME_MAX_PAYLOAD(pkt_bytes)) fill = QPSK_FRAME_MAX_PAYLOAD(pkt_bytes);
+    tgen_expected(frame, pkt_bytes, seq, fill);
+}
+
+static int tgen_bitdiff(struct qpsk_seq_stats *s, const unsigned char *raw,
+                        uint32_t seq, int fill, int accumulate)
+{
+    unsigned char exp[QPSK_PKT_BYTES_MAX];
+    int errs = 0;
+    tgen_expected(exp, s->pkt_bytes, seq, fill);
+    for (int i = 0; i < s->pkt_bytes; i++) {
+        int e = popc8[raw[i] ^ exp[i]];
+        errs += e;
+        if (accumulate && e)
+            s->per_offset[i] += (uint64_t)e;
+    }
+    return errs;
+}
+
 /* close an open junk run (emit its summary event) */
 static void junk_flush(struct qpsk_seq_stats *s, double t)
 {
@@ -89,7 +154,8 @@ static void junk_flush(struct qpsk_seq_stats *s, double t)
 }
 
 /* account an attributed frame at seq with errs bit errors */
-static int attribute(struct qpsk_seq_stats *s, uint32_t seq, int errs, double t)
+static int attribute(struct qpsk_seq_stats *s, uint32_t seq, int errs, double t,
+                     const unsigned char *raw)
 {
     junk_flush(s, t);
     if (!s->have_first) {
@@ -106,7 +172,50 @@ static int attribute(struct qpsk_seq_stats *s, uint32_t seq, int errs, double t)
         uint32_t missed = seq - s->next_expect;
         s->lost += missed;
         s->lost_events++;
+        /* LAYER B: a run that is an exact multiple of the batch depth is a DROPPED
+         * BATCH, not the periodic single-slot loss. Only meaningful with batch_m set. */
+        if (s->batch_m > 0 && missed >= (uint32_t)s->batch_m &&
+            (missed % (uint32_t)s->batch_m) == 0)
+            s->batch_drop++;
         emit(s, "lost", s->next_expect, missed, t);
+    }
+    /* LAYER B: is this corruption a DMA tear or a decode error? Walk 8-byte words
+     * (the byte-DMA's transfer granularity -- a tear cannot land finer than that) and
+     * find the first mismatching word; if everything BEFORE it matches expected(seq)
+     * and everything AFTER is either all-zero or consistent with a different seq, the
+     * slice was torn, not mis-decoded. */
+    if (errs) {
+        unsigned char exp[QPSK_PKT_BYTES_MAX];
+        int nw = s->pkt_bytes / 8, w, split = -1;
+        qpsk_seq_expected(exp, s->pkt_bytes, seq);
+        for (w = 0; w < nw; w++)
+            if (memcmp(raw + w*8, exp + w*8, 8) != 0) { split = w; break; }
+        if (split > 0) {                       /* a good prefix exists */
+            int allzero = 1, k;
+            for (k = split*8; k < s->pkt_bytes; k++)
+                if (raw[k]) { allzero = 0; break; }
+            /* every word from the split on must differ -- a single bad word in the
+             * middle followed by good data is scattered corruption, not a tear */
+            int tail_all_bad = 1;
+            for (w = split; w < nw; w++)
+                if (memcmp(raw + w*8, exp + w*8, 8) == 0) { tail_all_bad = 0; break; }
+            unsigned off = (unsigned)(split * 8);
+            if (allzero) {
+                s->torn_zero++;
+                if (!s->tear_off_min || off < s->tear_off_min) s->tear_off_min = off;
+                if (off > s->tear_off_max) s->tear_off_max = off;
+                raw_dump(s, "TORN_ZERO", seq, raw, t);
+            } else if (tail_all_bad) {
+                s->torn_stale++;
+                if (!s->tear_off_min || off < s->tear_off_min) s->tear_off_min = off;
+                if (off > s->tear_off_max) s->tear_off_max = off;
+                raw_dump(s, "TORN_STALE", seq, raw, t);
+            } else {
+                s->scattered++;
+            }
+        } else {
+            s->scattered++;                    /* corrupt from the very first word */
+        }
     }
     s->total_bits += (uint64_t)s->pkt_bytes * 8u;
     s->total_bit_errors += (uint64_t)errs;
@@ -154,7 +263,7 @@ int qpsk_seq_score_frame(struct qpsk_seq_stats *s, const unsigned char *raw,
     /* fast path: intact frame -- seq is exact, zero bit errors */
     m = qpsk_frame_decode(raw, s->pkt_bytes, out, &seq);
     if (m >= 0)
-        return attribute(s, seq, 0, t);
+        return attribute(s, seq, 0, t, raw);
 
     /* pre-anchor: probe for a constant word rotation (byte-DMA misalignment) */
     if (!s->have_first && s->rot_off == 0) {
@@ -164,7 +273,30 @@ int qpsk_seq_score_frame(struct qpsk_seq_stats *s, const unsigned char *raw,
             if (qpsk_frame_decode(rt, s->pkt_bytes, out, &seq) >= 0) {
                 s->rot_off = r;
                 emit(s, "wordrot", seq, (uint32_t)r, t);
-                return attribute(s, seq, 0, t);
+                return attribute(s, seq, 0, t, raw);
+            }
+            /* TGEN structural probe at this rotation (2026-08-18): constant-CRC
+             * generator frames can never pass qpsk_frame_decode, so without
+             * this leg a word-rotated generator stream — the RX seam has no
+             * frame/transfer realignment mechanism, so arming mid-stream
+             * yields a constant rotation — reads as junk forever. */
+            if (tgen_on() && rt[0] == 0x51 && rt[1] == 0x4B) {
+                int tf = (int)rt[2] | ((int)rt[3] << 8);
+                uint32_t tc = (uint32_t)rt[8] | ((uint32_t)rt[9] << 8) |
+                              ((uint32_t)rt[10] << 16) | ((uint32_t)rt[11] << 24);
+                if (tf <= QPSK_FRAME_MAX_PAYLOAD(s->pkt_bytes) &&
+                    tc == QPSK_TGEN_CRC_CONST) {
+                    uint32_t tseq = (uint32_t)rt[4] | ((uint32_t)rt[5] << 8) |
+                                    ((uint32_t)rt[6] << 16) | ((uint32_t)rt[7] << 24);
+                    int terr = tgen_bitdiff(s, rt, tseq, tf, 0);
+                    if (terr * 100 < s->pkt_bytes * 8 * 35) {
+                        s->rot_off = r;
+                        emit(s, "wordrot", tseq, (uint32_t)r, t);
+                        if (terr)
+                            tgen_bitdiff(s, rt, tseq, tf, 1);
+                        return attribute(s, tseq, terr, t, rt);
+                    }
+                }
             }
         }
     }
@@ -178,6 +310,41 @@ int qpsk_seq_score_frame(struct qpsk_seq_stats *s, const unsigned char *raw,
     seq = (uint32_t)p[4] | ((uint32_t)p[5] << 8) |
           ((uint32_t)p[6] << 16) | ((uint32_t)p[7] << 24);
 
+    /* TGEN structural accept (2026-08-17): generator frames carry the CRC
+     * CONSTANT, so the decode fast path above can never take them (T8 smoke
+     * scored 21,619 bit-perfect generator frames as junk). Accept on
+     * magic + sane len + the constant, score payload bits against the
+     * regenerated PN + zero pad, and anchor/attribute exactly like a
+     * decoded frame so lost/dup accounting works. Requires QPSK_WHITEN=0:
+     * generator frames are never whitened on the wire, so the de-whitened
+     * view p would scramble them and this gate would never match. */
+    if (tgen_on() && p[0] == 0x51 && p[1] == 0x4B) {
+        int fill = (int)p[2] | ((int)p[3] << 8);
+        uint32_t cf = (uint32_t)p[8] | ((uint32_t)p[9] << 8) |
+                      ((uint32_t)p[10] << 16) | ((uint32_t)p[11] << 24);
+        /* WINDOW CHECK (2026-08-18): mirror the normal path's seq plausibility
+         * gate. Without it, ONE frame with a corrupted seq field (magic/len/
+         * const intact -- and at short fills the PN region is too small for
+         * the 35% bitdiff threshold to reject it) re-anchors next_expect
+         * arbitrarily far: observed on silicon as a 16,344-frame phantom
+         * "lost" followed by a 26 s dup avalanche (fill=48 run, 08:00). */
+        int seq_plausible = !s->have_first ||
+            ((int32_t)(seq - s->next_expect) >= -QPSK_SEQ_WINDOW &&
+             (int32_t)(seq - s->next_expect) <   QPSK_SEQ_WINDOW);
+        if (seq_plausible &&
+            fill <= QPSK_FRAME_MAX_PAYLOAD(s->pkt_bytes) &&
+            cf == QPSK_TGEN_CRC_CONST) {
+            errs = tgen_bitdiff(s, p, seq, fill, 0);
+            if (errs * 100 < s->pkt_bytes * 8 * 35) {   /* frac < 0.35 */
+                if (errs) {
+                    tgen_bitdiff(s, p, seq, fill, 1);
+                    raw_dump(s, "biterr", seq, raw, t);
+                }
+                return attribute(s, seq, errs, t, raw);
+            }
+        }
+    }
+
     if (s->have_first) {
         int32_t d = (int32_t)(seq - s->next_expect);
         if (d >= 0 && d < QPSK_SEQ_WINDOW) {
@@ -186,7 +353,7 @@ int qpsk_seq_score_frame(struct qpsk_seq_stats *s, const unsigned char *raw,
             if (errs * 100 < s->pkt_bytes * 8 * 35) {   /* frac < 0.35 */
                 bitdiff(s, raw, seq, 1);                 /* accumulate map */
                 raw_dump(s, "biterr", seq, raw, t);
-                return attribute(s, seq, errs, t);
+                return attribute(s, seq, errs, t, raw);
             }
         } else if (d < 0 && -d <= QPSK_SEQ_WINDOW) {
             errs = bitdiff(s, raw, seq, 0);
@@ -203,7 +370,7 @@ int qpsk_seq_score_frame(struct qpsk_seq_stats *s, const unsigned char *raw,
         if (errs * 100 < s->pkt_bytes * 8 * 35) {
             bitdiff(s, raw, s->next_expect, 1);
             raw_dump(s, "biterr-hdr", s->next_expect, raw, t);
-            return attribute(s, s->next_expect, errs, t);
+            return attribute(s, s->next_expect, errs, t, raw);
         }
     }
 
@@ -218,6 +385,11 @@ int qpsk_seq_score_frame(struct qpsk_seq_stats *s, const unsigned char *raw,
 
 void qpsk_seq_report(const struct qpsk_seq_stats *s, FILE *f, double elapsed_s)
 {
+    fprintf(f, "SEQDMA torn_zero=%llu torn_stale=%llu scattered=%llu "
+            "batch_drop=%llu batch_m=%d tear_off=%u..%u\n",
+            (unsigned long long)s->torn_zero, (unsigned long long)s->torn_stale,
+            (unsigned long long)s->scattered, (unsigned long long)s->batch_drop,
+            s->batch_m, (unsigned)s->tear_off_min, (unsigned)s->tear_off_max);
     double ber = s->total_bits
         ? (double)s->total_bit_errors / (double)s->total_bits : 0.0;
     uint64_t accounted = s->ok + s->biterr + s->lost;
@@ -289,7 +461,7 @@ int qpsk_seq_selftest(void)
 
     memset(&s, 0, sizeof s);
     s.evt = tevt;
-    qpsk_seq_reset(&s, pkt);
+    qpsk_seq_reset(&s, pkt, 16);
 
     /* clean run 5..7 */
     for (uint32_t q = 5; q <= 7; q++) {
@@ -341,7 +513,7 @@ int qpsk_seq_selftest(void)
         (uint64_t)(s.next_expect - s.first_seq), "loss-proof identity");
 
     /* word-rotation wedge: a constantly rotated stream must self-heal */
-    qpsk_seq_reset(&s, pkt);
+    qpsk_seq_reset(&s, pkt, 16);
     for (uint32_t q = 100; q < 104; q++) {
         unsigned char rot[QPSK_PKT_BYTES_MAX];
         qpsk_seq_expected(f, pkt, q);
@@ -351,6 +523,54 @@ int qpsk_seq_selftest(void)
         CHK(rc == QSEQ_OK, "rotated frame not recovered");
     }
     CHK(s.rot_off != 0 && s.ok == 4, "rotation lock/accounting");
+
+    /* TGEN structural accept: constant-CRC generator frames must score OK /
+     * BITERR / LOST like decoded frames -- and must stay junk when the tgen
+     * gate is off (positive AND negative control). */
+    qpsk_seq_reset(&s, pkt, 16);
+    tgen_expected(f, pkt, 200, 64);
+    CHK(qpsk_seq_score_frame(&s, f, 0.0) == QSEQ_JUNK,
+        "tgen frame accepted with gate OFF");
+    tgen_force = 1;
+    qpsk_seq_reset(&s, pkt, 16);
+    for (uint32_t q = 200; q <= 202; q++) {
+        tgen_expected(f, pkt, q, 64);
+        CHK(qpsk_seq_score_frame(&s, f, 0.0) == QSEQ_OK, "tgen clean not OK");
+    }
+    CHK(s.ok == 3 && s.next_expect == 203, "tgen clean accounting");
+    tgen_expected(f, pkt, 205, 64);              /* gap: lost 203,204 */
+    CHK(qpsk_seq_score_frame(&s, f, 0.0) == QSEQ_OK, "tgen post-gap not OK");
+    CHK(s.lost == 2, "tgen gap loss count");
+    tgen_expected(f, pkt, 206, 64);
+    f[20] ^= 0x01; f[30] ^= 0x80;                /* 2 payload bit errors */
+    CHK(qpsk_seq_score_frame(&s, f, 0.0) == QSEQ_BITERR, "tgen biterr not scored");
+    CHK(s.total_bit_errors == 2, "tgen biterr count");
+    tgen_expected(f, pkt, 207, 0);               /* fill=0: header + all-zero pad */
+    CHK(qpsk_seq_score_frame(&s, f, 0.0) == QSEQ_OK, "tgen fill=0 not OK");
+    tgen_expected(f, pkt, 208, 64);
+    f[8] ^= 0xFF;                                 /* CRC-const wrong -> not OK */
+    CHK(qpsk_seq_score_frame(&s, f, 0.0) != QSEQ_OK, "bad CRC-const accepted");
+    {   /* corrupted-seq re-anchor guard: a far-future seq (window exceeded)
+         * must NOT attribute -- it would inflate lost and dup-ify the rest */
+        uint32_t ne = s.next_expect;
+        tgen_expected(f, pkt, ne + 10000, 64);
+        CHK(qpsk_seq_score_frame(&s, f, 0.0) == QSEQ_JUNK,
+            "far-future tgen seq re-anchored");
+        CHK(s.next_expect == ne, "next_expect moved on far-future tgen seq");
+    }
+    /* word-rotated tgen stream must self-heal via the structural rotation
+     * probe (the RX seam has no frame/transfer alignment mechanism) */
+    qpsk_seq_reset(&s, pkt, 16);
+    for (uint32_t q = 300; q < 304; q++) {
+        unsigned char rot[QPSK_PKT_BYTES_MAX];
+        tgen_expected(f, pkt, q, 64);
+        memcpy(rot, f + pkt - 3 * 8, 3 * 8);           /* rotate RIGHT by 3 words */
+        memmove(rot + 3 * 8, f, (size_t)(pkt - 3 * 8));
+        CHK(qpsk_seq_score_frame(&s, rot, 0.0) == QSEQ_OK,
+            "rotated tgen frame not recovered");
+    }
+    CHK(s.rot_off != 0 && s.ok == 4, "tgen rotation lock/accounting");
+    tgen_force = 0;
 
     fprintf(stderr, "qpsk_seq_selftest OK\n");
     return 0;

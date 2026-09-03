@@ -19,7 +19,9 @@
 # Options: -d DUR(-B secs, def 60)  -n NSAMP(complex, def 2000000)
 #          -s SEED (QBER_SEED both ends)  -o OUTDIR (def paired/<ts>_<dir>)
 # Output:  pair.iq (int16 I,Q @1.92 Msps), ber.log (full -B report incl.
-#          per-offset map), regs_{pre,mid1,mid2,post}.txt, meta.txt
+#          per-offset map), frames.bin (per-frame telemetry, 48 B/frame, via
+#          QPSK_FRAMELOG -- correlate to pair.iq by the CAP_START pkts=0x104
+#          anchor), regs_{pre,cap,post}.txt, meta.txt
 # =============================================================================
 set -u
 D=$(cd "$(dirname "$0")" && pwd); W=$D/anyssh.sh
@@ -84,7 +86,7 @@ arm $A_IP $REV_HZ $FWD_HZ
 # 3. watchdogs (acquisition only) + -B on both
 for ip in $B_IP $A_IP; do
   $W $ip 'rm -f /dev/shm/watchdog.log; setsid /root/lock_watchdog.sh </dev/null >/dev/null 2>&1 &' 2>/dev/null
-  $W $ip "cd /root/host_app_k5; rm -f /dev/shm/pair_ber.log; setsid sh -c 'QBER_SEED=$SEED ./qpsk_tun -B -d $DUR > /dev/shm/pair_ber.log 2>&1' </dev/null >/dev/null 2>&1 &" 2>/dev/null
+  $W $ip "cd /root/host_app_k5; rm -f /dev/shm/pair_ber.log /dev/shm/frames.bin; setsid sh -c 'QBER_SEED=$SEED QPSK_FRAMELOG=/dev/shm/frames.bin ./qpsk_tun -B -d $DUR > /dev/shm/pair_ber.log 2>&1' </dev/null >/dev/null 2>&1 &" 2>/dev/null
 done
 echo "  acquiring (watchdogs live) 12s ..."; sleep 12
 
@@ -117,8 +119,13 @@ snap $RX_IP > "$OUT/regs_post.txt"; cat "$OUT/regs_post.txt"
 # 8. pull artifacts + health check
 scpput root@$RX_IP:/dev/shm/pair.iq "$OUT/pair.iq" || { echo "scp pair.iq FAIL"; exit 1; }
 scpput root@$RX_IP:/dev/shm/pair_ber.log "$OUT/ber.log" || echo "WARN: ber.log fetch failed"
+# per-frame telemetry log (QPSK_FRAMELOG): 48 B/frame, correlated to pair.iq via
+# the pkts=0x104 anchor in regs_cap.txt (CAP_START). Analyzed by
+# two_jup/frame_taxonomy.py + align_frames.py.
+scpput root@$RX_IP:/dev/shm/frames.bin "$OUT/frames.bin" || echo "WARN: frames.bin fetch failed"
 PEER=$([ "$RX_IP" = "$A_IP" ] && echo $B_IP || echo $A_IP)
 scpput root@$PEER:/dev/shm/pair_ber.log "$OUT/ber_peer.log" 2>/dev/null || true
+scpput root@$PEER:/dev/shm/frames.bin "$OUT/frames_peer.bin" 2>/dev/null || true
 { echo "target=$TGT dir=$DIRN rx=$RX_IP dur=$DUR nsamp=$NSAMP seed=${SEED:-default}"
   echo "fwd=$FWD_HZ rev=$REV_HZ ts=$(date -Is)"; } > "$OUT/meta.txt"
 for ip in $B_IP $A_IP; do $W $ip 'echo "'$ip' health: up $(cat /proc/uptime | cut -d" " -f1)s"' 2>/dev/null; done

@@ -1,0 +1,19 @@
+1 0 198364 0 0 occ=12333 mu=1012 cnt=765 push=56 pop=56
+2 51 98664 0 0 occ=12333 mu=20 cnt=773 push=56 pop=56
+3 0 98664 0 0 occ=12333 mu=1012 cnt=765 push=56 pop=56
+4 0 98664 0 0 occ=12333 mu=20 cnt=773 push=56 pop=56
+5 0 98664 0 0 occ=12333 mu=8 cnt=770 push=56 pop=56
+6 0 98664 0 0 occ=12333 mu=20 cnt=773 push=56 pop=56
+7 0 98664 0 0 occ=12333 mu=16 cnt=772 push=56 pop=56
+8 0 98664 0 0 occ=12333 mu=8 cnt=770 push=56 pop=56
+9 0 98664 0 0 occ=12333 mu=20 cnt=773 push=56 pop=56
+10 0 98664 0 0 occ=12333 mu=20 cnt=773 push=56 pop=56
+11 0 98664 0 0 occ=12333 mu=16 cnt=772 push=56 pop=56
+12 0 98664 0 0 occ=12333 mu=20 cnt=773 push=56 pop=56
+13 0 98664 0 0 occ=12333 mu=20 cnt=773 push=56 pop=56
+14 0 98664 0 0 occ=12333 mu=20 cnt=773 push=56 pop=56
+15 0 98664 0 0 occ=12333 mu=1012 cnt=765 push=56 pop=56
+16 0 98664 0 0 occ=12333 mu=20 cnt=773 push=56 pop=56
+# offset_before=12323 shift=9
+# FORCED edge at packet 16 clk 1678324 fifo push=56 pop=56 occ=12333
+17 0 98592 0 1 occ=12333 mu=16 cnt=772 push=47 pop=47

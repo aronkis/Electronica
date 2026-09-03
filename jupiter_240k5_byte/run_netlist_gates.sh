@@ -41,7 +41,14 @@ rm -rf obj_byte
 verilator -O2 -Wno-fatal --cc wrap_byte.v -y "$VD" --exe sim_byte.cpp \
   -Mdir obj_byte --top-module wrap_byte
 make -s -C obj_byte -f Vwrap_byte.mk Vwrap_byte
-CLKS=$((100 + 38*18128))   # 38 frames x 9064 rail beats x 2 clks (T8 rail) + reset
+# Frame-aware clk budget (RXALIGN task 2026-07-25: was k5-locked at 38*18128).
+# frame clks = (13 + PayloadBits/2 sym) * sps8 * 2 clks/rail-beat:
+#   k5   : (13+1120)*8*2 = 18128, 38 frames
+#   f1536: (13+12320)*8*2 = 197328, 12 frames (~11x longer -> fewer frames)
+# sim_byte.cpp is frame-agnostic (reads NW=35/385 from tx_words_golden.hex).
+if [ "${QPSK_FRAME:-k5}" = "f1536" ]; then FRCLK=197328; NF=12; else FRCLK=18128; NF=38; fi
+CLKS=$((100 + NF*FRCLK))
+echo "S1B: frame=${QPSK_FRAME:-k5} FRCLK=$FRCLK NF=$NF CLKS=$CLKS"
 ./obj_byte/Vwrap_byte tx_words_golden.hex $CLKS 0  s1b_rot0
 ./obj_byte/Vwrap_byte tx_words_golden.hex $CLKS 17 s1b_rot17
 matlab -batch "run('$KIT/s1b_analyze_byte.m')"

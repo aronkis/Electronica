@@ -7,6 +7,32 @@ set kdir [file dirname [info script]]
 file copy -force $kdir/cdc_exceptions.xdc cdc_exceptions.xdc
 add_files -fileset constrs_1 -norecurse cdc_exceptions.xdc
 set_property USED_IN {implementation} [get_files cdc_exceptions.xdc]
+# T8.9 TMR stall fix: the triplicated accumulator registers MUST NOT be merged
+# by equivalent-register removal, or the fix is silently deleted from the
+# bitstream (netlist sim would still pass -- Verilator does not merge). Applied
+# only when the TMR overlay is in the build (env QPSK_MOVSUM_TMR set).
+if {[info exists ::env(QPSK_MOVSUM_TMR)] && $::env(QPSK_MOVSUM_TMR) ne ""} {
+  file copy -force $kdir/tmr_keep.xdc tmr_keep.xdc
+  add_files -fileset constrs_1 -norecurse tmr_keep.xdc
+  set_property USED_IN {synthesis implementation} [get_files tmr_keep.xdc]
+  set_property PROCESSING_ORDER LATE [get_files tmr_keep.xdc]
+  puts "TMR_XDC_ADDED tmr_keep.xdc (DONT_TOUCH on triplicated accumulator)"
+}
+# IMAGE A (30.72 MHz rungs R0/R1): re-time the fabric to 30.72 MHz. The ADI RD
+# constrains the SSI at 125 MHz, but the f1536 modem is sized for 30.72 MHz and
+# cannot close at 125 MHz (interleaver mod/idivide(1537) arithmetic). Applied only
+# when QPSK_TARGET_MHZ selects the low rung (< 60 MHz -> Image A; Image B @122.88
+# leaves the RD's 125 MHz). PROCESSING_ORDER LATE so it overrides the RD's
+# create_clock on the dclk ports. See image_a_3072_clocks.xdc for the LOAD-BEARING
+# deploy discipline (Image A boards may load ONLY 1.92/15.36 MSPS profiles).
+if {[info exists ::env(QPSK_FRAME)] && $::env(QPSK_FRAME) eq "f1536" \
+        && [info exists ::env(QPSK_TARGET_MHZ)] && [string is double -strict $::env(QPSK_TARGET_MHZ)] && $::env(QPSK_TARGET_MHZ) < 60} {
+    file copy -force $kdir/image_a_3072_clocks.xdc image_a_3072_clocks.xdc
+    add_files -fileset constrs_1 -norecurse image_a_3072_clocks.xdc
+    set_property USED_IN {synthesis implementation} [get_files image_a_3072_clocks.xdc]
+    set_property PROCESSING_ORDER LATE [get_files image_a_3072_clocks.xdc]
+    puts "IMAGE_A_RECLOCK: applied image_a_3072_clocks.xdc -> fabric adc_1_clk @ 30.72 MHz"
+}
 set project {jupiter_sdr}
 set ref_design {rxtx}
 set preprocess {off}
@@ -50,6 +76,15 @@ puts "=== BYTE DMA path: connect DUT byte ports to the byte breakouts (June-prov
 foreach c {byte_breakout rx_byte_breakout tx_byte_dma rx_byte_dma byte_ctrl_gpio} {
   if {![llength [get_bd_cells -quiet $c]]} { puts "BYTE_FAIL: cell $c missing (wrong reference design?)"; exit 1 }
 }
+# CYCLIC-capable MODEM RX DMAC (two_jup/DMAC_IDENTIFIED.md): rx_byte_dma is the
+# modem byte-plane S2MM DMAC at 0x9D200000, instantiated by TransceiverToolbox
+# matlab_processors.tcl:1061 with CONFIG.CYCLIC 0. Flip it to 1 here. Safe to
+# bake: the axi_dmac register path is runtime-opt-in (up_dma_cyclic <=
+# up_wdata[0] & DMA_CYCLIC), so the current host runs unchanged until FLAGS
+# bit0 is set. Do NOT touch axi_adrv9001_rx1_dma (the ADI IQ-capture DMA at
+# 0x44A30000 -- the prior cyclic patch's wrong target).
+set_property CONFIG.CYCLIC 1 [get_bd_cells rx_byte_dma]
+puts "CYCLIC_RXBYTE_OK rx_byte_dma CONFIG.CYCLIC=[get_property CONFIG.CYCLIC [get_bd_cells rx_byte_dma]]"
 # proc: connect a DUT byte pin to a reference-design breakout pin (idempotent:
 # extend the breakout pin's existing net if present, else create a new net)
 proc bconn {inst dutpin blkpin} {
@@ -76,6 +111,10 @@ foreach dp {dut_byte_data_in dut_byte_first_in dut_byte_valid_in dut_byte_ready_
   if {![llength [get_bd_nets -quiet -of_objects [get_bd_pins $HDLCODERIPINST/$dp]]]} { puts "BYTE_FAIL: $dp unconnected"; exit 1 }
 }
 puts "BYTE_WIRE_OK"
+# Workstream B (interrupt-driven DMA): wire the byte-DMA EOT IRQs into the PS
+# pl_ps_irq concat. Guarded/idempotent + a no-op on the lean flow (the sourced
+# script self-checks for the byte DMA cells), so the lean build is unaffected.
+source [file join [file dirname [info script]] wire_byte_irqs.tcl]
 update_compile_order -fileset sources_1
 validate_bd_design
 save_bd_design
@@ -95,12 +134,14 @@ puts "DDS_DIET_OK"; save_bd_design
 set_property top system_top [current_fileset]
 generate_target all [get_files system.bd]
 update_compile_order -fileset sources_1
-set_param general.maxThreads 12
+set_param general.maxThreads 6
 catch {reset_run impl_1}; catch {reset_run synth_1}
 foreach r [get_runs -quiet system_*_synth_1] { catch { reset_run $r } }
-puts "=== synth ==="; launch_runs synth_1 -jobs 8; wait_on_run synth_1
+puts "=== synth ==="; launch_runs synth_1 -jobs 6; wait_on_run synth_1
 if {[get_property PROGRESS [get_runs synth_1]] ne "100%"} { puts "SYNTH_FAILED [get_property STATUS [get_runs synth_1]]"; exit 1 }
-puts "=== impl+bit ==="; launch_runs impl_1 -to_step write_bitstream -jobs 8; wait_on_run impl_1
+# --- pre-implementation timing gate: assert WNS>=0 at the target fabric clock ---
+puts "=== pre-impl timing gate ==="; source [file join [file dirname [info script]] timing_gate.tcl]
+puts "=== impl+bit ==="; launch_runs impl_1 -to_step write_bitstream -jobs 6; wait_on_run impl_1
 if {[get_property PROGRESS [get_runs impl_1]] ne "100%"} { puts "IMPL_FAILED [get_property STATUS [get_runs impl_1]]"; exit 1 }
 set b projects/common/boot/jupiter_sdr; file mkdir boot
 file copy -force [get_property DIRECTORY [get_runs impl_1]]/system_top.bit boot/system_top.bit

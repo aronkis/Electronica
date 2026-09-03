@@ -20,10 +20,24 @@ function resolver_lookback_fix(sys, loop) %#ok<INUSD>
 % 4-fold resolve. Validated end-to-end (golden 04922282, qk 002ed28a,
 % rand af0666a8; cap_in==tx_air, cap_deint==enc_coded, byte_rx correct).
 %
+% SPS PARAMETERIZATION (Task A3): the estimator needs a fixed 10-SYMBOL look-back
+% window onto preamble[4..11]. The block's NATIVE look-back is a fixed 40
+% SAMPLE-delays (rate-independent hardware: Delay=32 + upstream Delay5=8), which
+% is 40/sps symbols. The extra delay to reach 10 symbols is therefore
+%   LB = 10*sps - 40   (floored at 0).
+% At sps=8 this is 40 (native 40 samples = 5 symbols, add 40 -> 80 = 10 symbols)
+% -- the shipped, validated value. At sps=4 it is 0: at the T8 rail (15.36e6,
+% UpsamplesRx=1) sps=4 means 4 samples/symbol, so the native 40 samples ALREADY
+% span exactly 10 symbols and the window lands on preamble[4..11] natively --
+% the fix REVERTS to a no-op (the sps-8-surgery cause does not exist at sps=4).
+% NB: this supersedes the 5*sps parameterization (which agrees only at sps=8);
+% the sps4_sync_sweep gate's rotated/offset four-quadrant cells arbitrate it.
+%
 % Idempotent. Applies to every 'Phase Ambiguity Estimation and Correction'
 % subsystem in sys (both the DUT TxRxComposite copy and any sibling copy).
 
-LB = 40;   % extra look-back sample-delays (= +5 symbols at 8 samples/symbol)
+cfgR = frame_config_k5();
+LB = max(0, 10*cfgR.Sps - 40);   % extra look-back sample-delays; 40@sps8, 0@sps4
 
 pae = find_system(sys,'LookUnderMasks','all','FollowLinks','on', ...
     'BlockType','SubSystem','Name','Phase Ambiguity Estimation and Correction');
@@ -33,17 +47,28 @@ npatched = 0;
 for i = 1:numel(pae)
     P   = pae{i};
     est = 'Phase Ambiguity Estimator';
+    % confirm the expected native feeders (Delay -> estimator/1 dataIn;
+    % Delay2 -> estimator/3 validIn) -- present in BOTH the patched and the
+    % native (sps=4) configurations
+    assert(~isempty(find_system(P,'SearchDepth',1,'BlockType','Delay','Name','Delay')), ...
+        'resolver_lookback_fix: feeder Delay missing in %s', P);
+    assert(~isempty(find_system(P,'SearchDepth',1,'BlockType','Delay','Name','Delay2')), ...
+        'resolver_lookback_fix: feeder Delay2 missing in %s', P);
+    % LB==0 (sps=4): native 40-sample look-back already spans 10 symbols --
+    % the fix is a no-op; assert the native window is intact and leave it.
+    if LB == 0
+        assert(isempty(find_system(P,'SearchDepth',1,'LookUnderMasks','all', ...
+            'FollowLinks','on','Name','EstDataLookback')), ...
+            'resolver_lookback_fix: LB=0 (sps=%d) but EstDataLookback present in %s (stale surgery)', cfgR.Sps, P);
+        fprintf('resolver_lookback_fix: LB=0 (sps=%d) -- native window correct, no-op on %s\n', cfgR.Sps, P);
+        continue;
+    end
     % idempotent guard
     if ~isempty(find_system(P,'SearchDepth',1,'LookUnderMasks','all', ...
             'FollowLinks','on','Name','EstDataLookback'))
         fprintf('resolver_lookback_fix: already patched -- %s\n', P);
         continue;
     end
-    % confirm the expected feeders (Delay -> estimator/1 dataIn; Delay2 -> estimator/3 validIn)
-    assert(~isempty(find_system(P,'SearchDepth',1,'BlockType','Delay','Name','Delay')), ...
-        'resolver_lookback_fix: feeder Delay missing in %s', P);
-    assert(~isempty(find_system(P,'SearchDepth',1,'BlockType','Delay','Name','Delay2')), ...
-        'resolver_lookback_fix: feeder Delay2 missing in %s', P);
 
     % new look-back delays: clone the existing feeders so HDL-relevant settings
     % (reset, initial condition, rate) match, then set the length.

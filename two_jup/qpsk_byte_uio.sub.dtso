@@ -1,0 +1,85 @@
+/dts-v1/;
+/plugin/;
+
+/* =============================================================================
+ * qpsk_byte_uio.dtso -- generic-UIO nodes + 2 MB DMA carve for the
+ * interrupt-driven byte-DMA path (workstream B). PRE-MERGED into system.dtb
+ * with fdtoverlay on the build host (deploy_dtb.sh build) -- U-Boot adi_sdboot
+ * loads a single flat system.dtb with NO runtime overlay-apply step, so this
+ * overlay is never applied on the target.
+ *
+ * *** THIS FILE DOES NOT COMPILE AS-IS *** -- 110 / 111 are
+ * sed placeholders (the GIC SPI DT-cell, = SPI - 32) filled by deploy_dtb.sh
+ * from wire_byte_irqs.tcl's BYTE_IRQ_MAP output. deploy_dtb.sh REFUSES to
+ * compile/deploy while any @...@ placeholder remains. To dtc-check the syntax,
+ * substitute a dummy numeric first (see deploy_dtb.sh `check`).
+ *
+ * BOOT-INTEGRITY DESIGN CHOICES (base system.dtb was inspected read-only):
+ *   1. The base dtb has NO __symbols__ node, so an overlay `interrupt-parent =
+ *      <&gic>` phandle reference CANNOT be resolved by fdtoverlay. Instead the
+ *      three UIO nodes are added as children of /axi_pl (target-path), which
+ *      itself carries `interrupt-parent = <0x05>` (the arm,gic-400 phandle).
+ *      Children INHERIT that interrupt-parent -- exactly how the existing adi
+ *      axi-dmac nodes get theirs (they set no per-node interrupt-parent). This
+ *      is immune both to the missing __symbols__ AND to phandle renumbering in
+ *      the future Vivado build (inheritance tracks whatever axi_pl points at).
+ *   2. reserved-memory: the EXISTING qpsk_byte_buf node is edited in place
+ *      (its reg rewritten to 2 MB @ 0x7FE00000) rather than adding a second
+ *      node -- guaranteeing exactly ONE carve node with no overlap/stale 1 MB
+ *      entry. The 2 MB span 0x7FE00000..0x7FFFFFFF CONTAINS the old 1 MB carve.
+ *      Node unit-name stays @7ff00000 (cosmetic; reg is authoritative for the
+ *      kernel) to keep the target-path stable for the overlay.
+ *   3. interrupt trigger type = 4 (IRQ_TYPE_LEVEL_HIGH), matching all four
+ *      existing adi axi-dmac nodes (recon-confirmed <0x00 cell 0x04>).
+ *
+ * UIO device names: uio_pdrv_genirq names the /sys/class/uio/uioN/name after
+ * the DT node name WITHOUT its @unit-address, so these nodes yield UIO names
+ * "qpsk_tx_dma" / "qpsk_rx_dma" / "qpsk_byte_gpio" -- the EXACT strings the
+ * B2 host consumer (qpsk_uio.c uio_lookup / qpsk_gpio_present) greps for.
+ * Requires uio_pdrv_genirq bound via of_id=generic-uio (see uio-genirq.conf).
+ *
+ * Addresses are the ZynqMP-default macros from host_app_k5/qpsk_hw.h:
+ *   QPSK_TX_DMA_BASE 0x9D100000, QPSK_RX_DMA_BASE 0x9D200000,
+ *   QPSK_GPIO_BASE   0x9D300000, QPSK_DMA_BUF_BASE 0x7FE00000 (QPSK_CARVE_2MB).
+ * ============================================================================= */
+
+/ {
+    /* --- three generic-uio nodes under the PL bus (inherit gic) --------- */
+    fragment@0 {
+        target-path = "/axi_pl";
+        __overlay__ {
+            #address-cells = <0x01>;
+            #size-cells = <0x01>;
+
+            qpsk_tx_dma@9d100000 {
+                compatible = "generic-uio";
+                reg = <0x9d100000 0x1000>;
+                /* interrupt-parent inherited from /axi_pl (arm,gic-400) */
+                interrupts = <0x00 110 0x04>;
+            };
+
+            qpsk_rx_dma@9d200000 {
+                compatible = "generic-uio";
+                reg = <0x9d200000 0x1000>;
+                interrupts = <0x00 111 0x04>;
+            };
+
+            /* GPIO region: reg only, NO interrupts. Exists so 0x9d300000 is
+             * claimed in /proc/iomem = positive presence for B2's gate. */
+            qpsk_byte_gpio@9d300000 {
+                compatible = "generic-uio";
+                reg = <0x9d300000 0x1000>;
+            };
+        };
+    };
+
+    /* --- grow the DMA carve to 2 MB @ 0x7FE00000 (edit existing node) --- */
+    fragment@1 {
+        target-path = "/reserved-memory/qpsk_byte_buf@7ff00000";
+        __overlay__ {
+            /* reserved-memory is #address-cells=2 #size-cells=2 */
+            reg = <0x00 0x7fe00000 0x00 0x200000>;   /* 2 MB, was 1 MB @ 0x7ff00000 */
+            no-map;
+        };
+    };
+};

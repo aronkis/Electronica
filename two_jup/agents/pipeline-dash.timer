@@ -1,0 +1,8 @@
+[Unit]
+Description=Re-render pipeline page every 30 minutes
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30min
+Unit=pipeline-dash.service
+[Install]
+WantedBy=timers.target

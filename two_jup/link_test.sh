@@ -138,7 +138,7 @@ arm_ber(){ $W $1 "P=/sys/bus/iio/devices/iio:device2; DB=/sys/kernel/debug/iio/i
    echo '0x000 0x1'>\$DRA;sleep 0.5;echo '0x000 0x0'>\$DRA;echo '0x158 0x1'>\$DRA;echo '0x118 0x0'>\$DRA;echo '0x114 0x1'>\$DRA
    TXD=\$(for d in /sys/bus/iio/devices/iio:device*; do [ \"\$(cat \$d/name 2>/dev/null)\" = axi-adrv9002-tx-lpc ] && echo \${d##*/}; done);T=/sys/kernel/debug/iio/\$TXD/direct_reg_access
    echo '0x418 0x2'>\$T;echo '0x458 0x2'>\$T;echo '0x044 0x1'>\$T;echo '0x110 0x1'>\$DRA;sleep 0.3;echo '0x110 0x0'>\$DRA
-   busybox devmem 0x9D300000 32 0x1; echo armed" 2>/dev/null; }
+   if grep -qi '9d300000-' /proc/iomem 2>/dev/null; then busybox devmem 0x9D300000 32 0x1; else echo 'skip byte-dma arm: no 9d300000 in /proc/iomem'; fi; echo armed" 2>/dev/null; }
 
 # ---------------------------------------------------------------------------
 # coldstart_tun -- tun-mode arm.  $1 ip $2 tx_lo_hz $3 rx_lo_hz $4 tunaddr $5 peer

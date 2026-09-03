@@ -9,6 +9,9 @@ run('/home/tcollins/dev/qpsk_ai/TransceiverToolbox/setup.m');
 addpath('/home/tcollins/dev/qpsk_ai/TransceiverToolbox');
 addpath(fullfile(fileparts(KITDIR),'k5_240'));
 cd(KITDIR); addpath(KITDIR);
+cfg = frame_config_k5();            % single source of truth for frame geometry
+payloadSyms = cfg.PayloadBits/2;    % 1120 QPSK payload symbols/frame
+frameSyms   = 13 + payloadSyms;     % 1133 = 13 Barker preamble + payload symbols
 
 logf='s1_analyze_240k5.log'; if exist(logf,'file'), delete(logf); end
 diary(logf);
@@ -21,20 +24,20 @@ fprintf('trace: %d Tx-rail beats (8 sps air samples), %d modulator symbols\n', n
 
 % ---- (0) SAMPLE-domain frame starts on the RAW air (exact, noiseless) ----
 C = commhdlQPSKTxRxParameters();
-sps = 8; assert(C.SamplesPerSymbol==8);
+sps = cfg.Sps; assert(C.SamplesPerSymbol==cfg.Sps);
 preSyms = C.preambleSymbols(:);
 rrc = rcosdesign(0.5,4,sps);
 ref = conv(upsample(preSyms,sps), rrc);          % RRC-shaped preamble reference
 air = double(txI) + 1i*double(txQ);
 corr = abs(conv(air, conj(flipud(ref(:)))));
 thr = 0.5*max(corr);
-[pks, locs] = findpeaks(corr, 'MinPeakHeight', thr, 'MinPeakDistance', round(0.8*1133*sps)); %#ok<ASGLU>
+[pks, locs] = findpeaks(corr, 'MinPeakHeight', thr, 'MinPeakDistance', round(0.8*frameSyms*sps)); %#ok<ASGLU>
 starts = locs(:).' - (numel(ref)-1);              % air-sample index of each preamble start
 dstarts = diff(starts);
 fprintf('sample-domain frame starts: %d ; spacing: min=%d max=%d mean=%.3f std=%.6f\n', ...
     numel(starts), min(dstarts), max(dstarts), mean(dstarts), std(dstarts));
-gate_cadence = (numel(starts) >= 25) && all(dstarts == 1133*sps);
-fprintf('GATE cadence (all spacings == %d exactly, >=25 frames): %s\n', 1133*sps, string(gate_cadence));
+gate_cadence = (numel(starts) >= 25) && all(dstarts == frameSyms*sps);
+fprintf('GATE cadence (all spacings == %d exactly, >=25 frames): %s\n', frameSyms*sps, string(gate_cadence));
 
 % ---- (1) synthesize .iq (int16 interleaved I,Q) + decode with soak_decode_k5 ----
 iqf = fullfile(KITDIR,'rtl_sim','s1_tx_air_240k5.iq');
@@ -81,8 +84,8 @@ fprintf('decoder symbol-domain spacing: min=%d max=%d std=%.6f (expect 1133/0)\n
 %     filler which cannot join the preamble).
 romLit = strtrim(fileread(fullfile(fileparts(KITDIR),'k5_240','rom_words_70_k5.txt')));
 words = eval(romLit); %#ok<EVLDIR>
-rombits = zeros(1,2240);
-for w2 = 0:69
+rombits = zeros(1,cfg.PayloadBits);
+for w2 = 0:cfg.RomWords32-1
   for bb = 0:31, rombits(w2*32+bb+1) = double(bitget(words(w2+1), 32-bb)); end
 end
 sI = modI(modV) > 0; sQ = modQ(modV) > 0;       % symbol signs
@@ -97,20 +100,20 @@ qr = q(:).';
 for i = 1:nSym-12
   if isequal(qr(i:i+12), preQ), symStartsAll(end+1) = i; end %#ok<AGROW>
 end
-symStarts = symStartsAll(symStartsAll <= nSym-1133+1);  % starts of FULL frames
+symStarts = symStartsAll(symStartsAll <= nSym-frameSyms+1);  % starts of FULL frames
 dss = diff(symStarts);
 fprintf('symbol-domain frame starts: %d ; spacing uniq = %s\n', numel(symStarts), mat2str(unique(dss)));
 % per-frame ROM comparison
 nFullFrames = 0; frameBitErrs = [];
 for i = 1:numel(symStarts)
   s0 = symStarts(i);
-  if s0+13+1120-1 > nSym, break; end
-  idx = s0+13 : s0+13+1120-1;
+  if s0+13+payloadSyms-1 > nSym, break; end
+  idx = s0+13 : s0+13+payloadSyms-1;
   bits = reshape([bitI(idx) bitQ(idx)].', 1, []);
   frameBitErrs(end+1) = sum(bits ~= rombits); %#ok<AGROW>
   nFullFrames = nFullFrames + 1;
 end
-gate_rom = (nFullFrames >= 25) && all(frameBitErrs == 0) && all(dss == 1133);
+gate_rom = (nFullFrames >= 25) && all(frameBitErrs == 0) && all(dss == frameSyms);
 fprintf('GATE ROM-exact: %d full frames, per-frame payload bit errors vs ROM = %s -> %s\n', ...
     nFullFrames, mat2str(frameBitErrs), string(gate_rom));
 % run-length analysis with junction classification

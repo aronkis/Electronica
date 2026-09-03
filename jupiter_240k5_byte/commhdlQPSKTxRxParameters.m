@@ -9,11 +9,21 @@
 %   Copyright 2020-2023 The MathWorks, Inc. 
 
 function Params = commhdlQPSKTxRxParameters()
-   
+
+   cfg = frame_config_k5();   % single source of truth for frame geometry + sps
    Params.Preamble                 = generatePreamble();
    Params.QPSKConstellation        = double(fi(QPSKModulate([0 0 1 0 1 1 0 1].'),1,16,15));
-   Params.DataBitsPerPacket        = 2240;
-   Params.SamplesPerSymbol         = 8; % jupiter_240k5: 4 -> 8. Restores the true 240-ksym design point
+   Params.DataBitsPerPacket        = cfg.PayloadBits;   % 2240 (= CodedBits + FillerBits)
+   % --- frame geometry mirrored from frame_config_k5 (new fields; k5 -> identical) ---
+   Params.InfoBitsPerPacket        = cfg.InfoBits;
+   Params.TailBitsPerPacket        = cfg.TailBits;
+   Params.CodedBitsPerPacket       = cfg.CodedBits;
+   Params.InterleaveRows           = cfg.InterleaveRows;
+   Params.InterleaveCols           = cfg.InterleaveCols;
+   Params.FillerBits               = cfg.FillerBits;
+   Params.PayloadWords64           = cfg.PayloadWords64;
+   Params.RomWords32               = cfg.RomWords32;
+   Params.SamplesPerSymbol         = cfg.Sps; % jupiter_240k5: 4 -> 8. Restores the true 240-ksym design point
                                         % at the 1.92 MHz SSI (air was accidentally 480 ksym at sps=4).
                                         % PAIRED with Rsym 1.92e6 -> 0.96e6 in the model (Input Data mask +
                                         % the four 1/(Rsym*4) hardcoded sample times -> 1/(Rsym*SamplesPerSymbol),

@@ -51,16 +51,32 @@ rm -rf obj_byte
 verilator -O2 -Wno-fatal --cc wrap_byte.v -y "$VD" --exe sim_byte.cpp \
   -Mdir obj_byte --top-module wrap_byte
 make -s -C obj_byte -f Vwrap_byte.mk Vwrap_byte
-CLKS=$((100 + 38*18128))   # 38 frames x 9064 rail beats x 2 clks (T8 rail)
-./obj_byte/Vwrap_byte tx_words_golden.hex $CLKS 0  s1b_rot0
-./obj_byte/Vwrap_byte tx_words_golden.hex $CLKS 17 s1b_rot17
-matlab -batch "run('$KIT/s1b_analyze_byte.m')"
-grep -q 'result: PASS' "$KIT/S1B_GATE.txt" && echo "S1B_GATE: PASS"
+if [ "${QPSK_FRAME:-}" = "f1536" ]; then
+  # f1536: the netlist byte-golden graders (sim_byte.cpp word count, s1b_analyze
+  # air/cap goldens) are k5-locked. The Verilator ELABORATION+BUILD above already
+  # proves the f1536 netlist compiles clean; the model sim gate (stage 2) already
+  # proved f1536 air is bit-exact. Per BUILD brief item 6, defer the netlist byte
+  # golden-grading to hardware BIST rather than run a k5-locked grader.
+  echo "S1B_GATE: DEFERRED (f1536 netlist elaborated+built OK under Verilator; k5-locked byte golden grading -> hardware BIST)"
+else
+  CLKS=$((100 + 38*18128))   # 38 frames x 9064 rail beats x 2 clks (T8 rail)
+  ./obj_byte/Vwrap_byte tx_words_golden.hex $CLKS 0  s1b_rot0
+  ./obj_byte/Vwrap_byte tx_words_golden.hex $CLKS 17 s1b_rot17
+  matlab -batch "run('$KIT/s1b_analyze_byte.m')"
+  grep -q 'result: PASS' "$KIT/S1B_GATE.txt" && echo "S1B_GATE: PASS"
+fi
 
 echo "=== [6/6] S1 ROM-path iverilog regression ==="
-iverilog -g2001 -o tb_tx_240k5.vvp tb_tx_240k5.v "$VD"/*.v
-vvp tb_tx_240k5.vvp | tail -2
-matlab -batch "run('$KIT/s1_analyze_240k5.m')"
-grep -q 'result: PASS' "$KIT/S1_GATE.txt" && echo "S1_GATE: PASS"
+if [ "${QPSK_FRAME:-}" = "f1536" ]; then
+  # f1536: tb_tx_240k5.v is a k5-ROM-locked Verilog testbench and s1_analyze_240k5.m
+  # asserts the k5 ROM golden; authoring an f1536 TB is task work, not tooling.
+  # Defer to hardware BIST (BUILD brief item 6).
+  echo "S1_GATE: DEFERRED (f1536: tb_tx_240k5.v + s1_analyze_240k5.m are k5-ROM-locked -> hardware BIST)"
+else
+  iverilog -g2001 -o tb_tx_240k5.vvp tb_tx_240k5.v "$VD"/*.v
+  vvp tb_tx_240k5.vvp | tail -2
+  matlab -batch "run('$KIT/s1_analyze_240k5.m')"
+  grep -q 'result: PASS' "$KIT/S1_GATE.txt" && echo "S1_GATE: PASS"
+fi
 
 echo FULL_GATES_T8_DONE

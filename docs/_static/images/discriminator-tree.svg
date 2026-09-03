@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="adi-figure no-background"
+     viewBox="0 0 1100 620" width="100%"
+     style="max-width: 1080px; height: auto;">
+  <style>
+    svg.adi-figure {
+      --adi-fill-info:   #d4e1ec;
+      --adi-fill-drv:    #cbd9e8;
+      --adi-fill-mcu:    #f4dca0;
+      --adi-fill-hw:     #f7c8a4;
+      --adi-fill-app:    #e0d0e8;
+      --adi-fill-blank:  #ffffff;
+      --adi-box-stroke:  #c9bfa9;
+      --adi-panel-bg:    #f7f1e6;
+      --adi-panel-stroke:#e3dcc9;
+      --adi-datax-bg:    #e4ecf6;
+      --adi-datax-stroke:#b6c4dc;
+      --adi-text-strong: #2b2a26;
+      --adi-text-muted:  #6b6660;
+      --adi-arrow:       #b3aa97;
+      --adi-accent:      #6b8aaa;
+    }
+    @media (prefers-color-scheme: dark) {
+      svg.adi-figure {
+        --adi-fill-info: #2a3a52; --adi-fill-drv: #243246;
+        --adi-fill-mcu: #4d402a;  --adi-fill-hw: #4d3525;
+        --adi-fill-app: #3d2e48;  --adi-fill-blank: #14181e;
+        --adi-box-stroke: #4a5260;
+        --adi-panel-bg: #1a2028;  --adi-panel-stroke: #3a424b;
+        --adi-datax-bg: #1f2a3d;  --adi-datax-stroke: #3a4960;
+        --adi-text-strong: #e5e5e5; --adi-text-muted: #aaaaaa;
+        --adi-arrow: #6a7484;      --adi-accent: #7da3c4;
+      }
+    }
+    body.dark svg.adi-figure {
+      --adi-fill-info: #2a3a52; --adi-fill-drv: #243246;
+      --adi-fill-mcu: #4d402a;  --adi-fill-hw: #4d3525;
+      --adi-fill-app: #3d2e48;  --adi-fill-blank: #14181e;
+      --adi-box-stroke: #4a5260;
+      --adi-panel-bg: #1a2028;  --adi-panel-stroke: #3a424b;
+      --adi-datax-bg: #1f2a3d;  --adi-datax-stroke: #3a4960;
+      --adi-text-strong: #e5e5e5; --adi-text-muted: #aaaaaa;
+      --adi-arrow: #6a7484;      --adi-accent: #7da3c4;
+    }
+    svg.adi-figure .adi-panel { fill: var(--adi-panel-bg); stroke: var(--adi-panel-stroke); stroke-width: 1.25; }
+    svg.adi-figure .adi-title { font: 600 18px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-strong); }
+    svg.adi-figure .adi-subtitle { font: 13px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); }
+    svg.adi-figure .box { stroke: var(--adi-box-stroke); stroke-width: 1.25; }
+    svg.adi-figure .box-text { font: 600 13px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-strong); }
+    svg.adi-figure .box-desc { font: 11px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); }
+    svg.adi-figure .arrow { stroke: var(--adi-arrow); stroke-width: 1.5; fill: none; }
+    svg.adi-figure .arrowhead-fill { fill: var(--adi-arrow); }
+    svg.adi-figure .note-text { font: italic 11px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); }
+    svg.adi-figure .edge-label { font: 600 11px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-accent); }
+  </style>
+
+  <defs>
+    <marker id="dt-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" class="arrowhead-fill"/>
+    </marker>
+  </defs>
+
+  <rect x="10" y="10" width="1080" height="600" rx="14" class="adi-panel"/>
+
+  <text x="550" y="38" class="adi-title" text-anchor="middle">The discriminator tree — let data name the fault</text>
+  <text x="550" y="58" class="adi-subtitle" text-anchor="middle">Each split is an instrument, not an opinion; every branch below has been walked at least once</text>
+
+  <!-- Root -->
+  <rect x="400" y="76" width="300" height="50" rx="8" class="box" fill="var(--adi-fill-app)"/>
+  <text x="550" y="97" class="box-text" text-anchor="middle">A frame is lost or fails CRC</text>
+  <text x="550" y="115" class="box-desc" text-anchor="middle">(QPSK_FRAMELOG hole census positions the event)</text>
+
+  <!-- Q1: delivered vs missing -->
+  <line x1="470" y1="126" x2="300" y2="164" class="arrow" marker-end="url(#dt-arrow)"/>
+  <text x="330" y="142" class="edge-label">hole, no record</text>
+  <line x1="630" y1="126" x2="800" y2="164" class="arrow" marker-end="url(#dt-arrow)"/>
+  <text x="700" y="142" class="edge-label">crc=0 record in the hole</text>
+
+  <!-- Missing branch -->
+  <rect x="120" y="166" width="360" height="64" rx="8" class="box" fill="var(--adi-fill-info)"/>
+  <text x="300" y="188" class="box-text" text-anchor="middle">MISSING — was it ever aired?</text>
+  <text x="300" y="206" class="box-desc" text-anchor="middle">QPSK_TXLOG submit ring: gaps at the event time?</text>
+  <text x="300" y="220" class="box-desc" text-anchor="middle">spacing on the 33-frame TX-underrun comb?</text>
+
+  <line x1="200" y1="230" x2="200" y2="268" class="arrow" marker-end="url(#dt-arrow)"/>
+  <text x="212" y="252" class="edge-label">yes</text>
+  <line x1="400" y1="230" x2="400" y2="268" class="arrow" marker-end="url(#dt-arrow)"/>
+  <text x="412" y="252" class="edge-label">no</text>
+
+  <rect x="90" y="270" width="220" height="60" rx="8" class="box" fill="var(--adi-fill-mcu)"/>
+  <text x="200" y="292" class="box-text" text-anchor="middle">TX-side class</text>
+  <text x="200" y="308" class="box-desc" text-anchor="middle">feeder starvation / zero-fill</text>
+  <text x="200" y="322" class="box-desc" text-anchor="middle">(WEDGE_ROOT_CAUSE.md)</text>
+
+  <rect x="330" y="270" width="220" height="60" rx="8" class="box" fill="var(--adi-fill-mcu)"/>
+  <text x="440" y="292" class="box-text" text-anchor="middle">RX delivery stall / air</text>
+  <text x="440" y="308" class="box-desc" text-anchor="middle">check reg_packets frozen (burst)</text>
+  <text x="440" y="322" class="box-desc" text-anchor="middle">or a real RF event (mute, fade)</text>
+
+  <!-- Delivered branch -->
+  <rect x="620" y="166" width="400" height="64" rx="8" class="box" fill="var(--adi-fill-info)"/>
+  <text x="820" y="188" class="box-text" text-anchor="middle">DELIVERED-BUT-CORRUPT — length or content?</text>
+  <text x="820" y="206" class="box-desc" text-anchor="middle">191 words short = delivery drop; full 191 wrong-content =</text>
+  <text x="820" y="220" class="box-desc" text-anchor="middle">the singles class. Re-read the buffer: stable? (yes = not a torn read)</text>
+
+  <line x1="820" y1="230" x2="820" y2="268" class="arrow" marker-end="url(#dt-arrow)"/>
+
+  <rect x="620" y="270" width="400" height="64" rx="8" class="box" fill="var(--adi-fill-drv)"/>
+  <text x="820" y="292" class="box-text" text-anchor="middle">Replay the SAME captured IQ through the netlist</text>
+  <text x="820" y="310" class="box-desc" text-anchor="middle">bit-true Verilator sim, native drive cadence (HARNESS_AB.md);</text>
+  <text x="820" y="324" class="box-desc" text-anchor="middle">capture artifacts can only ADD errors, so clean = one-sided-safe</text>
+
+  <line x1="700" y1="334" x2="620" y2="380" class="arrow" marker-end="url(#dt-arrow)"/>
+  <text x="620" y="356" class="edge-label">decodes clean</text>
+  <line x1="940" y1="334" x2="1000" y2="380" class="arrow" marker-end="url(#dt-arrow)"/>
+  <text x="960" y="356" class="edge-label">also fails</text>
+
+  <rect x="460" y="382" width="330" height="64" rx="8" class="box" fill="var(--adi-fill-mcu)"/>
+  <text x="625" y="404" class="box-text" text-anchor="middle">PLATFORM-SIDE (byte/DMA seam)</text>
+  <text x="625" y="422" class="box-desc" text-anchor="middle">the air signal was fine; corruption entered at or</text>
+  <text x="625" y="436" class="box-desc" text-anchor="middle">after the byte plane (SINGLES_REPLAY: 12/12 clean)</text>
+
+  <rect x="830" y="382" width="230" height="64" rx="8" class="box" fill="var(--adi-fill-mcu)"/>
+  <text x="945" y="404" class="box-text" text-anchor="middle">SIGNAL-DOMAIN</text>
+  <text x="945" y="422" class="box-desc" text-anchor="middle">air / demod / lock event</text>
+  <text x="945" y="436" class="box-desc" text-anchor="middle">(e.g. loopback class-B)</text>
+
+  <line x1="625" y1="446" x2="625" y2="484" class="arrow" marker-end="url(#dt-arrow)"/>
+
+  <rect x="400" y="486" width="450" height="64" rx="8" class="box" fill="var(--adi-fill-drv)"/>
+  <text x="625" y="508" class="box-text" text-anchor="middle">CP1: fabric checksum == host checksum?</text>
+  <text x="625" y="526" class="box-desc" text-anchor="middle">match &#8594; the fabric byte plane EMITTED the corrupt bytes (107/117 measured);</text>
+  <text x="625" y="540" class="box-desc" text-anchor="middle">mismatch &#8594; transport (FIFO/DMA/bus/host copy) corrupted them in flight</text>
+
+  <text x="550" y="586" class="note-text" text-anchor="middle">Before trusting any branch: positive control (prove the instrument CAN see the fault) and negative control (prove the fault vanishes when the cause is removed). See :doc: measurement-discipline.</text>
+</svg>

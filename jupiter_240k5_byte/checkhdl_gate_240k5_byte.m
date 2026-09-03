@@ -24,6 +24,18 @@ try; rmdir(fullfile(pwd,'s1_rtl'),'s'); catch; end
 sys='commhdlQPSKTxRxLoopback'; loop=[sys '/TxRxComposite'];
 run('assemble_jupiter_240k5_byte.m');
 
+% Per-frame geometry (single source; honors env QPSK_FRAME). The generated-HDL
+% ROM word[0] assert below and the CHECKHDL_240K5_BYTE.txt stamp are threaded
+% through this cfg + the per-frame ROM file -- A1's param sweep missed this gate
+% (it hardcoded the k5 word 1204691830; A3 flagged the L65 stamp sibling), so at
+% f1536 the k5 literal is absent and the gate false-failed.
+cfg = frame_config_k5();
+romWordsFile = fullfile(fileparts(KITDIR),'k5_240', ...
+    sprintf('rom_words_%d_%s.txt', cfg.RomWords32, cfg.Frame));
+romTok = regexp(fileread(romWordsFile), 'uint32\(\[\s*(\d+)', 'tokens', 'once');
+assert(~isempty(romTok), 'could not read ROM word[0] from %s', romWordsFile);
+romWord0 = str2double(romTok{1});
+
 % pi-integrity gate BEFORE compile/codegen: the demod 'Ph'=pi/4 and CS
 % loop-filter fi(g/(2*pi)) masks evaluate against this workspace. A shadowed
 % pi (the 2026-07-11 'for pi=' bug) skews the demod boundary 14.3deg from the
@@ -62,9 +74,9 @@ assert(nErr==0, 'checkhdl errors=%d -- fix before netlist sims', nErr);
 
 fid=fopen('CHECKHDL_240K5_BYTE.txt','w');
 fprintf(fid,'JUPITER_240K5_BYTE_CHECKHDL %s\nerrors=%d warnings=%d\n', char(datetime('now')), nErr, nWarn);
-fprintf(fid,'sps=8 Rsym=1.92e6 (T8 rate fix, rail 15.36e6=enb_1_2=240ksym) thr=0.0125 K5[35 23]TB25 ROWS136 CODED2176 ROMk5+byteDMA\n');
-fprintf(fid,'IN-FABRIC infoValid-GATED K5 Tx encoder + 136x16 ping-pong interleaver + 64-bit PN9 filler (no gather, stock DAC wiring)\n');
-fprintf(fid,'agc En10 +-32, regs 0x100..0x15C + tx_data_source 0x158, WPP=16, RD=JUPITER (RX & TX, BYTE DMA)\n');
+fprintf(fid,'sps=%d Rsym=1.92e6 (T8 rate fix, rail 15.36e6=enb_1_2=240ksym) thr=0.0125 K5[35 23]TB25 ROWS%d CODED%d ROM(%s)+byteDMA\n', cfg.Sps, cfg.InterleaveRows, cfg.CodedBits, cfg.Frame);
+fprintf(fid,'IN-FABRIC infoValid-GATED K5 Tx encoder + %dx%d ping-pong interleaver + PN9 filler (no gather, stock DAC wiring)\n', cfg.InterleaveRows, cfg.InterleaveCols);
+fprintf(fid,'agc En10 +-32, regs 0x100..0x15C + tx_data_source 0x158, WPP=%d, RD=JUPITER (RX & TX, BYTE DMA)\n', cfg.WordsPerPacketRx);
 fclose(fid);
 fprintf('WROTE CHECKHDL_240K5_BYTE.txt\n');
 
@@ -88,10 +100,10 @@ allv = '';
 for k=1:numel(d), allv = [allv fileread(fullfile(vdir,d(k).name))]; end %#ok<AGROW>
 gThrStock = contains(allv,'22''sb0000000000110011001101');  % stock 3277 En21 (HDL emits BINARY) -- must be GONE
 gThrRxfix = contains(allv,'22''sb0000000110011001100110');  % RXFIX 26214 En21 (HDL emits BINARY) -- must be PRESENT
-gRom      = contains(allv,'1204691830');   % K5 ROM word[0]
-fprintf('HDL GREP: thr3277(ABSENT expected)=%d thr26214(present)=%d romword0(present)=%d\n', gThrStock, gThrRxfix, gRom);
+gRom      = contains(allv, num2str(romWord0));   % per-frame ROM word[0] (k5=1204691830, f1536=1204774986)
+fprintf('HDL GREP: thr3277(ABSENT expected)=%d thr26214(present)=%d romword0(%s=%d,present)=%d\n', gThrStock, gThrRxfix, cfg.Frame, romWord0, gRom);
 assert(gThrRxfix && ~gThrStock, 'HDL GATE FAIL: RXFIX threshold not applied (3277=%d, 26214=%d)', gThrStock, gThrRxfix);
-assert(gRom, 'HDL GATE FAIL: K5 ROM word[0] 1204691830 not found in generated HDL');
+assert(gRom, 'HDL GATE FAIL: %s ROM word[0] %d not found in generated HDL', cfg.Frame, romWord0);
 % byte-path structure present in the generated netlist
 top = fileread(fullfile(vdir,'TxRxComposite.v'));
 for p = {'byte_data','byte_valid','byte_first','byte_ready','tx_data_source', ...
