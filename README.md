@@ -1,22 +1,31 @@
 # QPSK K5 Jupiter Modem
 
 A bidirectional FDD RF link between two ADALM-Jupiter (ADRV9002) SDRs running a
-240 ksym QPSK + K=5 FEC modem with a byte-DMA data plane, carrying IP over `tun0`.
-The design flows from a MATLAB/Simulink HDL-Coder model to a deployed `BOOT.BIN`.
+240 ksym QPSK + K=5 FEC modem with an in-fabric byte-DMA data plane, carrying IP
+over `tun0`. The design flows from a MATLAB/Simulink HDL-Coder model to a deployed
+`BOOT.BIN`.
 
-**Status:** rxfix K5 byte image deployed to both boards; `-B` BER ~1e-4 both
-directions on the quiet pair; `rstcs` reset-storm eliminated.
+**Status:** shipped image = **lean `dcf5c5fb`** on both boards (a debug-strip of the
+P1E-v3 design that keeps every fix + tick compensation). BER on the quiet pair:
+**reverse `148→146` ~2e-6 (goal met)**, **forward `146→148` ~1.4e-4** — floored by a
+device-side BBDC "tick" on unit 148 (vendor-escalated, not a fabric bug). `rstcs`
+reset-storm eliminated. The fabric design is at its engineering limit.
 
 ## Start here
 
 | I want to… | Go to |
 |---|---|
-| Build the image (model → BOOT.BIN) | [`docs/BUILD.md`](docs/BUILD.md) — one command: `jupiter_240k5_byte/build_image.sh` |
-| Test the modem (loopback / BIST / real link) | [`docs/TESTING.md`](docs/TESTING.md) — one command: `two_jup/test.sh` |
-| Run / bring up the RF link as an operator | [`two_jup/README_LINK_TEST.md`](two_jup/README_LINK_TEST.md) — `two_jup/link_test.sh` |
-| Know which image is on which board | [`docs/PROVENANCE.md`](docs/PROVENANCE.md) |
-| Understand the modem architecture | [`jupiter_240k5_byte/README_BYTE.md`](jupiter_240k5_byte/README_BYTE.md) |
-| See the bit/packet contract | [`k5_240/PACKET_K5.txt`](k5_240/PACKET_K5.txt) |
+| **Understand** how the modem works | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (signal chain + register map); FEC/byte internals in [`jupiter_240k5_byte/README_BYTE.md`](jupiter_240k5_byte/README_BYTE.md) |
+| **Bring up / operate** the RF link | [`docs/BRINGUP.md`](docs/BRINGUP.md) — `two_jup/link_test.sh` |
+| **Debug** a live link | [`docs/DEBUGGING.md`](docs/DEBUGGING.md) — symptom → cause → action |
+| **Look up** a term | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) |
+| **Build** the image (model → BOOT.BIN) | [`docs/BUILD.md`](docs/BUILD.md) — `jupiter_240k5_byte/build_lean_image.sh` |
+| **Deploy** to a fresh pair of boards | [`docs/PORTING.md`](docs/PORTING.md) — `two_jup/deploy_image.sh` |
+| **Test** the modem (loopback / BIST / link) | [`docs/TESTING.md`](docs/TESTING.md) — `two_jup/test.sh`, `tests/` |
+| Know which **image** is on which board | [`docs/PROVENANCE.md`](docs/PROVENANCE.md) |
+| See **link performance** (latency/throughput/SSH) | [`docs/LINK_CHARACTERIZATION.md`](docs/LINK_CHARACTERIZATION.md) |
+| See the **bit/packet contract** | [`k5_240/PACKET_K5.txt`](k5_240/PACKET_K5.txt) |
+| Read the deep **root-cause logs** | [`two_jup/ERROR_TAXONOMY.md`](two_jup/ERROR_TAXONOMY.md), [`two_jup/ESCALATION_ADI.md`](two_jup/ESCALATION_ADI.md) |
 
 ## The signal chain (one paragraph)
 
@@ -24,65 +33,51 @@ Two Jupiters (A=`10.0.0.148`, B=`10.0.0.146`) run the ADRV9002 `lvds_1p92_mhz` L
 profile at 1.92 MHz SSI. The waveform is π/4-Gray **QPSK at 8 samples/symbol = true
 240 ksym** (sqrt-RRC β=0.5) carrying a rate-1/2 **K=5 convolutional code
 `poly2trellis(5,[35 23])`, hard Viterbi TB=25**, with a 136×16 block interleaver and
-scrambler off both ends. A **byte-DMA data plane** (host bytes → in-fabric K=5 encode →
-air, and air → K=5 Viterbi → host bytes) carries arbitrary IP traffic. It runs FDD on
-the **quiet pair** — forward 2.00 GHz (146→148), reverse 1.90 GHz (148→146) — to dodge
-148's 2.10 GHz Tx-LO leakage. Two fixes make it stable: the **CFO reset-storm fix**
-(`CFOChangeDetectThreshold 0.0015625→0.0125`, kills a ~52/s false carrier reset) and the
-**phase-ambiguity resolver** (`resolver_lookback_fix`, lets the byte plane carry
-arbitrary data). Golden BIST readback is `cap_out = 0x04922282`.
+scrambler off both ends. An **in-fabric byte-DMA data plane** (host bytes → K=5
+encode → air, and air → K=5 Viterbi → host bytes) carries arbitrary IP traffic. It
+runs FDD on the **quiet pair** — forward 2.00 GHz (146→148), reverse 1.90 GHz
+(148→146) — to dodge 148's 2.10 GHz Tx-LO leakage. Golden BIST readback is
+`cap_out = 0x04922282`. Full detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Canonical directories (the keepers)
 
 | Dir | Role |
 |---|---|
-| [`jupiter_240k5_byte/`](jupiter_240k5_byte/) | **canonical modem source** kit (model, overlays, gates, `build_image.sh`) |
-| `jupiter_byte_rxfix_build/` | deployed build output (BOOT.BIN md5 `8d6b82ff…`; gitignored build tree) |
-| [`host_app_k5/`](host_app_k5/) | host userspace app (`qpsk_tun` -B/-F/-T/-l/-e, `qpsk_ber`, `qpsk_frame`) + unit tests |
-| [`k5_240/`](k5_240/) | bit contract, ideal float receiver, K5 AWGN BER curve |
-| [`two_jup/`](two_jup/) | operator + test kit (`link_test.sh`, `test.sh`, `provision.sh`, `deploy_rxfix.sh`) |
-| [`docs/`](docs/) | authoritative docs: `BUILD.md`, `TESTING.md`, `PROVENANCE.md` |
+| [`jupiter_240k5_byte/`](jupiter_240k5_byte/) | **canonical modem source** kit (model, overlays, gates, `build_lean_image.sh`) |
+| `jupiter_byte_lean_build/` | deployed build output (BOOT.BIN md5 `dcf5c5fb…`; gitignored build tree) |
+| [`host_app_k5/`](host_app_k5/) | host userspace app (`qpsk_tun` -B/-F/-S, `qpsk_ber`, `qpsk_perf`) + the register map `qpsk_hw.h` + unit tests |
+| [`k5_240/`](k5_240/) | bit contract (`PACKET_K5.txt`), ideal float receiver, K5 AWGN BER curve |
+| [`two_jup/`](two_jup/) | operator + test kit (`link_test.sh`, `test.sh`, `provision.sh`, `deploy_image.sh`) + forensics logs |
+| [`docs/`](docs/) | authoritative docs (ARCHITECTURE, BRINGUP, DEBUGGING, BUILD, TESTING, PORTING, PROVENANCE, GLOSSARY) |
+| [`tests/`](tests/) | MATLAB `unittest` suite (L1 host-pure / L2 gates / L3 hardware-in-loop) |
 
-## Everything else is archive
-
-This tree accumulated ~160 experimental snapshot directories during development.
-They are **archive** — kept for history, not part of the current design. Do not build
-or deploy from them. The lineages:
-
-- `composite_*`, `V*`, `cfc_*`, `descr_*`, `diag_*`, `fracdelay*`, `freeze_*`, `cs_*`,
-  `phase_ambig_*`, `start_delay_*`, `rx_thr_*` — the **uncoded composite-modem** debug
-  era (May 2026) that motivated adding FEC.
-- `fec_*` (`fec_dut`, `fec_jupiter*`, `fec_zed*`) — the **K=7 FEC** bring-up saga
-  (June 2026), superseded by the K=5 line.
-- `zed_*`, `zed_240k5` — the **ZedBoard** branch, retired by the two-Jupiter pivot.
-- `jupiter_{t8*,agcfix,asyncclk,cswide,dither,drift,eps*,fir*,ssdither*,msggenrom*,…}` —
-  Jupiter single-feature experiments; `jupiter_240k5` is the byteless precursor of the
-  canonical `jupiter_240k5_byte`.
-
-Within `two_jup/`, superseded scripts live in `two_jup/archive/`; and
-`jupiter_240k5_byte/rtl_sim/` keeps `sim_byte_iq.cpp` + the golden hex as the load-bearing
-harness — its many `sim_*.cpp` variants and `*_rxw.txt`/`*_res.txt` files are regenerable
-sweep output.
+Within `two_jup/`, superseded campaign scripts live in
+[`two_jup/archive/`](two_jup/archive/) (indexed by its README);
+`jupiter_240k5_byte/rtl_sim/` keeps `sim_byte_iq.cpp` + the golden hex as the
+load-bearing harness (its many `sim_*.cpp` variants + `*.txt` sweep output are
+regenerable and gitignored).
 
 ## Quick start
 
 ```bash
-# BUILD  (host with MATLAB R2025b + Vivado 2025.1; ~2 h, detached)
-cd jupiter_240k5_byte && setsid nohup ./build_image.sh > build_image.log 2>&1 </dev/null &
+# BUILD  (host with MATLAB R2025b + Vivado 2025.1; ~2 h, detached). See docs/BUILD.md.
+cd jupiter_240k5_byte && setsid nohup ./build_lean_image.sh > build_lean.log 2>&1 </dev/null &
 
 # DEPLOY  (per board; Jupiter has no remote power — flash is size-checked + backed up)
 cd ../two_jup
-for ip in 10.0.0.148 10.0.0.146; do
-  ./deploy_rxfix.sh $ip                                           # flash /boot + reboot (RETURNS IMMEDIATELY)
-  until ./anyssh.sh $ip 'echo up' | grep -q up; do sleep 5; done  # wait for the board to reboot back
-  ./provision.sh $ip                                              # only on a fresh board (a reflash keeps /root)
-done
+./deploy_image.sh 10.0.0.148        # flash /boot, reboot, wait for the board back
+./deploy_image.sh 10.0.0.146        # one board at a time
+./provision.sh 10.0.0.148 && ./provision.sh 10.0.0.146   # host app + profile + watchdog
 
-# TEST  (dev box up to live link)
+# TEST  (dev box up to live link). See docs/TESTING.md.
 ./test.sh loopback           # Tier A: self-loopback, no RF
-./test.sh ber                # Tier B: real BER, both directions
-./test.sh link --radios 2    # Tier C: real data, two-board FDD
+./test.sh bist               # Tier B: on-chip BIST (cap_out = 0x04922282)
+./link_test.sh ber -d 90     # Tier C: real OTA BER, both directions
 ```
 
-> **Never modify the repo master** `/home/tcollins/dev/qpsk_ai` (read-only ADI donor).
-> All work is under `/mnt/onetb/scratch/qpsk_variants/` (git master, local-only).
+Bringing up a **different** pair of boards? See [`docs/PORTING.md`](docs/PORTING.md).
+
+> **Never modify the read-only ADI donor tree** `/home/tcollins/dev/qpsk_ai`. All
+> work is in this repo (`/mnt/onetb/scratch/qpsk-jupiter-modem`). The ~160
+> experimental snapshot directories from development are **not in this repo** (they
+> stay on local disk, gitignored) — do not build or deploy from them.

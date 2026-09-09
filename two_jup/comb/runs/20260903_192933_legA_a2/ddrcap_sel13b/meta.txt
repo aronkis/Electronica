@@ -1,0 +1,7 @@
+sel13_leg sel=13 bytes=536870912 pre=0xF78C3553 post=0x93883153
+sel=13 name=sel13_leg offset_s=0 dry=0
+capture_exit=0
+bytes=536870912 (need >= 536870912)
+pre_capTAP=0 post_capTAP=0 (need BCF94856 both; SKIP_GOLD=1 -> when 1, credit = bytes only and the desk positive control ddrcap2_pc.py decides)
+credited=yes
+ts=2026-09-03T19:34:00-04:00

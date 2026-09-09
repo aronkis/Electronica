@@ -1,0 +1,16 @@
+# Task 6/7 brief — flash 148 with the seqbist image, then stage 1 (fabric loopback) and stage 2 (OTA self-reception)
+Preconditions (controller checks before dispatch): Task 3 sim gate PASS (or a ruling), rig free (no legrun/probe units), keeper hold in place.
+## Flash (rails, no retry loop)
+- Image: boot_known_good/BOOT.BIN.148.seqbist.a1ff3c876d91 (md5 a1ff3c876d91f1a0330254cf10902748, WNS +0.112). Rollback: boot_known_good/BOOT.BIN.148.txfixF3.f6a8c3ea119c (md5 f6a8c3ea119c…, the current image).
+- Chain: two_jup/skidfix/flash_148_txfix.sh with FLASH_MD5/FLASH_BAK/FLASH_TAG env (read its header; DRY=1 first, then real) as a unit via launch_rig_unit.sh; stages: precondition → stage+flash → readback md5 or rollback → two-pass arm148_mode1.sh gate (golden capTAP BCF94856, fps ≥ 1120) → sel-6 witness. Never kill it mid-flash or mid-arm. On a gate failure the chain rolls back by itself; report and STOP.
+- Post-flash checks (one ssh each, no register polling): the new GPIO segments respond (0x9D410008 select sweep reads slots 16-31 = 0 at rest after a checker clear; slots 0-15 unchanged); `strings` fingerprints irrelevant (no daemon change).
+## Stage 1 — fabric loopback (T2 of the plan), PREREG in two_jup/SEQBIST_STATE.md before the first run
+- `two_jup/launch_rig_unit.sh seqbist-s1-ctrlA <abs>/two_jup/seqbist/seqbist_run.sh DRY=0 BOARD=148 MODE=loopback FILL=1516 GAP=0 SKIP_EVERY=1000 DUR=180` → positive control: gap_events = frames/1000 ± 2, interval peak 1001.
+- `… seqbist-s1-ctrlB … CORRUPT_EVERY=1000 DUR=180` → garbage = frames/1000 ± 2, gap_events = garbage ± 2, peak 1000.
+- `… seqbist-s1-clean … DUR=600` line rate → lost_slots = 0, garbage = 0, crc_fail = 0 (tgen_mode). Falsifier: any non-zero → the fabric chain loses frames without radio or DMA; then `… seqbist-s1-mission … GAP=<clocks for ~1245 f/s>` and a 1800 s soak: the int_last series must show no 26 ms-class line (32/33 emitted-frame intervals absent).
+- Score each with two_jup/seqbist/seqbist_score.py; meta must carry image_md5=a1ff3c….
+## Stage 2 — OTA self-reception on 148 (T3 of the plan)
+- 146 silent: its daemon is down and its TX is off after capture_r3's quiesce (verify 146's TX enable / byte stream is not running; do NOT touch 146's image).
+- Arm 148 RF alone: derive two_jup/seqbist/arm148_rf_self.sh from bringup_r2r3.sh's 148 arm (profile, LO per rf_loopback.sh shared-LO settings, 0x114=1, 0x118=0, 0x158=1, no daemon, WATCHDOG=0); bring-up gate: 0x124 frame-sync ≥ 1,200 f/s and checker frames ≈ 0x124 within 1 %; if the self-coupled level gives no lock, try the attenuator-free alternatives documented in rf_loopback.sh (LO offset, gain) once, then report UNINFORMATIVE (cable needed).
+- Run: seqbist_run.sh MODE=rf BOARD=148 DUR=600 FILL=1516 GAP=<mission>; PREREG: if the 26 ms comb appears with 146 silent (int_last series peaks at 32/33 emitted frames, or the period-in-ms tool on the readings), the process is in 148's own radio/RX chain; flat → the process needs 146 (transmitter side) — then P-D's result decides the next probe.
+Report: two_jup/sdd_archive/2026-09-03-seqbist/task-6-report.md; every number [silicon]; append to two_jup/OVERNIGHT_20260904_SEQBIST.md; commit -s (no push).

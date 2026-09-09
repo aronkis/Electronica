@@ -1,0 +1,3 @@
+t=1788474136.697501886 pkts=0xBDE1 biterr=0x28D3E2 rstcs=0x0 cfc=0xFFFFEF16 fx=0xD010180
+t=1788474140.050678911 pkts=0xCE2E biterr=0x2C7938 rstcs=0x0 cfc=0xFFFFEEAF fx=0xD010180
+healthy crc=96% rate=998f/s

@@ -1,0 +1,7 @@
+  ATTR_RESTORE in_voltage0_quadrature_fic_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_rssi_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_rfdc_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_bbdc_rejection_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_agc_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_hardwaregain want='34.000000' write=ok after='34.000000 dB'
+  ATTR_RESTORE in_voltage0_gain_control_mode want='automatic' write=ok after='automatic'

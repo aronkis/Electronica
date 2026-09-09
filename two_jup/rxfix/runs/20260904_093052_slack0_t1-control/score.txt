@@ -1,0 +1,77 @@
+======== SCORE /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_093052_slack0_t1-control  2026-09-04T09:45:51-04:00
+---- meta
+leg=A dir=fwd rx=10.0.0.148 peer=10.0.0.146 dur=600 dry=0
+rxm_148= rxm_146= drain_148= drain_146=
+resolved: DAEMON_ENV_A=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1 DAEMON_ENV_B=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1
+capture_r3_exit=0
+wedge_verdict=wedge_verdict=healthy crc=92% rate=1911f/s
+deliver_rate_pre=1911 deliver_rate_post=1911 deliver_rate_gate_pass=1 (need >=900 f/s both AND zero watchdog relaunches)
+watchdog_relaunch_rx=0 watchdog_relaunch_peer=0
+ts=2026-09-04T09:45:20-04:00
+slack=0
+fixctl_written=0x0
+fixctl_restored=1 (write issued+exit0 on both boards; UNVERIFIED, 0x208 is write-only)
+peer_poke_trigger=wedge_verdict_marker (same event that fires 148's LOOP_POKE; no fixed settle)
+stage3h_out=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_093052_slack0_t1-control/s3h
+leg_exit=0
+ts=2026-09-04T09:45:22-04:00
+---- attribute witness (capture_r3 hook)
+---- restore witness
+---- (1) accept_analyze  [PER, lost frames in the denominator]
+=== wedge-aware acceptance analysis (live-link windows, settle 15s, wedge-guard 2s) ===
+  cap: live 717s/722s [WEDGE truncated]  PER=8.351% (73003/874137)  CP95UL=8.410%  lag33=-0.045  bins={'1': 37931, '2': 15760, '3-4': 549, '5-20': 170, '21-100': 1, '>100': 0}
+
+  POOLED live-window: PER=8.351% (73003/874137)  CP95UL=8.410%
+  per-run spread: 8.351%..8.351%
+  wedges during captures: 1 (real events; auto-recovered in normal ops by lock_watchdog, disabled during captures)
+  GATE (<1% at CP95 upper limit, live-link): NOT MET
+---- (2) comb_autocorr   [ALL-LOSS lag family, lag16 floor]
+=== cap  live 717s/722s [WEDGE]  slot axis [43028, 917165] (874138 slots)  validity_frac=1.0000  run_bins={'1': 37931, '2': 15760, '3-4': 549, '5-20': 170, '21-100': 1, '>100': 0} ===
+  [ALL-LOSS] events=73003  null(p95, max over lags 1-128, a sampling floor -- shuffling destroys run structure, so it is NOT a burst-structure null)=0.0037
+    top8 lags: 94:+0.7066, 63:+0.6324, 31:+0.5936, 125:+0.5467, 126:+0.4385, 32:+0.3974, 62:+0.3526, 39:+0.3226
+    top5 with harmonic family (nearest k x 32 vs k x 33, signed slip):
+       94: +0.7066   3x32=96 (slip -2)   3x33=99 (slip -5)
+       63: +0.6324   2x32=64 (slip -1)   2x33=66 (slip -3)
+       31: +0.5936   1x32=32 (slip -1)   1x33=33 (slip -2)
+      125: +0.5467   4x32=128 (slip -3)   4x33=132 (slip -7)
+      126: +0.4385   4x32=128 (slip -2)   4x33=132 (slip -6)
+    lag16=-0.0867  lag32=+0.3974  lag33=-0.0235  lag64=+0.0640
+  [SINGLES-ONLY] events=37931  null(p95, max over lags 1-128, a sampling floor -- shuffling destroys run structure, so it is NOT a burst-structure null)=0.0038
+    top8 lags: 94:+0.5764, 63:+0.4801, 31:+0.4278, 125:+0.3763, 39:+0.2939, 55:+0.2802, 126:+0.2476, 24:+0.2280
+    top5 with harmonic family (nearest k x 32 vs k x 33, signed slip):
+       94: +0.5764   3x32=96 (slip -2)   3x33=99 (slip -5)
+       63: +0.4801   2x32=64 (slip -1)   2x33=66 (slip -3)
+       31: +0.4278   1x32=32 (slip -1)   1x33=33 (slip -2)
+      125: +0.3763   4x32=128 (slip -3)   4x33=132 (slip -7)
+       39: +0.2939   1x32=32 (slip +7)   1x33=33 (slip +6)
+    lag16=-0.0454  lag32=+0.1858  lag33=-0.0447  lag64=-0.0439
+---- (3) comb_period_ms  [fractional period in frames and ms]
+=== /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_093052_slack0_t1-control/cap/frames.bin
+  slots=874138 lost=73003 (8.351 %) loss-run onsets=54411  live=717/722s [WEDGE truncated]
+  frame period 802.9297 us
+  BEST  P = 31.30726 frames = 25.1375 ms   R = 0.1397
+  BAND  P = 31.30727 frames = 25.1375 ms   R = 0.1397   (25-27 ms)
+  R at exactly P=32.000 : 0.0004
+  random-event null (95th pct of band max, n=8): 0.0161
+  band R / a1r2 baseline (0.1737) = 0.804
+  COMB_LINE=present  (absent iff band R < 0.05 or <= null; present iff >= 0.7x the a1r2 baseline; else reduced)
+---- (4) comb_census     [fail classes, MAGIC share, TX<->RX join]
+=== cap  live 717s/722s [WEDGE] ===
+  fail_class census (n=871878): {'OK': 801137, 'MAGIC': 51647, 'LEN': 2152, 'CRC': 16942, 'ZEROTAIL': 0}
+  run-length bins: {'1': 37931, '2': 15760, '3-4': 549, '5-20': 170, '21-100': 1, '>100': 0}
+  onset histogram (failhdr n_records=65536 raw, 61528 in live window, wrapped=True): n_none=61528 n_have=0
+  class4 split (windowed): n_class4=0  delivery_hole(fzo==0)=0  alignloss(fzo>0)=0
+  [CAVEAT] TX<->RX join classification (never_sent/sent_not_decoded) is decided by seq membership ONLY. The t_submit_ns span is an ANNOTATION (unjoinable_time), never a veto on classification -- CLOCK_MONOTONIC is per-machine and NOT comparable across boards, so unjoinable_time is a meaningful coverage check only for a same-host (loopback) capture; on a cross-board leg, report it, do not interpret it.
+  TX<->RX join (txlog n_records=906504, wrapped=False, t_submit_span=[21730969181098, 22459030048785]):
+    lost_rx=73003  never_sent=0  sent_not_decoded=73003  unjoinable_time(annotation only)=73003  decoded_not_delivered=UNCLASSIFIED (no delivery-confirmation source given)
+---- (5) detections vs deliveries: 0x104 delta vs host record count
+CAP_START t=1788528788.191667356 pkts=0xC4BA biterr=0x2B05A4 rstcs=0x0 cfc=0xFFFFF254
+CAP_END   t=1788528788.329165713 pkts=0xC564 biterr=0x2B2CC6 rstcs=0x0 cfc=0xFFFFF23C
+regs_pre:
+t=1788528784.474117435 pkts=0xB2AF biterr=0x26FEF2 rstcs=0x0 cfc=0xFFFFF287 fx=0x0
+t=1788528787.316549541 pkts=0xC078 biterr=0x2A1164 rstcs=0x0 cfc=0xFFFFF230 fx=0x0
+healthy crc=92% rate=1911f/s
+regs_post:
+t=1788529497.327194434 pkts=0xE3670 biterr=0x338C447 rstcs=0x0 cfc=0xFFFFF29B fx=0x0
+host records in frames.bin: 893881 (48 B/record)
+======== END SCORE /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_093052_slack0_t1-control

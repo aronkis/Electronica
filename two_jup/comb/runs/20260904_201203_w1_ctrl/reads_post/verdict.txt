@@ -1,0 +1,98 @@
+=== W1 verdict: mode=ctrl label=post-re-arm run=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260904_201203_w1_ctrl/reads_post ===
+
+-- structural / decode checks (independent of any prediction) --
+   readings usable: 3/3
+   witA[31:16] == 0 on every reading (decode check PASS)
+   occTrue <= 32 on every reading (decode check PASS)
+   ninth word 0x234 present on 3/3 readings (W1+R4B image)
+   r4b_locked = 1 on every reading (steering armed)
+
+-- acquisition window (G14): the FIRST reading's CUMULATIVE counters --
+   first reading 2026-09-04T20:15:40-04:00: these are counts accumulated since the arm's 0x000
+   soft reset zeroed them, i.e. THIS ARM's acquisition transient -- not a rate.
+     occupancy at first read = 9  (push_ptr 17, pop_ptr 8)
+     pop_on_empty cumulative = 44
+     push_on_full cumulative = 0   (zero: the FULL edge was not reached during this acquisition)
+     r4b_skips cumulative  = 8  (steering skips taken since the arm)
+     r4b_opens cumulative  = 32579  (windows opened since the arm; 15-bit)
+     r4b_locked at first read = 1
+   HOST-SIDE HALF, NOT SCORED HERE: losses in the first ~30 frames after the arm
+   come from the leg's own frame series (capture_r3 / accept_analyze), and are
+   reported separately from the steady-state PER for the same reason.
+
+-- per-reading deltas (steady state; the acquisition window above is excluded) --
+             occ         d_poe         d_pof      d_frames         d_cSS         d_cRH        d_cCFC         d_cCS         d_cPD         d_cPC
+               9             0             0         13835     170626904     170626904     170626904     170626904     170626903     170447049
+               8             0             0         13859     170924122     170924123     170924123     170924123     170924123     170743956
+
+-- census control --
+   Brief: "each delta over 10 s equals the emitted-frame count x 12,333 within
+   +-1 frame (frames from the checker / 0x104), all six equal to each other."
+   The +-1 FRAME HALF OF THAT IS NOT ACHIEVABLE against 0x104, and not because
+   of noise: 0x104 is not behind the W1 freeze (only the eight W1 words are), so
+   it is sampled aux_lag_s AFTER the frozen census.  The achievable bound is
+   computed per reading below as rate x aux_lag_s.  Split into two tests:
+
+   (a) STRONG, EXACT (one coherent frozen snapshot, no pairing error):
+       the five pre-discard census deltas equal each other.
+       Equality is judged within EQ_TOL=+-4, measured (not assumed) from the
+       Step-2 loopback control: the stages sit at fixed pipeline offsets that cancel
+       in a delta, except cCS which jitters one beat -- so +-1 occurs with ZERO loss.
+       P2-alt's predicted shortfall is ~395 per 10 s, ~100x this band.
+       max |stage delta - cSS delta| over the window = 1
+       RESULT: EQUAL within +-4 on all 2 readings.
+
+   (b) cPC is EXPECTED TO BE SHORT BY 13 PER FRAME -- by design, not a deletion.
+       sample_discard_controller drops the 13-slot inter-frame guard, so
+       cPC delta = 12,320 x frames while every stage above it is 12,333 x frames
+       (W1_REGMAP sec 3).  Pre-registered separately BEFORE the leg so a designed
+       guard-drop is not read as evidence for P2-alt.
+       2026-09-04T20:15:51-04:00  frames(from cSS)= 13834.99  cPC exp=   170447049 got=   170447049  diff=        -0
+       2026-09-04T20:16:03-04:00  frames(from cSS)= 13859.09  cPC exp=   170743954 got=   170743956  diff=        +2
+
+   (c) WEAK, bounded (frames from the un-frozen 0x104):
+       2026-09-04T20:15:51-04:00  0x104 delta=   13835  cSS/12333= 13834.99  diff=   -0.01 frames  pairing bound=+-70.6 frames (aux_lag=0.051s)
+       2026-09-04T20:16:03-04:00  0x104 delta=   13859  cSS/12333= 13859.09  diff=   +0.09 frames  pairing bound=+-70.7 frames (aux_lag=0.051s)
+
+-- counter wrap accounting (coordinator item 2) --
+   read spacing: min 11.0s max 12.0s over 2 intervals
+   census wrap horizon 279s -> no interval reaches it (all deltas unambiguous)
+   edge   wrap horizon 1659s -> no interval reaches it (all deltas unambiguous)
+   wraps traversed over the whole window (sum of per-interval deltas / modulus):
+     cSS   total    341,551,026  =   0.08 x 2^32
+     cRH   total    341,551,027  =   0.08 x 2^32
+     cCFC  total    341,551,027  =   0.08 x 2^32
+     cCS   total    341,551,027  =   0.08 x 2^32
+     cPD   total    341,551,026  =   0.08 x 2^32
+     cPC   total    341,191,005  =   0.08 x 2^32
+     pop_on_empty total        0  =  0.00 x 2^16
+     push_on_full total        0  =  0.00 x 2^16
+   (every figure above is accumulated from consecutive reads, never leg-end
+    minus leg-start -- a raw end-minus-start subtraction would alias.)
+
+-- edge counters --
+   pop_on_empty: total delta over the window = 0, per reading [0, 0]
+   push_on_full: total delta over the window = 0, per reading [0, 0]
+   witA occupancy values seen: [8, 9]
+   cumulative pop_on_empty (last reading) = 44, push_on_full = 0
+
+-- R4B witnesses (ninth word 0x234) --
+   r4b_locked: [1]  (1 = eight pcEnd pulses seen since reset; armed == locked in this design)
+   r4b_skips  per interval: [0, 0]  total 0
+   r4b_opens  per interval: [13835, 13859]  total 27694
+   mean r4b_skips per read interval = 0.0
+   0x234 advanced WITHIN the freeze window on 2/2 readings -- expected: the ninth word is deliberately OUTSIDE W1's freeze shadow (W1_REGMAP sec 5.1), and this is its liveness control.
+   wrap horizons: r4b_opens (15-bit, ~1 per frame) 26s -> no interval reaches it; r4b_skips (16-bit) 1663s -> no interval reaches it
+   opens total 27,694 = 0.85 x 2^15; skips total 0 = 0.00 x 2^16
+
+-- Step 2 control verdicts --
+   NULL (steady loopback): pop_on_empty delta 0 and push_on_full delta 0 -> PASS (poe=0, pof=0)
+   occupancy constant in steady loopback -> NOT CONSTANT (values [8, 9])
+   pointer fields advance mod 32 between reads -> PASS (2 distinct (push,pop) pairs)
+
+   -- R4B controls (Task 13 step 5) --
+   r4b_armed (= locked) = 1 on every interval -> PASS
+   r4b_window_opens advances at the FRAME rate (liveness positive control; a static value means no pcEnd, so no skip could ever fire) -> PASS (per interval [13835, 13859])
+   occupancy after lock in 8-10 -> PASS (occ [8, 9])
+   pop_on_empty delta 0 in steady loopback (the EMPTY edge is what the steering prevents) -> PASS (poe=0)
+   r4b_skips: advance then go flat (self-centring at 9/10) -> per interval [0, 0]

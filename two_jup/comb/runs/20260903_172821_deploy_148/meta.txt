@@ -1,0 +1,7 @@
+board=148 ip=10.0.0.148 flags=[] dry=0
+gcc_line_source=README_hostlog.md (/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/README_hostlog.md)
+build_ok=1
+nakstat_strings=4 (need 4; gate applies (BOARD=148))
+nakstat_gate_pass=1
+daemon_md5=f2c33f9b1b784d3c91a85c2d9383030d
+ts=2026-09-03T17:28:39-04:00

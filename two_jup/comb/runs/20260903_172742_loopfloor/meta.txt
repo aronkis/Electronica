@@ -1,0 +1,8 @@
+leg=loopfloor board=10.0.0.148 dur=600 window_s=600 dry=1
+image_md5=dry-no-board
+daemon_md5=dry-no-board
+nakstat_strings=4
+rxqstat_strings=1
+rearms_in_window=0
+INFORMATIVE window_s=600 rate_fps=1245.0 d104=747000 rearms_in_window=0
+ts=2026-09-03T17:27:45-04:00

@@ -1,0 +1,41 @@
+--- s1_rtl_beatfix3/hdlsrc/commhdlQPSKTxRxLoopback/Peak_Search.v	2026-08-21 23:32:18.606353195 -0400
++++ s1_rtl_e5fix/hdlsrc/commhdlQPSKTxRxLoopback/Peak_Search.v	2026-08-28 20:47:13.148380505 -0400
+@@ -80,6 +80,29 @@
+   //  initial value   = 0
+   //  step value      = 1
+   //  count to value  = 12332
++  // E5FIX 2026-08-28: peak-anchored search window -- `win` restarts at every new-peak latch; the running-max
++  // reset / done / success-reset fire when win == 12300 (33 symbols BEFORE the expected next peak), so a
++  // peak that moved by up to +/-32 symbols is still captured in the right window. The free-running timing
++  // reference (offset values) is untouched, so Timing_Adjust semantics are unchanged.
++  reg [13:0] win;  // ufix14
++  wire win_done;
++  assign win_done = (win == 14'd12300);
++  always @(posedge clk or posedge reset)
++    begin : e5fix_win_process
++      if (reset == 1'b1) begin
++        win <= 14'd0;
++      end
++      else begin
++        if (enb_1_2_0) begin
++          if (Logical_Operator4_out1) begin
++            win <= 14'd1;
++          end
++          else if (validIn) begin
++            win <= (win == 14'd12332) ? 14'd0 : win + 14'd1;
++          end
++        end
++      end
++    end
+   assign count_step = 14'b00000000000001;
+ 
+   assign count_from = 14'b00000000000000;
+@@ -106,7 +129,7 @@
+       end
+     end
+ 
+-  assign Compare_To_Constant_out1 = timing_Reference_out1 == 14'b11000000101100;
++  assign Compare_To_Constant_out1 = win_done;  // E5FIX: was timing_Reference_out1 == 12332
+ 
+   assign Logical_Operator_out1 = validIn & Compare_To_Constant_out1;
+ 

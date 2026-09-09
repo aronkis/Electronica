@@ -1,0 +1,6 @@
+mode=ctrl board=148 image=9f13705d9fb0 fixctl_base=0x0 r4b=1 dry=0
+arm1=  armed, waiting 70 s for the transient   post-arm: fps=1248 errps=0 capTAP=0xBCF94856 ARM_OK profile=lvds_61p44_fdd_jupiter fps=1248 capTAP=0xBCF94856 
+arm2=  armed, waiting 70 s for the transient   post-arm: fps=1248 errps=0 capTAP=0xBCF94856 ARM_OK profile=lvds_61p44_fdd_jupiter fps=1248 capTAP=0xBCF94856 
+sink=tgenrx (armed for the run, disarmed on exit)
+aux=0x104 0x124 (0x104 packets_out, 0x124 cnt_frame_start; NOT frozen)
+ts=2026-09-04T20:16:05-04:00

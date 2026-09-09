@@ -1,0 +1,94 @@
+{
+  "run_dir": "/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_094543_slack1_t1-slackon/s3h",
+  "n_readings": 49,
+  "meta": {
+    "leg": "seqbist_s3h",
+    "board": "10.0.0.148",
+    "mode": "hostframe",
+    "dur": "540",
+    "dry": "0",
+    "window_s": "540",
+    "n_readings": "49",
+    "rearms_in_window": "0",
+    "rearm_pre_window": "0",
+    "arm_verified_by_effect": "1",
+    "sink": "none",
+    "tgen_mode": "0",
+    "gap": "NA",
+    "skip_every": "0",
+    "corrupt_every": "0",
+    "fill": "NA",
+    "ctrl_pre": "0x00000030",
+    "ctrl_hostframe": "0x00000010",
+    "ctrl_cleared": "0x00000010",
+    "ctrl_post": "0x00000010",
+    "ctrl_restored": "0x00000030",
+    "ts": "2026-09-04T09:56:44-04:00"
+  },
+  "loss_pct": 99.97016674548568,
+  "garbage_pct": 5.887000591824411,
+  "crc_fail_pct": 2.078144855784107,
+  "tot_frames": 665738,
+  "tot_lost_slots": 2230864180,
+  "tot_garbage": 39192,
+  "tot_gap_events": 35758,
+  "frames_per_10s": {
+    "min": 13747,
+    "median": 13797.0,
+    "max": 14293
+  },
+  "loss_pct_per_10s": {
+    "min": 99.8210476657959,
+    "median": 99.99962543605021,
+    "max": 100.03595092349866
+  },
+  "interval_hist": {
+    "int_32": 1251,
+    "int_33": 9,
+    "int_other": 9543,
+    "int_hist_lt30": 24955,
+    "period_est_frames": 32.00714285714286,
+    "contamination_pct": 96.4763129928967,
+    "period_est_reliable": false,
+    "units": "emitted-frame (seq-delta) units -- TGEN frame numbers, not received-frame counts; no received->emitted correction is applied",
+    "note": "period_est_frames is computed from int_32/int_33 only; a 26.0 ms comb = 32.43 frames would show as a 32/33 mix approx 57/43. int_other/int_hist_lt30 are reported as contamination_pct, not blended into the estimate. This histogram is a COARSE CROSS-CHECK only -- int_other is bimodal (30/31 tail AND >=34 tail) under seq-delta units, so contamination_pct is NOT a noise/flatness signal by itself; see interval_last_series for that."
+  },
+  "interval_last_series": {
+    "n": 49,
+    "min": 6,
+    "median": 23,
+    "max": 4281313188,
+    "stdev": 983723210.455735,
+    "flat": false,
+    "units": "emitted-frame (seq-delta) units, one raw sample per 10s freeze (chk_int_last), not a delta"
+  },
+  "positive_control": {
+    "skip_every": 0,
+    "corrupt_every": 0,
+    "emitted_frames": 667671,
+    "chk_frames": 665738,
+    "filler_est": -1933,
+    "filler_frac": -0.0029035446376802884,
+    "background_gap_per_emitted": null,
+    "background_events_est": 0.0,
+    "background_note": "no background rate supplied (meta background_gap_per_emitted or --background); scoring UNCORRECTED, which is only valid if the fabric is lossless at this gap",
+    "expected_interval_peak": null,
+    "pass": null
+  },
+  "legacy_slots_0_15_all_zero": false,
+  "register_agreement": {
+    "reg_0x104_delta": 665882,
+    "reg_0x124_delta": 665883,
+    "chk_frames_delta": 665738,
+    "0x104_vs_chk_frames_pct": 0.021630130772165627,
+    "0x124_vs_chk_frames_pct": 0.021780340013639
+  },
+  "verdict": "UNINFORMATIVE",
+  "reasons": [
+    "25 negative delta(s) -- checker cleared/re-armed mid-window (e.g. sample 2: chk_lost_slots=-2061122900)"
+  ],
+  "notes": []
+}
+
+SEQBIST_SCORE verdict=UNINFORMATIVE loss_pct=99.9702 garbage_pct=5.8870 crc_fail_pct=2.0781 period_est=32.00714285714286
+  - 25 negative delta(s) -- checker cleared/re-armed mid-window (e.g. sample 2: chk_lost_slots=-2061122900)

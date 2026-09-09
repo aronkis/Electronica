@@ -48,10 +48,10 @@ $W $IP 'P=/sys/bus/iio/devices/iio:device2; D2=/sys/kernel/debug/iio/iio:device2
 
 # 3. deploy updated sources (incl the new qpsk_ber module) + on-board build
 $W $IP 'mkdir -p /root/host_app_k5' 2>/dev/null
-scpput "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_frame.h" "$SRC/qpsk_hw.h" \
+scpput "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_frame.h" "$SRC/qpsk_hw.h" "$SRC/qpsk_uio.c" "$SRC/qpsk_uio.h" \
        "$SRC/qpsk_ber.c" "$SRC/qpsk_ber.h" "$SRC/qpsk_seq.c" "$SRC/qpsk_seq.h" root@$IP:/root/host_app_k5/ \
   || { echo "[cal] FAIL: scp sources"; exit 1; }
-$W $IP 'cd /root/host_app_k5 && gcc -O2 -Wall -o qpsk_tun qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c 2>/tmp/gcc.err && echo BUILD_OK || { echo BUILD_FAIL; cat /tmp/gcc.err; }' 2>/dev/null | tee /dev/shm/cal_build.txt
+$W $IP 'cd /root/host_app_k5 && gcc -O2 -Wall -o qpsk_tun qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c 2>/tmp/gcc.err && echo BUILD_OK || { echo BUILD_FAIL; cat /tmp/gcc.err; }' 2>/dev/null | tee /dev/shm/cal_build.txt
 grep -q BUILD_OK /dev/shm/cal_build.txt || { echo "[cal] FAIL: on-board build"; exit 1; }
 
 # 3b. scorer self-test on the on-board binary (same -T path as the host suite)

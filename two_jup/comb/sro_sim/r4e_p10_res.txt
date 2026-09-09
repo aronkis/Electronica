@@ -1,0 +1,6 @@
+iq=n_p10.iq nsamp=21114096 cadence=2 rstcs_end=8400
+packets=427 biterr=23132 capout=a037d28a rstcs=0 nrxw=81557
+pushes=5303353 pops=5303330 strobe_anomalies=12617 air_frames=428
+r3_skips=7 r3_extras=37
+t7_ok=377 t7_bad=0 t7_nomagic=50 t7_fill=1516
+rh_pop_on_empty=178 rh_push_on_full=0 pd_push_on_full=0 pd_pop_on_empty=0 occTrue_end=23 pdOcc_end=12333

@@ -1,0 +1,48 @@
+DCP /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_byte_tmr146_build/hdl_prj_jupiter_composite/vivado_ip_prj/vivado_prj.runs/v_ebp/system_top_routed.dcp
+GLOBAL_WNS 0.067
+GLOBAL_WHS 0.010
+CELLCOUNT *ByteWordBuffer* 1644
+CELLCOUNT *ByteSerializer* 595
+CELLCOUNT *ByteBitShifter* 265
+CELLCOUNT *TxGateK5* 120
+BP_TOTAL 2624
+BP_PLACED 2620 BBOX_X 0-41 BBOX_Y 49-93 SPREAD 1804
+BP_DISTINCT_SITES 347
+BP_SETUP_MIN 1.849 N 200
+BP_SETUP_PATH slack=1.849 dp=6.125 skew=-0.016 lvl=17 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[12]/D
+BP_SETUP_PATH slack=1.863 dp=6.118 skew=-0.009 lvl=17 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[15]/D
+BP_SETUP_PATH slack=1.986 dp=5.978 skew=-0.026 lvl=17 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[13]/D
+BP_SETUP_PATH slack=1.996 dp=5.963 skew=-0.031 lvl=17 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[14]/D
+BP_SETUP_PATH slack=2.026 dp=5.937 skew=-0.027 lvl=17 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[11]/D
+BP_SETUP_PATH slack=2.072 dp=5.890 skew=-0.028 lvl=17 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[10]/D
+BP_SETUP_PATH slack=2.099 dp=5.470 skew=-0.101 lvl=16 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_FEC_Tx_Encoder_K5/u_TxInterleaveK5/u_ramA_ram/ram_reg_bram_0/DINADIN[0]
+BP_SETUP_PATH slack=2.214 dp=5.348 skew=-0.108 lvl=16 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_FEC_Tx_Encoder_K5/u_TxInterleaveK5/u_ramB_ram/ram_reg_bram_0/DINADIN[0]
+BP_SETUP_PATH slack=2.340 dp=5.619 skew=-0.030 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[9]/D
+BP_SETUP_PATH slack=2.381 dp=5.582 skew=-0.026 lvl=14 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_FrameStatChecksum/acc_reg[8]/D
+BP_HOLD_MIN 0.042 N 200
+BP_HOLD_PATH slack=0.042 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[16]/D
+BP_HOLD_PATH slack=0.042 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[27]/D
+BP_HOLD_PATH slack=0.042 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_ByteBitShifter/state_shiftWord_reg[13]/D
+BP_HOLD_PATH slack=0.044 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[10]/D
+BP_HOLD_PATH slack=0.044 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[57]/D
+BP_HOLD_PATH slack=0.044 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[60]/D
+BP_HOLD_PATH slack=0.044 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_ByteBitShifter/state_shiftWord_reg[14]/D
+BP_HOLD_PATH slack=0.044 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_FEC_Tx_Encoder_K5/u_TxInterleaveK5/wptr_reg[11]/D
+BP_HOLD_PATH slack=0.044 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[15]/D
+BP_HOLD_PATH slack=0.044 skew=0.006 ep=i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/heldWord_reg[49]/D
+BP_CE_PINS 1355
+BP_CE_SETUP_MIN 3.614
+BP_CE_HOLD_MIN 0.169
+BP_CE_HOLD_SKEW_MIN 0.008 MAX 0.059
+BP_NETS 3003
+BP_NETDELAY_SUM 725302.000 over 3003 nets
+BP_NETDELAY 2580 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/Receiver_recBitValid
+BP_NETDELAY 2545 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/dut_byte_data_in[24]
+BP_NETDELAY 2536 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteSerializer/E[0]
+BP_NETDELAY 2403 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/dut_byte_data_in[13]
+BP_NETDELAY 2221 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_ByteBitShifter/lopt
+BP_NETDELAY 2213 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/dut_byte_data_in[61]
+BP_NETDELAY 2142 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/WordRT_bypass_reg_reg[0]
+BP_NETDELAY 2142 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_Transmitter/u_Input_Data/u_ByteBitShifter/state_shiftWord_reg[0]_0
+BP_NETDELAY 2119 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/state_buf[3][63]_i_1_n_0
+BP_NETDELAY 2097 i_system_wrapper/system_i/TxRxCompo_ip_0/inst/u_TxRxCompo_ip_dut_inst/u_TxRxCompo_ip_src_TxRxComposite/u_ByteWordBuffer/dut_byte_data_in[20]

@@ -1,0 +1,32 @@
+=== Task 23 evidence: magic_off / within-burst structure ===
+run two_jup/comb/runs/20260904_201814_w1_air (W1+R4B 9f13705d9fb0), live window 15-715 s
+tool: two_jup/comb/joinlog.read_failhdr on cap/failhdr.bin (n_records=5439, complete, not wrapped)
+
+== R4B failhdr in live window: n=1738 (wrapped=False) ==
+   fail_class: {1: 1543, 3: 195}
+   class-1 (MAGIC) n=1543 ; magic 0x51 0x4B found somewhere in the slice: 1305 (84.58 %)  [chance floor ~2.3 %]
+   magic_off values: min=194 max=1136 ; most common: [(568, 1259), (376, 25), (1136, 14), (330, 3), (194, 1), (250, 1), (310, 1), (756, 1)]
+   magic_off <=64: 0 ; in [1,8]: 0
+   first-byte histogram of the 12 raw header bytes (top 6): [(184, 21), (240, 19), (2, 18), (35, 18), (79, 16), (40, 15)]
+   all-zero 12-byte headers: 0 ; headers with >=6 zero bytes: 0
+   mean zero bytes per 12-byte header: 0.03 (random data -> 0.047)
+== W1  failhdr in live window: n=61469 (wrapped=True) ==
+   fail_class: {1: 44805, 2: 1880, 3: 14784}
+   class-1 (MAGIC) n=44805 ; magic 0x51 0x4B found somewhere in the slice: 8301 (18.53 %)  [chance floor ~2.3 %]
+   magic_off values: min=4 max=1526 ; most common: [(64, 4816), (952, 1302), (1144, 161), (960, 37), (376, 20), (1152, 19), (1432, 18), (1328, 16)]
+   magic_off <=64: 4881 ; in [1,8]: 4
+   first-byte histogram of the 12 raw header bytes (top 6): [(17, 9933), (81, 4314), (82, 2724), (80, 1751), (84, 1477), (87, 1363)]
+   all-zero 12-byte headers: 0 ; headers with >=6 zero bytes: 0
+   mean zero bytes per 12-byte header: 0.33 (random data -> 0.047)
+
+failhdr records inside a burst window: 1645 of 1738 (94.6 %); lost slots=1956
+  by fail_class inside bursts: {1: 1488, 3: 157}
+  position-in-burst 0 (first failed frame of the run): n=159  magic_off=568: 1  none: 1
+   pos 0: n= 159  off==568:    1 (  0.6 %)  off==NONE:    1  class1/3: 2/157
+   pos 1: n= 159  off==568:    2 (  1.3 %)  off==NONE:  151  class1/3: 159/0
+   pos 2: n= 159  off==568:  115 ( 72.3 %)  off==NONE:   39  class1/3: 159/0
+   pos 3: n= 159  off==568:  153 ( 96.2 %)  off==NONE:    0  class1/3: 159/0
+   pos 4: n= 150  off==568:  143 ( 95.3 %)  off==NONE:    1  class1/3: 150/0
+   pos 5: n= 138  off==568:  133 ( 96.4 %)  off==NONE:    0  class1/3: 138/0
+   pos>=6: n= 721  off==568:  701 ( 97.2 %)  off==NONE:    2  class1/3: 721/0
+  OUTSIDE any burst: n=93  class1/3=55/38  off==568: 11 (11.8 %)  off==NONE: 44

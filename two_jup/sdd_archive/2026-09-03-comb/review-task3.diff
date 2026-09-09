@@ -1,0 +1,1341 @@
+# Task 3 (T0c comb rig scripts) review package
+c8da5d7 Task 3 (T0c): COMB campaign rig scripts, DRY-only, zero board contact
+
+diff --git a/two_jup/comb/ddrcap_during_leg_go.sh b/two_jup/comb/ddrcap_during_leg_go.sh
+new file mode 100755
+index 00000000..ddd5754
+--- /dev/null
++++ b/two_jup/comb/ddrcap_during_leg_go.sh
+@@ -0,0 +1,77 @@
++#!/bin/bash
++# ddrcap_during_leg_go.sh SEL= OFFSET_S= OUT= -- T3 (happy-bubbling-owl): sleep OFFSET_S
++# into an already-running leg (legrun_go.sh), then fire ddrcap2_capture.sh SEL <name> on
++# 148 (the CURRENT arm, no arm inside -- per ddrcap2_capture.sh's own contract).
++#
++# Credit = bytes>=536870912 (512 MiB; ddrcap2_capture.sh's own default SZ=134217728
++# samples * 4 B/sample = 536870912 B, so an unmodified default run already targets this)
++# AND pre/post capTAP golden (0x20C == BCF94856, both ends -- ddrcap2_capture.sh aborts
++# before capturing if pre is not golden; this wrapper additionally requires post golden
++# for credit, since a mid-capture capTAP replay would make bytes-count meaningless).
++#
++# Prints exactly one line: DDRCAP_LEG sel=<n> credited=yes|no
++#
++# DRY=1 (default): OFFSET_S sleep is skipped (DRY never sleeps), ddrcap2_capture.sh is
++# NEVER invoked (no DRY gate of its own -> real ssh/scp), and this wrapper fabricates a
++# plausible 512 MiB-credited run.log/meta.txt so downstream health tooling has real
++# files to run against.
++set -u
++D=$(cd "$(dirname "$0")" && pwd)          # two_jup/comb
++TJ=$(cd "$D/.." && pwd)                   # two_jup
++DRY=${DRY:-1}
++SEL=${SEL:?usage: SEL=<n> OFFSET_S=<s> ddrcap_during_leg_go.sh}
++OFFSET_S=${OFFSET_S:-120}
++NAME=${NAME:-sel${SEL}_leg}
++CREDIT_BYTES=536870912
++GOLD=BCF94856
++
++TS=$(date +%Y%m%d_%H%M%S)
++OUT=${OUT:-$D/runs/${TS}_ddrcap_sel${SEL}}
++mkdir -p "$OUT"
++log(){ echo "$(date -Is) $*" | tee -a "$OUT/run.log"; }
++
++log "sel=$SEL offset_s=$OFFSET_S out=$OUT dry=$DRY"
++if [ "$DRY" = 1 ]; then
++  log "[dry] sleep ${OFFSET_S}s (into a running leg)"
++else
++  sleep "$OFFSET_S"
++fi
++
++if [ "$DRY" = 1 ]; then
++  log "[dry] $TJ/ddrcap2_capture.sh $SEL $NAME (on 10.0.0.148, current arm)"
++  BYTES=$CREDIT_BYTES
++  CAP_PRE=$GOLD
++  CAP_POST=$GOLD
++  CAP_EXIT=0
++else
++  OUT="$OUT" "$TJ/ddrcap2_capture.sh" "$SEL" "$NAME" > "$OUT/ddrcap2_capture.log" 2>&1
++  CAP_EXIT=$?
++  # ddrcap2_capture.sh writes "<name> sel=<n> bytes=<b> pre=<p> post=<q>" into
++  # $OUT/meta.txt (the OUT env override above points it straight at our dir).
++  LINE=$(grep -m1 "^$NAME sel=$SEL" "$OUT/meta.txt" 2>/dev/null)
++  BYTES=$(echo "$LINE" | grep -oE 'bytes=[0-9]+' | cut -d= -f2)
++  CAP_PRE=$(echo "$LINE" | grep -oE 'pre=[0-9A-Fa-f]+' | cut -d= -f2)
++  CAP_POST=$(echo "$LINE" | grep -oE 'post=[0-9A-Fa-f]+' | cut -d= -f2)
++  BYTES=${BYTES:-0}
++fi
++
++norm(){ printf %s "$1" | sed -E 's/^0[xX]//' | tr 'a-f' 'A-F'; }
++CREDITED=no
++if [ "${BYTES:-0}" -ge "$CREDIT_BYTES" ] 2>/dev/null \
++   && [ "$(norm "${CAP_PRE:-}")" = "$GOLD" ] \
++   && [ "$(norm "${CAP_POST:-}")" = "$GOLD" ]; then
++  CREDITED=yes
++fi
++
++{
++  echo "sel=$SEL name=$NAME offset_s=$OFFSET_S dry=$DRY"
++  echo "capture_exit=$CAP_EXIT"
++  echo "bytes=${BYTES:-0} (need >= $CREDIT_BYTES)"
++  echo "pre_capTAP=${CAP_PRE:-} post_capTAP=${CAP_POST:-} (need $GOLD both)"
++  echo "credited=$CREDITED"
++  echo "ts=$(date -Is)"
++} > "$OUT/meta.txt"
++
++cat "$OUT/meta.txt"
++echo "DDRCAP_LEG sel=$SEL credited=$CREDITED"
++[ "$CREDITED" = yes ] && exit 0 || exit 1
+diff --git a/two_jup/comb/deploy_daemon_go.sh b/two_jup/comb/deploy_daemon_go.sh
+new file mode 100755
+index 00000000..8b005a3
+--- /dev/null
++++ b/two_jup/comb/deploy_daemon_go.sh
+@@ -0,0 +1,97 @@
++#!/bin/bash
++# deploy_daemon_go.sh BOARD=148|146 FLAGS="..." -- T0c (happy-bubbling-owl): scp the
++# host_app_k5 sources (the exact list capture_r3.sh uses -- qpsk_uio.c/.h already in
++# it) and build on-board with the exact gcc line two_jup/comb/README_hostlog.md is
++# supposed to record (Task 1/T0a writes that file; it does not exist yet as of this
++# task, so this script falls back to capture_r3.sh's own build line +
++# -DQPSK_RXQ_STAT, exactly as the plan directs -- re-check README_hostlog.md before
++# trusting this fallback once Task 1 lands it).
++#
++# gcc line (capture_r3.sh, board B / 146 branch) + -DQPSK_RXQ_STAT:
++#   gcc -O2 -Wall -DQPSK_CARVE_2MB [-DQPSK_ARQ_NAKSTAT if already deployed] \
++#       -DQPSK_RXQ_STAT $FLAGS -o qpsk_tun \
++#       qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c
++#   gcc -O2 -Wall -o qpsk_perf qpsk_perf.c
++#
++# After the build: verify `strings qpsk_tun | grep -c nakstat` == 4 on 148 (ABORT if
++# not -- the same NAK-path-counter regression capture_r3.sh's own guard exists to
++# catch) and print the daemon md5.
++set -u
++D=$(cd "$(dirname "$0")" && pwd)          # two_jup/comb
++TJ=$(cd "$D/.." && pwd)                   # two_jup
++ROOT=$(cd "$TJ/.." && pwd)
++SRC=$ROOT/host_app_k5
++DRY=${DRY:-1}
++BOARD=${BOARD:?usage: BOARD=148|146 deploy_daemon_go.sh}
++FLAGS=${FLAGS:-}
++README=$D/README_hostlog.md
++
++case "$BOARD" in
++  148) IP=10.0.0.148;;
++  146) IP=10.0.0.146;;
++  *) echo "BOARD must be 148 or 146" >&2; exit 2;;
++esac
++
++TS=$(date +%Y%m%d_%H%M%S)
++OUT=${OUT:-$D/runs/${TS}_deploy_${BOARD}}
++mkdir -p "$OUT"
++log(){ echo "$(date -Is) $*" | tee -a "$OUT/run.log"; }
++
++# exact scp file list (matches capture_r3.sh's SRC list; qpsk_uio.c/.h already in it).
++FILES="qpsk_tun.c qpsk_frame.c qpsk_frame.h qpsk_hw.h qpsk_ber.c qpsk_ber.h qpsk_seq.c qpsk_seq.h qpsk_uio.c qpsk_uio.h qpsk_perf.c"
++
++if [ -f "$README" ]; then
++  GCC_SRC="README_hostlog.md ($README)"
++  log "using build line from $README"
++else
++  GCC_SRC="capture_r3.sh's line + -DQPSK_RXQ_STAT (README_hostlog.md not yet written by Task 1)"
++  log "$README absent -- falling back to $GCC_SRC"
++fi
++
++log "board=$BOARD ip=$IP flags=[$FLAGS] dry=$DRY -> $OUT"
++
++if [ "$DRY" = 1 ]; then
++  log "[dry] mkdir -p /root/host_app_k5 on $IP"
++  for f in $FILES; do log "[dry] scp $SRC/$f root@$IP:/root/host_app_k5/"; done
++  log "[dry] gcc -O2 -Wall -DQPSK_CARVE_2MB -DQPSK_RXQ_STAT $FLAGS -o qpsk_tun qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c"
++  log "[dry] gcc -O2 -Wall -o qpsk_perf qpsk_perf.c"
++  BUILD_OK=1
++  NAKSTAT_N=4
++  DAEMON_MD5="dry-no-board"
++else
++  "$TJ/anyssh.sh" "$IP" 'mkdir -p /root/host_app_k5' 2>/dev/null
++  SCPPUT(){ SSH_ASKPASS="$TJ/askpass.sh" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 setsid -w scp -o StrictHostKeyChecking=no -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no "$@" </dev/null 2>>"$OUT/scp_err.txt"; }
++  FPATHS=""; for f in $FILES; do FPATHS="$FPATHS $SRC/$f"; done
++  SCPPUT $FPATHS root@"$IP":/root/host_app_k5/ || { log "scp FAILED"; echo "DEPLOY_DAEMON_FAIL scp"; exit 1; }
++  # preserve deployed NAK-stat instrumentation the same way capture_r3.sh does
++  NAKKEEP=$("$TJ/anyssh.sh" "$IP" 'strings /root/host_app_k5/qpsk_tun 2>/dev/null | grep -q "nakstat:" && echo "-DQPSK_ARQ_NAKSTAT" || echo ""' 2>/dev/null)
++  R=$("$TJ/anyssh.sh" "$IP" "cd /root/host_app_k5 && gcc -O2 -Wall -DQPSK_CARVE_2MB $NAKKEEP -DQPSK_RXQ_STAT $FLAGS -o qpsk_tun \
++        qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c 2>/tmp/gcc.err \
++        && gcc -O2 -Wall -o qpsk_perf qpsk_perf.c 2>>/tmp/gcc.err \
++        && echo BUILD_OK || { echo BUILD_FAIL; cat /tmp/gcc.err; }" 2>/dev/null)
++  echo "$R" >> "$OUT/build.log"
++  echo "$R" | grep -q BUILD_OK && BUILD_OK=1 || BUILD_OK=0
++  NAKSTAT_N=$("$TJ/anyssh.sh" "$IP" 'strings /root/host_app_k5/qpsk_tun 2>/dev/null | grep -c nakstat' 2>/dev/null)
++  DAEMON_MD5=$("$TJ/anyssh.sh" "$IP" 'md5sum /root/host_app_k5/qpsk_tun 2>/dev/null | cut -c1-32' 2>/dev/null)
++fi
++
++# ABORT gate: strings | grep -c nakstat must == 4 on 148 (per plan). Applied on
++# whichever board this deploy targeted, since a non-148 build with the flag stripped
++# is the exact silent regression capture_r3.sh's own guard exists to catch.
++NAKSTAT_OK=0
++[ "${NAKSTAT_N:-0}" = 4 ] && NAKSTAT_OK=1
++
++{
++  echo "board=$BOARD ip=$IP flags=[$FLAGS] dry=$DRY"
++  echo "gcc_line_source=$GCC_SRC"
++  echo "build_ok=$BUILD_OK"
++  echo "nakstat_strings=$NAKSTAT_N (need 4)"
++  echo "nakstat_gate_pass=$NAKSTAT_OK"
++  echo "daemon_md5=$DAEMON_MD5"
++  echo "ts=$(date -Is)"
++} > "$OUT/meta.txt"
++
++cat "$OUT/meta.txt"
++if [ "$BUILD_OK" != 1 ]; then echo "DEPLOY_DAEMON_FAIL build"; exit 1; fi
++if [ "$NAKSTAT_OK" != 1 ]; then echo "DEPLOY_DAEMON_ABORT nakstat_strings=$NAKSTAT_N != 4"; exit 4; fi
++echo "DEPLOY_DAEMON_OK board=$BOARD daemon_md5=$DAEMON_MD5"
+diff --git a/two_jup/comb/keeper_hold.sh b/two_jup/comb/keeper_hold.sh
+new file mode 100755
+index 00000000..b00dc43
+--- /dev/null
++++ b/two_jup/comb/keeper_hold.sh
+@@ -0,0 +1,175 @@
++#!/bin/bash
++# keeper_hold.sh hold|release -- COMB campaign rig hold, T0c (happy-bubbling-owl §T0c).
++#
++# hold:    create SENTINEL_STOP and RIG_LOCK (ONLY if each is absent; a marker file
++#          records exactly which of the two THIS invocation created), stop any
++#          sentinel-*/sentinelkeeper-* systemd --user units, and kill lock_watchdog on
++#          BOTH boards with the bracket pkill pattern (`pkill -9 -f "[l]ock_watchdog"`,
++#          a board action -- DRY-guarded).
++# release: remove ONLY the hold files this tool created (per the marker), then
++#          relaunch the keeper via launch_rig_unit.sh.
++#
++# Never kill a bring-up mid-arm: this script does not probe or interrupt an in-flight
++# arm sequence; it only touches the hold files, idle sentinel/keeper units, and the
++# watchdog process (which bring-up itself always kills first anyway -- see
++# bringup_r2r3.sh's arm_rom()).
++#
++# DRY=1 (default for this campaign) gates every stateful action. Two independent
++# sub-gates exist so tests can prove real local file bookkeeping without ever risking
++# a real systemd/ssh side effect:
++#   FILE_DRY (default = DRY) -- hold-file create/remove (HOLD_SENTINEL/HOLD_RIGLOCK/
++#     HOLD_MARK). Safe to run for real in a test because those three paths are always
++#     env-overridable to temp files -- it never touches ~/modem-status unless the
++#     caller left the defaults AND set FILE_DRY=0.
++#   NET_DRY (default = DRY) -- systemctl --user stop (real sentinel/keeper units),
++#     ssh pkill on either board, and the launch_rig_unit relaunch. These are
++#     system-wide/board actions with no per-test-safe override, so a test suite must
++#     NEVER set NET_DRY=0 -- it stays DRY even when FILE_DRY=0 is used to exercise the
++#     real create/remove logic on temp paths.
++# Plain `DRY=1` (the default) is the safe, fully-inert mode: both sub-gates inherit it.
++#
++# Env overrides:
++#   HOLD_SENTINEL   default $HOME/modem-status/SENTINEL_STOP
++#   HOLD_RIGLOCK    default $HOME/modem-status/RIG_LOCK
++#   HOLD_MARK       default <dir of HOLD_RIGLOCK>/.keeper_hold_created
++#   A / B           board IPs, default 10.0.0.148 / 10.0.0.146
++#   W               ssh wrapper, default two_jup/anyssh.sh
++set -u
++D=$(cd "$(dirname "$0")" && pwd)          # two_jup/comb
++TJ=$(cd "$D/.." && pwd)                   # two_jup
++W=${W:-$TJ/anyssh.sh}
++A=${A:-10.0.0.148}; B=${B:-10.0.0.146}
++DRY=${DRY:-1}
++FILE_DRY=${FILE_DRY:-$DRY}
++NET_DRY=${NET_DRY:-$DRY}
++
++HOLD_SENTINEL=${HOLD_SENTINEL:-$HOME/modem-status/SENTINEL_STOP}
++HOLD_RIGLOCK=${HOLD_RIGLOCK:-$HOME/modem-status/RIG_LOCK}
++HOLD_MARK=${HOLD_MARK:-$(dirname "$HOLD_RIGLOCK")/.keeper_hold_created}
++
++log(){ echo "$(date -Is) $*"; }
++
++mode=${1:?usage: keeper_hold.sh hold|release}
++
++# ---- unit discovery (local systemctl -- NOT ssh/scp; still DRY-gated, see header) ----
++list_keeper_units(){
++  if [ "$NET_DRY" = 1 ]; then
++    echo "sentinel-000000"
++  else
++    systemctl --user list-units --plain --no-legend 'sentinel-*' 'sentinelkeeper-*' 2>/dev/null \
++      | awk '{print $1}'
++  fi
++}
++
++stop_units(){
++  local units; units=$(list_keeper_units)
++  if [ -z "$units" ]; then log "no sentinel-*/sentinelkeeper-* units found"; return 0; fi
++  local u
++  for u in $units; do
++    if [ "$NET_DRY" = 1 ]; then
++      log "[dry] systemctl --user stop $u"
++    else
++      systemctl --user stop "$u" >/dev/null 2>&1 && log "stopped $u" || log "WARN: stop $u failed"
++    fi
++  done
++}
++
++kill_watchdog_board(){ # $1 ip
++  if [ "$NET_DRY" = 1 ]; then
++    log "[dry] $W $1 pkill -9 -f \"[l]ock_watchdog\""
++  else
++    $W "$1" 'pkill -9 -f "[l]ock_watchdog" 2>/dev/null; echo done' 2>/dev/null
++    log "$1: lock_watchdog kill sent"
++  fi
++}
++
++do_hold(){
++  created=""
++  if [ -e "$HOLD_SENTINEL" ]; then
++    log "SENTINEL_STOP already present ($HOLD_SENTINEL) -- leaving as-is"
++  else
++    if [ "$FILE_DRY" = 1 ]; then
++      log "[dry] create $HOLD_SENTINEL"
++    else
++      mkdir -p "$(dirname "$HOLD_SENTINEL")"; touch "$HOLD_SENTINEL"
++    fi
++    created="$created SENTINEL"
++    log "created SENTINEL_STOP ($HOLD_SENTINEL)"
++  fi
++  if [ -e "$HOLD_RIGLOCK" ]; then
++    log "RIG_LOCK already present ($HOLD_RIGLOCK) -- leaving as-is"
++  else
++    if [ "$FILE_DRY" = 1 ]; then
++      log "[dry] create $HOLD_RIGLOCK"
++    else
++      mkdir -p "$(dirname "$HOLD_RIGLOCK")"
++      echo "owner=keeper_hold pid=$$ since=$(date -Is)" > "$HOLD_RIGLOCK"
++    fi
++    created="$created RIGLOCK"
++    log "created RIG_LOCK ($HOLD_RIGLOCK)"
++  fi
++  if [ -n "$created" ]; then
++    if [ "$FILE_DRY" = 1 ]; then
++      log "[dry] write hold marker ($HOLD_MARK): $created"
++    else
++      mkdir -p "$(dirname "$HOLD_MARK")"
++      echo "$created" > "$HOLD_MARK"
++    fi
++  else
++    log "created nothing (both hold files pre-existed) -- no marker written"
++  fi
++  stop_units
++  kill_watchdog_board "$A"
++  kill_watchdog_board "$B"
++  echo "KEEPER_HOLD_OK created=[${created:- none}]"
++}
++
++do_release(){
++  local created=""
++  if [ -f "$HOLD_MARK" ]; then
++    created=$(cat "$HOLD_MARK" 2>/dev/null)
++  else
++    log "no hold marker at $HOLD_MARK -- this invocation created nothing to release"
++  fi
++  case "$created" in
++    *SENTINEL*)
++      if [ "$FILE_DRY" = 1 ]; then
++        log "[dry] remove $HOLD_SENTINEL"
++      else
++        rm -f "$HOLD_SENTINEL"
++      fi
++      log "removed SENTINEL_STOP" ;;
++    *) log "SENTINEL_STOP not ours -- leaving in place" ;;
++  esac
++  case "$created" in
++    *RIGLOCK*)
++      if [ "$FILE_DRY" = 1 ]; then
++        log "[dry] remove $HOLD_RIGLOCK"
++      else
++        rm -f "$HOLD_RIGLOCK"
++      fi
++      log "removed RIG_LOCK" ;;
++    *) log "RIG_LOCK not ours -- leaving in place" ;;
++  esac
++  if [ "$FILE_DRY" = 1 ]; then
++    log "[dry] rm $HOLD_MARK"
++  else
++    rm -f "$HOLD_MARK"
++  fi
++  # relaunch the keeper via the sanctioned launcher (launch_rig_unit.sh), never a bare
++  # systemd-run: a plain unit's default TimeoutStopSec can SIGKILL it mid-arm later.
++  UNIT="sentinelkeeper-$(date +%H%M%S)"
++  if [ "$NET_DRY" = 1 ]; then
++    log "[dry] $TJ/launch_rig_unit.sh $UNIT $TJ/sim_repro/sentinel_keeper.sh"
++  else
++    "$TJ/launch_rig_unit.sh" "$UNIT" "$TJ/sim_repro/sentinel_keeper.sh" >/dev/null 2>&1 \
++      && log "relaunched keeper as $UNIT" || log "WARN: keeper relaunch failed"
++  fi
++  echo "KEEPER_RELEASE_OK released=[${created:- none}]"
++}
++
++case "$mode" in
++  hold) do_hold ;;
++  release) do_release ;;
++  *) echo "usage: keeper_hold.sh hold|release" >&2; exit 2 ;;
++esac
+diff --git a/two_jup/comb/legrun_go.sh b/two_jup/comb/legrun_go.sh
+new file mode 100755
+index 00000000..7d058b4
+--- /dev/null
++++ b/two_jup/comb/legrun_go.sh
+@@ -0,0 +1,128 @@
++#!/bin/bash
++# legrun_go.sh -- T2/T3 (happy-bubbling-owl): capture_r3.sh LEG=A|B UNCHANGED, with
++# per-board DAEMON_ENV knobs (RXM_148/RXM_146 -> -M on that board's daemon, per the P1
++# host-cadence probes; DRAIN_148/DRAIN_146 -> QPSK_RX_DRAIN_BUDGET on that board).
++#
++# CONCERN (read before trusting a per-board result): capture_r3.sh's single bring-up
++# call (bringup_r2r3.sh r3) starts BOTH boards' daemons from ONE shared shell, and its
++# start_daemon() reads ${RXM:-16} / ${DAEMON_ENV:-} as plain (non-board-scoped) env
++# vars -- the SAME value is spliced into the launch line for board B (146) and board A
++# (148) alike (see bringup_r2r3.sh:~140-165). There is no existing hook to give the two
++# boards different -M or QPSK_RX_DRAIN_BUDGET values without editing capture_r3.sh or
++# bringup_r2r3.sh, which are owned by other tasks and out of scope here. So:
++#   - if only ONE of RXM_148/RXM_146 (or DRAIN_148/DRAIN_146) is set, or both sides are
++#     set to the SAME value, this wrapper maps it straight onto the global RXM /
++#     DAEMON_ENV=QPSK_RX_DRAIN_BUDGET=<n> and calls capture_r3.sh unmodified -- correct,
++#     because the unset side just gets the bring-up default (RXM 16, drain budget 4),
++#     which is what it already gets today.
++#   - if BOTH sides are set to DIFFERENT values, this wrapper REFUSES (exit 2) rather
++#     than silently applying one board's requested value to both boards.
++# T2's probe design (P1: vary the knob on the TX board, leave the other at default)
++# is exactly the single-sided case, so this covers the plan's stated experiments; true
++# asymmetric-both-sides probes need a capture_r3.sh/bringup_r2r3.sh extension owned by
++# whoever owns those files.
++#
++# LEG=A: capture on 148, forward 146->148 (RXM_148/DRAIN_148 govern the transmitting
++#        board's own RX-drain cadence per the P2 mechanism note: "a board's TX silence
++#        follows that board's OWN RX transfer cadence").
++# LEG=B: capture on 146, reverse 148->146.
++#
++# DRY=1 (default): capture_r3.sh is NEVER invoked (it has no DRY gate of its own and
++# would reach real ssh/scp through anyssh.sh) -- this wrapper fabricates the full
++# meta.txt/frames.bin/frames_peer.bin/failhdr/txlog artifact set instead, so downstream
++# tooling has real files to run against with zero board contact.
++set -u
++D=$(cd "$(dirname "$0")" && pwd)          # two_jup/comb
++TJ=$(cd "$D/.." && pwd)                   # two_jup
++DRY=${DRY:-1}
++LEG=${LEG:?usage: LEG=A|B legrun_go.sh}
++DUR=${DUR:-600}
++RXM_148=${RXM_148:-}; RXM_146=${RXM_146:-}
++DRAIN_148=${DRAIN_148:-}; DRAIN_146=${DRAIN_146:-}
++A_IP=10.0.0.148; B_IP=10.0.0.146
++
++case "$LEG" in
++  A) DIRN=fwd; RX_IP=$A_IP; PEER_IP=$B_IP;;
++  B) DIRN=rev; RX_IP=$B_IP; PEER_IP=$A_IP;;
++  *) echo "LEG must be A or B" >&2; exit 2;;
++esac
++
++TS=$(date +%Y%m%d_%H%M%S)
++TAG=${TAG:-leg${LEG}}
++OUT=${OUT:-$D/runs/${TS}_leg${LEG}_${TAG}}
++mkdir -p "$OUT"
++log(){ echo "$(date -Is) $*" | tee -a "$OUT/run.log"; }
++
++# ---- resolve per-board knobs onto the single global env capture_r3.sh's bring-up
++# reads, or refuse if they genuinely conflict. ----
++resolve_pair(){ # $1 name  $2 v148  $3 v146  -> echoes resolved value or empty; sets RC
++  local name=$1 v148=$2 v146=$3
++  if [ -n "$v148" ] && [ -n "$v146" ]; then
++    if [ "$v148" != "$v146" ]; then
++      echo "CANNOT_TARGET_PER_BOARD: $name differs (148=$v148 146=$v146) -- capture_r3.sh/bringup_r2r3.sh apply this knob to BOTH boards from one shared env var; refusing to silently apply one board's value to both. See header comment." >&2
++      return 1
++    fi
++    echo "$v148"; return 0
++  fi
++  [ -n "$v148" ] && { echo "$v148"; return 0; }
++  [ -n "$v146" ] && { echo "$v146"; return 0; }
++  echo ""; return 0
++}
++
++RXM_RESOLVED=$(resolve_pair RXM "$RXM_148" "$RXM_146") || { echo "LEGRUN_ABORTED_PER_BOARD_CONFLICT" | tee -a "$OUT/run.log"; exit 2; }
++DRAIN_RESOLVED=$(resolve_pair QPSK_RX_DRAIN_BUDGET "$DRAIN_148" "$DRAIN_146") || { echo "LEGRUN_ABORTED_PER_BOARD_CONFLICT" | tee -a "$OUT/run.log"; exit 2; }
++
++CAP_ENV=()
++[ -n "$RXM_RESOLVED" ] && CAP_ENV+=("RXM=$RXM_RESOLVED")
++[ -n "$DRAIN_RESOLVED" ] && CAP_ENV+=("DAEMON_ENV=QPSK_RX_DRAIN_BUDGET=$DRAIN_RESOLVED")
++
++log "leg=$LEG dir=$DIRN dur=$DUR knobs: ${CAP_ENV[*]:-<none, bring-up defaults>}"
++log "requested: RXM_148=$RXM_148 RXM_146=$RXM_146 DRAIN_148=$DRAIN_148 DRAIN_146=$DRAIN_146"
++
++if [ "$DRY" = 1 ]; then
++  log "[dry] ${CAP_ENV[*]:-} $TJ/capture_r3.sh $LEG -d $DUR -o $OUT/cap"
++  mkdir -p "$OUT/cap"
++  head -c 48000 /dev/urandom > "$OUT/cap/frames.bin" 2>/dev/null || : > "$OUT/cap/frames.bin"
++  head -c 48000 /dev/urandom > "$OUT/cap/frames_peer.bin" 2>/dev/null || : > "$OUT/cap/frames_peer.bin"
++  head -c 12000 /dev/urandom > "$OUT/cap/failhdr.bin" 2>/dev/null || : > "$OUT/cap/failhdr.bin"
++  head -c 48000 /dev/urandom > "$OUT/cap/txlog.bin" 2>/dev/null || : > "$OUT/cap/txlog.bin"
++  head -c 12000 /dev/urandom > "$OUT/cap/failhdr_peer.bin" 2>/dev/null || : > "$OUT/cap/failhdr_peer.bin"
++  head -c 48000 /dev/urandom > "$OUT/cap/txlog_peer.bin" 2>/dev/null || : > "$OUT/cap/txlog_peer.bin"
++  RATE_PRE=1180; RATE_POST=1150
++  WEDGE_NOTE="healthy crc=99% rate=${RATE_POST}f/s"
++  CAP_EXIT=0
++else
++  env "${CAP_ENV[@]}" "$TJ/capture_r3.sh" "$LEG" -d "$DUR" -o "$OUT/cap" > "$OUT/capture_r3.log" 2>&1
++  CAP_EXIT=$?
++  RATE_PRE=$(grep -m1 "health try" "$OUT/capture_r3.log" | grep -oE "rate [0-9]+" | grep -oE "[0-9]+" || echo 0)
++  RATE_POST=$(grep "health try" "$OUT/capture_r3.log" | tail -1 | grep -oE "rate [0-9]+" | grep -oE "[0-9]+" || echo 0)
++  WEDGE_NOTE=$(grep -oE "wedge_verdict=.*" "$OUT/cap/meta.txt" 2>/dev/null | head -1)
++  # fetch the T0a instrumentation logs both boards (same scp path capture_r3.sh uses)
++  SCPGET(){ SSH_ASKPASS="$TJ/askpass.sh" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 setsid -w scp -o StrictHostKeyChecking=no -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no "$@" </dev/null 2>>"$OUT/scp_err.txt"; }
++  SCPGET root@"$RX_IP":/dev/shm/failhdr.bin "$OUT/cap/failhdr.bin" 2>/dev/null || log "WARN: failhdr.bin ($RX_IP) fetch failed"
++  SCPGET root@"$RX_IP":/dev/shm/txlog.bin "$OUT/cap/txlog.bin" 2>/dev/null || log "WARN: txlog.bin ($RX_IP) fetch failed"
++  SCPGET root@"$PEER_IP":/dev/shm/failhdr.bin "$OUT/cap/failhdr_peer.bin" 2>/dev/null || log "WARN: failhdr.bin ($PEER_IP) fetch failed"
++  SCPGET root@"$PEER_IP":/dev/shm/txlog.bin "$OUT/cap/txlog_peer.bin" 2>/dev/null || log "WARN: txlog.bin ($PEER_IP) fetch failed"
++fi
++
++# deliver_rate gate: >= 1000 f/s pre AND post (per T2's risk table)
++GATE_PASS=0
++if [ "${RATE_PRE:-0}" -ge 1000 ] 2>/dev/null && [ "${RATE_POST:-0}" -ge 1000 ] 2>/dev/null; then GATE_PASS=1; fi
++
++{
++  echo "leg=$LEG dir=$DIRN rx=$RX_IP peer=$PEER_IP dur=$DUR dry=$DRY"
++  echo "rxm_148=$RXM_148 rxm_146=$RXM_146 drain_148=$DRAIN_148 drain_146=$DRAIN_146"
++  echo "resolved: ${CAP_ENV[*]:-<none>}"
++  echo "capture_r3_exit=$CAP_EXIT"
++  echo "wedge_verdict=$WEDGE_NOTE"
++  echo "deliver_rate_pre=$RATE_PRE deliver_rate_post=$RATE_POST deliver_rate_gate_pass=$GATE_PASS (need >=1000 f/s both)"
++  echo "ts=$(date -Is)"
++} > "$OUT/meta.txt"
++
++cat "$OUT/meta.txt"
++if [ "$GATE_PASS" = 1 ]; then
++  echo "LEGRUN_DONE $OUT"
++else
++  echo "LEGRUN_GATE_FAIL $OUT (deliver_rate below 1000 f/s -- treat as UNINFORMATIVE)"
++  exit 3
++fi
+diff --git a/two_jup/comb/loopfloor_go.sh b/two_jup/comb/loopfloor_go.sh
+new file mode 100755
+index 00000000..66b4b38
+--- /dev/null
++++ b/two_jup/comb/loopfloor_go.sh
+@@ -0,0 +1,215 @@
++#!/bin/bash
++# loopfloor_go.sh -- T1 (happy-bubbling-owl): 148-only internal loopback floor with the
++# INSTRUMENTED daemon, the loopchk_run.sh Test-A leg (host byte-DMA TX via MM2S -> mod ->
++# demod -> checker, RF excluded), scored every 10 s in the tseries_badmagic.sh cadence,
++# for DUR seconds (default 600).
++#
++# Daemon launch (per loopchk_run.sh Test A + the T0a instrumentation this task assumes):
++#   QPSK_FRAME=f1536 QPSK_RX_QUEUED=1 QPSK_FRAMELOG=/dev/shm/frames.bin \
++#   QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin \
++#     ./qpsk_tun -G -M 16 -r 15360 -i tun0 -s 5
++#
++# Arm sequence: loopchk_run.sh's arm_loop 0x1 (byte source, double-tap).
++# Checker: rdc()/delta() from loopchk_run.sh, sampled every 10 s (tseries_badmagic.sh
++# cadence) into a CSV instead of one 600 s aggregate -- P1 correction: a single
++# aggregate cannot separate a floor from a burst.
++# Close: SIGUSR1 (flush frames/failhdr/txlog + txgap dump), fetch the three logs +
++# txgap_dump to runs/<ts>_loopfloor/, then the loopchk_run.sh Test-A restore step
++# (pkill qpsk_tun; injectors off).
++#
++# DRY=1 (default): every board action is [dry]-logged, no ssh/scp is invoked, and the
++# checker fabricates a plausible 0.2-0.35% magic_bad time series plus placeholder
++# frames.bin/failhdr.bin/txlog.bin so Task 2's (T0b) analysis tools have real files to
++# exercise end to end.
++set -u
++D=$(cd "$(dirname "$0")" && pwd)          # two_jup/comb
++TJ=$(cd "$D/.." && pwd)                   # two_jup
++W=${W:-$TJ/anyssh.sh}
++BRD=${BRD:-10.0.0.148}
++DUR=${DUR:-600}
++DRY=${DRY:-1}
++TS=$(date +%Y%m%d_%H%M%S)
++OUT=${OUT:-$D/runs/${TS}_loopfloor}
++mkdir -p "$OUT"
++
++log(){ echo "$(date -Is) $*" | tee -a "$OUT/run.log"; }
++
++# ---- register delta helpers (loopchk_run.sh's rdc/delta, board-scoped) -------------
++DM='DM=$(command -v devmem || echo "busybox devmem")'
++rdc_real(){ $W "$BRD" "$DM; DRA=/sys/kernel/debug/iio/iio:device0/direct_reg_access; echo 0x104 > \$DRA; p=\$(cat \$DRA)
++  names='acc_user frames crc_ok crc_fail magic_bad short orphan acc_beats'; i=0; out=''
++  for n in \$names; do \$DM 0x9D410008 32 \$((i << 28)) >/dev/null; v=\$(\$DM 0x9D450008); out=\"\$out \$n=\$((v))\"; i=\$((i+1)); done
++  \$DM 0x9D410008 32 0 >/dev/null; echo \"CNT\$out p104=\$((p)) t=\$(date +%s.%N)\"" 2>/dev/null; }
++
++# DRY fabrication: a monotone counter walk giving ~0.28% magic_bad/frames, one 10 s
++# sample at a time (no board contact, no sleeps).
++DRY_RATE_FPS=1245
++dry_sample(){ # $1 = sample index (0-based, one per 10 s tick)
++  local i=$1 fr=$((DRY_RATE_FPS * 10)) mb ok
++  mb=$(( fr * 28 / 10000 ))            # ~0.28%
++  ok=$(( fr - mb ))
++  echo "CNT acc_user=0 frames=$((fr*(i+1))) crc_ok=$((ok*(i+1))) crc_fail=0 magic_bad=$((mb*(i+1))) short=0 orphan=0 acc_beats=0 p104=$((fr*(i+1))) t=$(date +%s.%N)"
++}
++
++rdc(){ if [ "$DRY" = 1 ]; then dry_sample "${1:-0}"; else rdc_real; fi; }
++
++delta_py(){ python3 - "$1" "$2" "$3" <<'PY'
++import sys,re
++a,z,t=sys.argv[1],sys.argv[2],float(sys.argv[3])
++ka={k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',a)}; kz={k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',z)}
++d={k:(kz[k]-ka[k])&0xFFFFFFFF for k in ka if k in kz}; fr=d.get('frames',0); mb=d.get('magic_bad',0)
++pct=(100*mb/fr) if fr else 0.0
++print(f"{t:.1f},{fr},{mb},{pct:.4f},{d.get('p104',0)}")
++PY
++}
++
++arm_loop_real(){ $W "$BRD" 'DRA=/sys/kernel/debug/iio/iio:device0/direct_reg_access
++  echo enabled > /sys/bus/iio/devices/iio:device0/reg_access
++  TXD=$(for d in /sys/bus/iio/devices/iio:device*; do [ "$(cat $d/name 2>/dev/null)" = axi-adrv9002-tx-lpc ] && echo ${d##*/}; done)
++  T=/sys/kernel/debug/iio/$TXD/direct_reg_access
++  for k in 1 2; do
++    echo "0x000 0x1">$DRA; sleep 0.5; echo "0x000 0x0">$DRA
++    echo "0x158 0x1">$DRA; echo "0x118 0x0">$DRA; echo "0x114 0x0">$DRA
++    echo "0x418 0x2">$T; echo "0x458 0x2">$T; echo "0x044 0x1">$T
++    echo "0x110 0x1">$DRA; sleep 0.3; echo "0x110 0x0">$DRA; [ $k = 1 ] && sleep 3
++  done' 2>/dev/null; }
++
++REARM_COUNT=0
++arm_loop(){
++  if [ "$DRY" = 1 ]; then
++    log "[dry] $W $BRD arm_loop (0x1 byte source, double-tap)"
++  else
++    arm_loop_real; REARM_COUNT=$((REARM_COUNT+1))
++  fi
++}
++
++pre_cleanup(){
++  if [ "$DRY" = 1 ]; then
++    log "[dry] $W $BRD kill watchdog + qpsk_tun, injectors off"
++  else
++    $W "$BRD" 'PF=/dev/shm/watchdog.pid; [ -f $PF ] && kill "$(cat $PF)" 2>/dev/null; pkill -9 -f "[l]ock_watchdog" 2>/dev/null; pkill -x qpsk_tun 2>/dev/null; sleep 1' 2>/dev/null
++    $W "$BRD" "$DM; \$DM 0x9D400000 32 0; \$DM 0x9D410000 32 0" 2>/dev/null
++  fi
++}
++
++start_daemon(){
++  local env="QPSK_FRAME=f1536 QPSK_RX_QUEUED=1 QPSK_FRAMELOG=/dev/shm/frames.bin QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin"
++  if [ "$DRY" = 1 ]; then
++    log "[dry] $W $BRD cd /root/host_app_k5; $env setsid chrt -f 50 ./qpsk_tun -G -M 16 -r 15360 -i tun0 -s 5"
++  else
++    $W "$BRD" "cd /root/host_app_k5; rm -f /dev/shm/frames.bin /dev/shm/failhdr.bin /dev/shm/txlog.bin
++      $env setsid chrt -f 50 ./qpsk_tun -G -M 16 -r 15360 -i tun0 -s 5 > /dev/shm/loopfloor.log 2>&1 & exit 0" >/dev/null 2>&1
++  fi
++}
++
++snap(){ # register snapshot (0x104/0x108/0x150/0x154/0x15C)
++  if [ "$DRY" = 1 ]; then
++    local pkts=0; [ "$1" = 1 ] && pkts=$(( DRY_RATE_FPS * NSAMP * 10 ))
++    echo "t=$(date +%s.%N) pkts=$pkts biterr=0 rstcs=0 cfc=0 fx=0"
++  else
++    $W "$BRD" 'DRA=/sys/kernel/debug/iio/iio:device0/direct_reg_access; echo enabled>/sys/bus/iio/devices/iio:device0/reg_access; rd(){ echo "$1">$DRA;cat $DRA; }
++       echo "t=$(date +%s.%N) pkts=$(rd 0x104) biterr=$(rd 0x108) rstcs=$(rd 0x150) cfc=$(rd 0x154) fx=$(rd 0x15C)"' 2>/dev/null
++  fi
++}
++
++echo "=== loopfloor_go.sh: 148-only internal loopback floor, DUR=${DUR}s DRY=$DRY -> $OUT ===" | tee -a "$OUT/run.log"
++pre_cleanup
++start_daemon
++sleep_or_dry(){ [ "$DRY" = 1 ] || sleep "$1"; }
++sleep_or_dry 3
++arm_loop
++sleep_or_dry 5
++
++NSAMP=$(( (DUR + 9) / 10 ))
++SNAP_PRE=$(snap 0); echo "$SNAP_PRE" > "$OUT/regs_pre.txt"
++
++echo "t_s,frames,magic_bad,magic_bad_pct,p104" > "$OUT/badmagic_10s.csv"
++prev=$(rdc 0)
++i=1
++WINDOW_S=0
++while [ "$i" -le "$NSAMP" ]; do
++  sleep_or_dry 10
++  cur=$(rdc "$i")
++  delta_py "$prev" "$cur" "$((i*10))" >> "$OUT/badmagic_10s.csv"
++  prev=$cur
++  WINDOW_S=$((i*10))
++  i=$((i+1))
++done
++
++SNAP_POST=$(snap 1); echo "$SNAP_POST" > "$OUT/regs_post.txt"
++
++# flush (SIGUSR1) + fetch
++if [ "$DRY" = 1 ]; then
++  log "[dry] $W $BRD pkill -USR1 -x qpsk_tun (flush frames/failhdr/txlog + txgap dump)"
++  # fabricate plausible artifacts so downstream (T0b) tools have real files to run on
++  head -c 4800 /dev/urandom > "$OUT/frames.bin" 2>/dev/null || : > "$OUT/frames.bin"
++  head -c 1200 /dev/urandom > "$OUT/failhdr.bin" 2>/dev/null || : > "$OUT/failhdr.bin"
++  head -c 4800 /dev/urandom > "$OUT/txlog.bin" 2>/dev/null || : > "$OUT/txlog.bin"
++  cat > "$OUT/txgap_dump.txt" <<'EOF'
++qpsk_tun txgap: n=6000 empty=6000 gt20us=0 gt50us=0 gt200us=0 max_us=18 p99_us=12 mean_us=6.4 idle_batch=0
++EOF
++else
++  $W "$BRD" 'pkill -USR1 -x qpsk_tun 2>/dev/null; sleep 0.5' 2>/dev/null
++  SCPPUT(){ SSH_ASKPASS="$TJ/askpass.sh" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 setsid -w scp -o StrictHostKeyChecking=no -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no "$@" </dev/null 2>>"$OUT/scp_err.txt"; }
++  SCPPUT root@"$BRD":/dev/shm/frames.bin "$OUT/frames.bin" || log "WARN: frames.bin fetch failed"
++  SCPPUT root@"$BRD":/dev/shm/failhdr.bin "$OUT/failhdr.bin" || log "WARN: failhdr.bin fetch failed"
++  SCPPUT root@"$BRD":/dev/shm/txlog.bin "$OUT/txlog.bin" || log "WARN: txlog.bin fetch failed"
++  $W "$BRD" 'grep "qpsk_tun txgap" /dev/shm/loopfloor.log 2>/dev/null | tail -3' 2>/dev/null > "$OUT/txgap_dump.txt"
++fi
++
++# restore step (loopchk_run.sh Test-A close: pkill qpsk_tun)
++if [ "$DRY" = 1 ]; then
++  log "[dry] $W $BRD pkill -x qpsk_tun (restore)"
++else
++  $W "$BRD" 'pkill -x qpsk_tun; sleep 1' 2>/dev/null
++fi
++
++IMG_MD5=$([ "$DRY" = 1 ] && echo "dry-no-board" || $W "$BRD" 'md5sum /boot/BOOT.BIN 2>/dev/null | cut -c1-32' 2>/dev/null)
++DAEMON_MD5=$([ "$DRY" = 1 ] && echo "dry-no-board" || $W "$BRD" 'md5sum /root/host_app_k5/qpsk_tun 2>/dev/null | cut -c1-32' 2>/dev/null)
++NAKSTAT_N=$([ "$DRY" = 1 ] && echo 4 || $W "$BRD" 'strings /root/host_app_k5/qpsk_tun 2>/dev/null | grep -c nakstat' 2>/dev/null)
++RXQSTAT_N=$([ "$DRY" = 1 ] && echo 1 || $W "$BRD" 'strings /root/host_app_k5/qpsk_tun 2>/dev/null | grep -c rxqstat' 2>/dev/null)
++
++# ---- UNINFORMATIVE checklist (P1 §rails): 0x104 delta ~= 0 / rate far from 1250 f/s /
++# window < 150 s / any re-arm in-window / capTAP not golden (N/A -- no DDRCAP tap here) ----
++python3 - "$SNAP_PRE" "$SNAP_POST" "$WINDOW_S" "$REARM_COUNT" "$OUT/badmagic_10s.csv" > "$OUT/uninformative.txt" <<'PY'
++import sys, re, csv
++pre, post, window_s, rearms, csvpath = sys.argv[1:6]
++window_s = int(window_s); rearms = int(rearms)
++def parse(s):
++    return {k: int(v) for k, v in re.findall(r'(\w+)=(\d+)', s)}
++p0, p1 = parse(pre), parse(post)
++d104 = p1.get('pkts', 0) - p0.get('pkts', 0)
++tot_frames = 0
++with open(csvpath) as f:
++    r = csv.DictReader(f)
++    for row in r:
++        tot_frames += int(row['frames'])   # sum of per-10s deltas = frames over the whole window
++rate = tot_frames / window_s if window_s else 0
++flags = []
++if abs(d104) < 10:
++    flags.append(f'0x104 delta ~= 0 ({d104})')
++if abs(rate - 1245) > 400:
++    flags.append(f'rate far from 1245 f/s ({rate:.0f})')
++if window_s < 150:
++    flags.append(f'window < 150s ({window_s})')
++if rearms > 0:
++    flags.append(f'{rearms} re-arm(s) in-window')
++verdict = 'UNINFORMATIVE' if flags else 'INFORMATIVE'
++print(f'{verdict} window_s={window_s} rate_fps={rate:.1f} d104={d104} rearms_in_window={rearms}')
++for f in flags:
++    print(f'  - {f}')
++PY
++
++{
++  echo "leg=loopfloor board=$BRD dur=$DUR window_s=$WINDOW_S dry=$DRY"
++  echo "image_md5=$IMG_MD5"
++  echo "daemon_md5=$DAEMON_MD5"
++  echo "nakstat_strings=$NAKSTAT_N"
++  echo "rxqstat_strings=$RXQSTAT_N"
++  echo "rearms_in_window=$REARM_COUNT"
++  echo "$(cat "$OUT/uninformative.txt" | head -1)"
++  echo "ts=$(date -Is)"
++} > "$OUT/meta.txt"
++
++cat "$OUT/uninformative.txt"
++echo "LOOPFLOOR_DONE $OUT"
+diff --git a/two_jup/comb/sel11_preflight_go.sh b/two_jup/comb/sel11_preflight_go.sh
+new file mode 100755
+index 00000000..1c6398d
+--- /dev/null
++++ b/two_jup/comb/sel11_preflight_go.sh
+@@ -0,0 +1,145 @@
++#!/bin/bash
++# sel11_preflight_go.sh -- T0c/P1 preflight (happy-bubbling-owl): before spending a
++# 512 MiB DDRCAP window, take an 8 MiB sel11 (Transmitter_scramBit, the FABRIC
++# scrambler -- WHITEN=0 is the HOST whitener, a different thing) capture on 148's
++# CURRENT arm and confirm the bit-domain word packer (ddrcap_inject.py Sec 4.3: 16
++# successive valid bits, MSB first, one 16-bit record per word, I=bitword Q=0) is
++# actually carrying frame-header bytes 0x51 0x4B at a repeating cadence.
++#
++# 8 MiB target bytes -> SZ (ddrcap2_capture.sh's -s sample count) = 8 MiB / 4 B per
++# complex sample = 2097152 (ddrcap2_capture.sh already checks GOT>=SZ*4*9/10, so this
++# SZ produces the 8 MiB file directly, same arithmetic as its own 512 MiB default).
++#
++# Also runs ddrcap2_txmark_scan.py --fullrate on the capture to report what
++# ddrcap_mark_fec (ch2 bit14, the TX-frame-start marker riding every selector) is
++# wired to on this arm -- its own positive/negative controls are reused as-is.
++#
++# DRY=1 (default): ddrcap2_capture.sh is NEVER invoked for real (no DRY gate, would
++# reach ssh/scp); this wrapper fabricates an 8 MiB sel11-shaped capture (I=packed
++# 0x514B-bearing bitstream at a synthetic period, Q=0, ch2/ch3 markers set at the same
++# period) so the marker-cadence checker and ddrcap2_txmark_scan.py both run for real
++# against real bytes, with zero board contact.
++set -u
++D=$(cd "$(dirname "$0")" && pwd)          # two_jup/comb
++TJ=$(cd "$D/.." && pwd)                   # two_jup
++DRY=${DRY:-1}
++SEL=11
++SZ=${SZ:-2097152}
++BRD=${BRD:-10.0.0.148}
++
++TS=$(date +%Y%m%d_%H%M%S)
++OUT=${OUT:-$D/runs/${TS}_sel11_preflight}
++mkdir -p "$OUT"
++log(){ echo "$(date -Is) $*" | tee -a "$OUT/run.log"; }
++
++CAPFILE="$OUT/sel11_preflight.bin"
++log "sel=$SEL sz=$SZ (8 MiB target) board=$BRD dry=$DRY -> $OUT"
++
++if [ "$DRY" = 1 ]; then
++  log "[dry] $TJ/ddrcap2_capture.sh $SEL sel11_preflight (on $BRD, current arm)"
++  python3 - "$CAPFILE" "$SZ" <<'PY'
++import sys, numpy as np
++path, sz = sys.argv[1], int(sys.argv[2])
++nrec = sz // 2          # ddrcap2_capture.sh arithmetic: bytes = SZ*4, record = 8 B
++period_words = 512      # synthetic "air frame" period, in 16-bit words
++rng = np.random.default_rng(1234)
++I = (rng.integers(0, 65536, size=nrec, dtype=np.uint32)).astype('<u2')
++ch2 = np.zeros(nrec, dtype='<u2'); ch3 = np.zeros(nrec, dtype='<u2')
++# stamp a "0x51 0x4B" 16-bit header word at every period_words-th record, and a
++# mark_fec pulse (ch2 bit14) MARK_LEAD words before it (the marker is expected to
++# precede the header it announces).
++MARK_LEAD = 3
++hdr_word = (0x51 << 8) | 0x4B
++for start in range(0, nrec - 1, period_words):
++    I[start] = hdr_word
++    lead = start - MARK_LEAD
++    if lead >= 0:
++        ch2[lead] = np.uint16(ch2[lead] | (1 << 14))
++Q = np.zeros(nrec, dtype='<i2')
++out = np.zeros((nrec, 4), dtype='<i2')
++out[:, 0] = I.astype('<i2'); out[:, 1] = Q; out[:, 2] = ch2.astype('<i2'); out[:, 3] = ch3.astype('<i2')
++out.tofile(path)
++print(f"[dry] fabricated {nrec} sel11 records ({out.nbytes} bytes), header period={period_words} words, mark_lead={MARK_LEAD}")
++PY
++  CAP_PRE=BCF94856; CAP_POST=BCF94856; CAP_EXIT=0
++else
++  OUT="$OUT" B="$BRD" SZ="$SZ" "$TJ/ddrcap2_capture.sh" "$SEL" sel11_preflight > "$OUT/ddrcap2_capture.log" 2>&1
++  CAP_EXIT=$?
++  # ddrcap2_capture.sh names its own output $OUT/<name>.bin
++  [ -f "$OUT/sel11_preflight.bin" ] && cp "$OUT/sel11_preflight.bin" "$CAPFILE" 2>/dev/null
++  LINE=$(grep -m1 "^sel11_preflight sel=$SEL" "$OUT/meta.txt" 2>/dev/null)
++  CAP_PRE=$(echo "$LINE" | grep -oE 'pre=[0-9A-Fa-f]+' | cut -d= -f2)
++  CAP_POST=$(echo "$LINE" | grep -oE 'post=[0-9A-Fa-f]+' | cut -d= -f2)
++fi
++
++# ---- marker-cadence check: reconstruct the continuous bit-domain byte stream from the
++# packed 16-bit words (I column, MSB-first per ddrcap_inject.py Sec 4.3) and find every
++# occurrence of 0x51 0x4B, reporting the count and the modal offset from the nearest
++# preceding mark_fec (ch2 bit14) pulse. ----
++python3 - "$CAPFILE" "$OUT/marker_check.json" <<'PY'
++import sys, json
++import numpy as np
++
++path, outpath = sys.argv[1], sys.argv[2]
++a = np.fromfile(path, dtype='<i2')
++a = a[:(len(a)//4)*4].reshape(-1, 4)
++I = a[:, 0].astype(np.uint16)
++ch2 = a[:, 2].astype(np.uint16)
++mark_fec_rec = np.nonzero((ch2 >> 14) & 1)[0]
++
++# each record's I value IS the packed 16-bit word (MSB-first); concatenate to bytes.
++bits = np.unpackbits(I[:, None].view(np.uint8)[:, ::-1], axis=1).reshape(-1)  # big-endian 16 bits/record
++nbytes = len(bits) // 8
++byte_stream = np.packbits(bits[:nbytes*8]).astype(np.uint8)
++
++pat = np.array([0x51, 0x4B], dtype=np.uint8)
++hits = []
++for i in range(len(byte_stream) - 1):
++    if byte_stream[i] == pat[0] and byte_stream[i+1] == pat[1]:
++        hits.append(i)
++hits = np.array(hits, dtype=np.int64)
++
++spacings = np.diff(hits) if len(hits) > 1 else np.array([], dtype=np.int64)
++modal_spacing = int(np.bincount(spacings).argmax()) if len(spacings) else None
++
++# marker record -> bit position (start of its record's 16-bit word)
++mark_bitpos = mark_fec_rec.astype(np.int64) * 16
++offsets = []
++for h in hits:
++    hbit = h * 8
++    prior = mark_bitpos[mark_bitpos <= hbit]
++    if len(prior):
++        offsets.append(int(hbit - prior[-1]))
++modal_offset = int(np.bincount(offsets).argmax()) if offsets else None
++
++result = {
++    'records': int(len(a)),
++    'mark_fec_pulses': int(len(mark_fec_rec)),
++    'header_hits': int(len(hits)),
++    'modal_spacing_bytes': modal_spacing,
++    'modal_offset_from_marker_bits': modal_offset,
++    'n_offsets_sampled': len(offsets),
++}
++json.dump(result, open(outpath, 'w'), indent=1)
++print(json.dumps(result, indent=1))
++PY
++
++# ---- ddrcap_mark_fec wiring report: ddrcap2_txmark_scan.py --fullrate ----
++python3 "$TJ/ddrcap2_txmark_scan.py" --fullrate "$CAPFILE" --out "$OUT/txmark_scan.json" > "$OUT/txmark_scan.log" 2>&1
++TXMARK_RC=$?
++log "ddrcap2_txmark_scan.py --fullrate exit=$TXMARK_RC (see $OUT/txmark_scan.json)"
++
++HITS=$(python3 -c "import json;print(json.load(open('$OUT/marker_check.json'))['header_hits'])" 2>/dev/null || echo 0)
++MODAL=$(python3 -c "import json;print(json.load(open('$OUT/marker_check.json'))['modal_offset_from_marker_bits'])" 2>/dev/null || echo None)
++
++{
++  echo "sel=11 sz=$SZ board=$BRD dry=$DRY"
++  echo "capture_exit=$CAP_EXIT"
++  echo "pre_capTAP=${CAP_PRE:-} post_capTAP=${CAP_POST:-} (need BCF94856 both)"
++  echo "header_hits=$HITS modal_offset_from_marker_bits=$MODAL"
++  echo "txmark_scan_exit=$TXMARK_RC"
++  echo "ts=$(date -Is)"
++} > "$OUT/meta.txt"
++
++cat "$OUT/meta.txt"
++echo "SEL11_PREFLIGHT_DONE $OUT header_hits=$HITS"
+diff --git a/two_jup/tests/test_comb_rig_scripts.py b/two_jup/tests/test_comb_rig_scripts.py
+new file mode 100644
+index 00000000..3e6c7ec
+--- /dev/null
++++ b/two_jup/tests/test_comb_rig_scripts.py
+@@ -0,0 +1,459 @@
++"""test_comb_rig_scripts.py -- Task 3 (T0c) COMB campaign rig scripts, DRY=1 only.
++ABSOLUTELY NO board contact: every subprocess here runs with DRY=1 (or, for
++keeper_hold.sh's hold-file bookkeeping, FILE_DRY=0/NET_DRY=1 against temp paths --
++never DRY=0 against the real defaults) plus a PATH shim that replaces `ssh`/`scp` with
++a fake binary that logs its invocation and exits 1. An empty shim log after a run is
++the proof of zero board contact -- not the script's own `[dry]` print, which a bug
++could omit while still reaching the network.
++
++Companion to two_jup/tests/test_txfix_rig_scripts.py (same shim pattern, same
++SENTINEL_STOP mtime discipline) for the six two_jup/comb/*.sh wrappers this task owns.
++"""
++import csv
++import json
++import os
++import stat
++import subprocess
++import sys
++import tempfile
++
++import pytest
++
++HERE = os.path.dirname(os.path.abspath(__file__))
++TJ = os.path.abspath(os.path.join(HERE, '..'))           # two_jup/
++COMB = os.path.join(TJ, 'comb')
++ROOT = os.path.abspath(os.path.join(TJ, '..'))            # repo root
++SENTINEL = os.path.expanduser('~/modem-status/SENTINEL_STOP')
++
++
++def _make_shim(tmpdir):
++    shim = os.path.join(tmpdir, 'shim')
++    os.makedirs(shim, exist_ok=True)
++    log = os.path.join(tmpdir, 'shim.log')
++    for name in ('ssh', 'scp'):
++        p = os.path.join(shim, name)
++        with open(p, 'w') as f:
++            f.write(f'#!/bin/bash\necho "SHIM_CALLED {name} $*" >> "{log}"\nexit 1\n')
++        os.chmod(p, os.stat(p).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
++    return shim, log
++
++
++def _env(tmpdir, extra=None):
++    shim, log = _make_shim(tmpdir)
++    env = dict(os.environ)
++    env['PATH'] = shim + os.pathsep + env.get('PATH', '')
++    env.setdefault('DRY', '1')
++    if extra:
++        env.update(extra)
++    return env, log
++
++
++requires_sentinel = pytest.mark.skipif(
++    not os.path.exists(SENTINEL),
++    reason=f'SENTINEL_STOP absent ({SENTINEL}) -- operator hold lifted; '
++           'the sentinel-hold assertions have no subject on this host',
++)
++
++
++def _require_sentinel():
++    if not os.path.exists(SENTINEL):
++        pytest.skip(f'SENTINEL_STOP absent ({SENTINEL}) -- operator hold lifted')
++
++
++def _sentinel_mtime():
++    assert os.path.exists(SENTINEL), 'SENTINEL_STOP must exist before/after every run'
++    return os.stat(SENTINEL).st_mtime
++
++
++def _run(cmd, env, cwd=None, timeout=120):
++    _require_sentinel()
++    pre = _sentinel_mtime()
++    r = subprocess.run(cmd, env=env, cwd=cwd or COMB, capture_output=True, text=True, timeout=timeout)
++    post = _sentinel_mtime()
++    assert pre == post, f'SENTINEL_STOP mtime changed: {pre} -> {post}'
++    return r
++
++
++def _shim_log_empty(log):
++    return (not os.path.exists(log)) or os.stat(log).st_size == 0
++
++
++def _assert_no_network(log):
++    assert _shim_log_empty(log), f'network shim was called: {open(log).read() if os.path.exists(log) else ""}'
++
++
++def _meta(out_dir):
++    p = os.path.join(out_dir, 'meta.txt')
++    assert os.path.exists(p), f'no meta.txt under {out_dir}'
++    return open(p).read()
++
++
++# -------------------------------------------------------------------------
++# keeper_hold.sh
++# -------------------------------------------------------------------------
++
++def test_keeper_hold_dry_is_fully_inert_and_prints_ok_lines():
++    """Plain DRY=1 (the campaign default): no file is created anywhere, no network
++    contact, both hold/release print their OK line."""
++    with tempfile.TemporaryDirectory() as tmp:
++        hold_dir = os.path.join(tmp, 'hold')
++        env, log = _env(tmp, {'HOLD_SENTINEL': os.path.join(hold_dir, 'SENTINEL_STOP'),
++                              'HOLD_RIGLOCK': os.path.join(hold_dir, 'RIG_LOCK')})
++        r = _run(['bash', os.path.join(COMB, 'keeper_hold.sh'), 'hold'], env)
++        assert r.returncode == 0, r.stdout + r.stderr
++        assert 'KEEPER_HOLD_OK' in r.stdout
++        assert not os.path.exists(hold_dir), 'DRY=1 must not create any hold file'
++        _assert_no_network(log)
++
++        r2 = _run(['bash', os.path.join(COMB, 'keeper_hold.sh'), 'release'], env)
++        assert r2.returncode == 0, r2.stdout + r2.stderr
++        assert 'KEEPER_RELEASE_OK' in r2.stdout
++        _assert_no_network(log)
++
++
++def test_keeper_hold_creates_only_absent_files_and_release_removes_only_those():
++    """FILE_DRY=0 against temp paths exercises the real create/remove logic (never
++    the ~/modem-status defaults); NET_DRY stays 1 so systemctl/ssh are never touched."""
++    with tempfile.TemporaryDirectory() as tmp:
++        hold_dir = os.path.join(tmp, 'hold')
++        sentinel = os.path.join(hold_dir, 'SENTINEL_STOP')
++        riglock = os.path.join(hold_dir, 'RIG_LOCK')
++        env, log = _env(tmp, {'HOLD_SENTINEL': sentinel, 'HOLD_RIGLOCK': riglock,
++                              'DRY': '0', 'FILE_DRY': '0', 'NET_DRY': '1'})
++
++        r = _run(['bash', os.path.join(COMB, 'keeper_hold.sh'), 'hold'], env)
++        assert r.returncode == 0, r.stdout + r.stderr
++        assert os.path.exists(sentinel) and os.path.exists(riglock)
++        assert 'created=[ SENTINEL RIGLOCK]' in r.stdout
++        _assert_no_network(log)
++
++        r2 = _run(['bash', os.path.join(COMB, 'keeper_hold.sh'), 'release'], env)
++        assert r2.returncode == 0, r2.stdout + r2.stderr
++        assert not os.path.exists(sentinel) and not os.path.exists(riglock)
++        assert 'released=[ SENTINEL RIGLOCK]' in r2.stdout
++        _assert_no_network(log)
++
++
++def test_keeper_hold_leaves_preexisting_files_alone_on_release():
++    """If SENTINEL_STOP/RIG_LOCK already existed before hold, this tool must not
++    remove them on release (it did not create them)."""
++    with tempfile.TemporaryDirectory() as tmp:
++        hold_dir = os.path.join(tmp, 'hold')
++        os.makedirs(hold_dir)
++        sentinel = os.path.join(hold_dir, 'SENTINEL_STOP')
++        riglock = os.path.join(hold_dir, 'RIG_LOCK')
++        open(sentinel, 'w').close()
++        open(riglock, 'w').write('owner=someone-else\n')
++        env, log = _env(tmp, {'HOLD_SENTINEL': sentinel, 'HOLD_RIGLOCK': riglock,
++                              'DRY': '0', 'FILE_DRY': '0', 'NET_DRY': '1'})
++
++        r = _run(['bash', os.path.join(COMB, 'keeper_hold.sh'), 'hold'], env)
++        assert r.returncode == 0, r.stdout + r.stderr
++        assert 'created=[ none]' in r.stdout
++        _assert_no_network(log)
++
++        r2 = _run(['bash', os.path.join(COMB, 'keeper_hold.sh'), 'release'], env)
++        assert r2.returncode == 0, r2.stdout + r2.stderr
++        assert os.path.exists(sentinel), 'release must not remove a hold file it did not create'
++        assert os.path.exists(riglock), 'release must not remove a hold file it did not create'
++        _assert_no_network(log)
++
++
++def test_keeper_hold_bad_mode_rejected():
++    with tempfile.TemporaryDirectory() as tmp:
++        env, log = _env(tmp)
++        r = _run(['bash', os.path.join(COMB, 'keeper_hold.sh'), 'bogus'], env)
++        assert r.returncode != 0
++        _assert_no_network(log)
++
++
++def test_keeper_hold_uses_bracket_pkill_pattern():
++    src = open(os.path.join(COMB, 'keeper_hold.sh')).read()
++    assert 'pkill -9 -f \\"[l]ock_watchdog\\"' in src
++
++
++# -------------------------------------------------------------------------
++# loopfloor_go.sh
++# -------------------------------------------------------------------------
++
++def test_loopfloor_dry_produces_expected_artifacts_and_ok_line():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'loopfloor_out')
++        env, log = _env(tmp, {'OUT': out_dir, 'DUR': '200'})
++        r = _run(['bash', os.path.join(COMB, 'loopfloor_go.sh')], env)
++        out = r.stdout + r.stderr
++        assert r.returncode == 0, out
++        assert 'LOOPFLOOR_DONE' in out, out
++        for fname in ('frames.bin', 'failhdr.bin', 'txlog.bin', 'txgap_dump.txt',
++                      'badmagic_10s.csv', 'regs_pre.txt', 'regs_post.txt', 'meta.txt'):
++            assert os.path.exists(os.path.join(out_dir, fname)), f'missing {fname}'
++        meta = _meta(out_dir)
++        for field in ('image_md5=', 'daemon_md5=', 'nakstat_strings=', 'rxqstat_strings=', 'window_s='):
++            assert field in meta, f'meta.txt missing {field}\n{meta}'
++        with open(os.path.join(out_dir, 'badmagic_10s.csv')) as f:
++            rows = list(csv.DictReader(f))
++        assert len(rows) == 20, f'DUR=200 should give 20 ten-second samples, got {len(rows)}'
++        _assert_no_network(log)
++
++
++def test_loopfloor_short_window_is_uninformative():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'loopfloor_short')
++        env, log = _env(tmp, {'OUT': out_dir, 'DUR': '30'})
++        r = _run(['bash', os.path.join(COMB, 'loopfloor_go.sh')], env)
++        out = r.stdout + r.stderr
++        assert r.returncode == 0, out
++        assert 'UNINFORMATIVE' in out and 'window < 150s' in out, out
++        _assert_no_network(log)
++
++
++# -------------------------------------------------------------------------
++# legrun_go.sh
++# -------------------------------------------------------------------------
++
++def test_legrun_single_sided_knob_resolves_and_gates():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'legA_out')
++        env, log = _env(tmp, {'OUT': out_dir, 'LEG': 'A', 'DUR': '60', 'RXM_148': '8'})
++        r = _run(['bash', os.path.join(COMB, 'legrun_go.sh')], env)
++        out = r.stdout + r.stderr
++        assert r.returncode == 0, out
++        assert 'LEGRUN_DONE' in out, out
++        meta = _meta(out_dir)
++        assert 'resolved: RXM=8' in meta, meta
++        assert 'deliver_rate_gate_pass=1' in meta, meta
++        for fname in ('cap/frames.bin', 'cap/frames_peer.bin', 'cap/failhdr.bin', 'cap/txlog.bin'):
++            assert os.path.exists(os.path.join(out_dir, fname)), f'missing {fname}'
++        _assert_no_network(log)
++
++
++def test_legrun_conflicting_per_board_knob_refuses():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'legA_conflict')
++        env, log = _env(tmp, {'OUT': out_dir, 'LEG': 'A', 'RXM_148': '8', 'RXM_146': '32'})
++        r = _run(['bash', os.path.join(COMB, 'legrun_go.sh')], env)
++        out = r.stdout + r.stderr
++        assert r.returncode == 2, out
++        assert 'CANNOT_TARGET_PER_BOARD' in out, out
++        assert not os.path.exists(os.path.join(out_dir, 'meta.txt')), 'must abort before writing a misleading meta.txt'
++        _assert_no_network(log)
++
++
++def test_legrun_equal_per_board_knob_resolves():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'legB_equal')
++        env, log = _env(tmp, {'OUT': out_dir, 'LEG': 'B', 'DRAIN_148': '1', 'DRAIN_146': '1'})
++        r = _run(['bash', os.path.join(COMB, 'legrun_go.sh')], env)
++        out = r.stdout + r.stderr
++        assert r.returncode == 0, out
++        meta = _meta(out_dir)
++        assert 'resolved: DAEMON_ENV=QPSK_RX_DRAIN_BUDGET=1' in meta, meta
++        _assert_no_network(log)
++
++
++def test_legrun_bad_leg_rejected():
++    with tempfile.TemporaryDirectory() as tmp:
++        env, log = _env(tmp, {'LEG': 'C'})
++        r = _run(['bash', os.path.join(COMB, 'legrun_go.sh')], env)
++        assert r.returncode == 2
++        _assert_no_network(log)
++
++
++# -------------------------------------------------------------------------
++# ddrcap_during_leg_go.sh
++# -------------------------------------------------------------------------
++
++def test_ddrcap_during_leg_dry_credited():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'ddrcap_out')
++        env, log = _env(tmp, {'OUT': out_dir, 'SEL': '9', 'OFFSET_S': '120'})
++        r = _run(['bash', os.path.join(COMB, 'ddrcap_during_leg_go.sh')], env)
++        out = r.stdout + r.stderr
++        assert r.returncode == 0, out
++        assert 'DDRCAP_LEG sel=9 credited=yes' in out, out
++        meta = _meta(out_dir)
++        assert 'bytes=536870912' in meta
++        assert 'pre_capTAP=BCF94856' in meta and 'post_capTAP=BCF94856' in meta
++        _assert_no_network(log)
++
++
++def test_ddrcap_during_leg_requires_sel():
++    with tempfile.TemporaryDirectory() as tmp:
++        env, log = _env(tmp)  # no SEL -> ${SEL:?} must fail fast
++        r = _run(['bash', os.path.join(COMB, 'ddrcap_during_leg_go.sh')], env)
++        assert r.returncode != 0
++        _assert_no_network(log)
++
++
++def test_ddrcap_during_leg_bytes_short_of_credit_not_credited():
++    """Directly exercises the credit arithmetic via a real (non-DRY) invocation whose
++    meta.txt line ddrcap2_capture.sh would have written is faked in-place: we can't run
++    the real capture, so instead assert the credit predicate in the source requires
++    BOTH the byte floor and dual-golden capTAP (regression guard for the logic, not a
++    board run)."""
++    src = open(os.path.join(COMB, 'ddrcap_during_leg_go.sh')).read()
++    assert 'CREDIT_BYTES=536870912' in src
++    assert '"${BYTES:-0}" -ge "$CREDIT_BYTES"' in src
++    assert '"$(norm "${CAP_PRE:-}")" = "$GOLD"' in src
++    assert '"$(norm "${CAP_POST:-}")" = "$GOLD"' in src
++
++
++# -------------------------------------------------------------------------
++# sel11_preflight_go.sh
++# -------------------------------------------------------------------------
++
++def test_sel11_preflight_dry_finds_fabricated_markers():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'sel11_out')
++        env, log = _env(tmp, {'OUT': out_dir})
++        r = _run(['bash', os.path.join(COMB, 'sel11_preflight_go.sh')], env, timeout=180)
++        out = r.stdout + r.stderr
++        assert r.returncode == 0, out
++        assert 'SEL11_PREFLIGHT_DONE' in out, out
++        assert os.path.exists(os.path.join(out_dir, 'sel11_preflight.bin'))
++        assert os.stat(os.path.join(out_dir, 'sel11_preflight.bin')).st_size == 8 * 1024 * 1024
++        mc = json.load(open(os.path.join(out_dir, 'marker_check.json')))
++        assert mc['header_hits'] > 0, 'the fabricated stream must contain 0x51 0x4B occurrences'
++        assert mc['modal_offset_from_marker_bits'] is not None
++        assert os.path.exists(os.path.join(out_dir, 'txmark_scan.json'))
++        meta = _meta(out_dir)
++        assert 'header_hits=' in meta and 'pre_capTAP=BCF94856' in meta
++        _assert_no_network(log)
++
++
++def test_sel11_preflight_sz_is_8mib_arithmetic():
++    src = open(os.path.join(COMB, 'sel11_preflight_go.sh')).read()
++    assert 'SZ=${SZ:-2097152}' in src   # 2097152 * 4 B/sample = 8 MiB, matching ddrcap2_capture.sh's own bytes=SZ*4
++
++
++# -------------------------------------------------------------------------
++# deploy_daemon_go.sh
++# -------------------------------------------------------------------------
++
++def test_deploy_daemon_dry_ok_and_nakstat_gate():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'deploy_out')
++        env, log = _env(tmp, {'OUT': out_dir, 'BOARD': '148', 'FLAGS': '-DQPSK_ARQ_NAKSTAT'})
++        r = _run(['bash', os.path.join(COMB, 'deploy_daemon_go.sh')], env)
++        out = r.stdout + r.stderr
++        assert r.returncode == 0, out
++        assert 'DEPLOY_DAEMON_OK' in out, out
++        meta = _meta(out_dir)
++        assert 'nakstat_strings=4 (need 4)' in meta
++        assert 'nakstat_gate_pass=1' in meta
++        assert 'daemon_md5=' in meta
++        _assert_no_network(log)
++
++
++def test_deploy_daemon_requires_board():
++    with tempfile.TemporaryDirectory() as tmp:
++        env, log = _env(tmp)  # no BOARD -> ${BOARD:?} fails fast
++        r = _run(['bash', os.path.join(COMB, 'deploy_daemon_go.sh')], env)
++        assert r.returncode != 0
++        _assert_no_network(log)
++
++
++def test_deploy_daemon_bad_board_rejected():
++    with tempfile.TemporaryDirectory() as tmp:
++        env, log = _env(tmp, {'BOARD': '999'})
++        r = _run(['bash', os.path.join(COMB, 'deploy_daemon_go.sh')], env)
++        assert r.returncode == 2
++        _assert_no_network(log)
++
++
++def test_deploy_daemon_uses_capture_r3_file_list_plus_uio():
++    src = open(os.path.join(COMB, 'deploy_daemon_go.sh')).read()
++    for f in ('qpsk_tun.c', 'qpsk_frame.c', 'qpsk_frame.h', 'qpsk_hw.h', 'qpsk_ber.c',
++              'qpsk_ber.h', 'qpsk_seq.c', 'qpsk_seq.h', 'qpsk_uio.c', 'qpsk_uio.h', 'qpsk_perf.c'):
++        assert f in src, f'missing {f} from the deploy file list'
++    assert '-DQPSK_RXQ_STAT' in src
++
++
++# -------------------------------------------------------------------------
++# UNINFORMATIVE checklist logic (loopfloor_go.sh's inline python), synthetic snapshots
++# -------------------------------------------------------------------------
++
++UNINFORMATIVE_CHECK = r"""
++import sys, re, csv
++pre, post, window_s, rearms, csvpath = sys.argv[1:6]
++window_s = int(window_s); rearms = int(rearms)
++def parse(s):
++    return {k: int(v) for k, v in re.findall(r'(\w+)=(\d+)', s)}
++p0, p1 = parse(pre), parse(post)
++d104 = p1.get('pkts', 0) - p0.get('pkts', 0)
++tot_frames = 0
++with open(csvpath) as f:
++    r = csv.DictReader(f)
++    for row in r:
++        tot_frames += int(row['frames'])
++rate = tot_frames / window_s if window_s else 0
++flags = []
++if abs(d104) < 10:
++    flags.append(f'0x104 delta ~= 0 ({d104})')
++if abs(rate - 1245) > 400:
++    flags.append(f'rate far from 1245 f/s ({rate:.0f})')
++if window_s < 150:
++    flags.append(f'window < 150s ({window_s})')
++if rearms > 0:
++    flags.append(f'{rearms} re-arm(s) in-window')
++verdict = 'UNINFORMATIVE' if flags else 'INFORMATIVE'
++print(f'{verdict} window_s={window_s} rate_fps={rate:.1f} d104={d104} rearms_in_window={rearms}')
++for f in flags:
++    print(f'  - {f}')
++"""
++
++
++def _uninformative(pre, post, window_s, rearms, rows):
++    with tempfile.TemporaryDirectory() as tmp:
++        script = os.path.join(tmp, 'chk.py')
++        open(script, 'w').write(UNINFORMATIVE_CHECK)
++        csvp = os.path.join(tmp, 'x.csv')
++        with open(csvp, 'w', newline='') as f:
++            w = csv.writer(f)
++            w.writerow(['t_s', 'frames', 'magic_bad', 'magic_bad_pct', 'p104'])
++            for row in rows:
++                w.writerow(row)
++        r = subprocess.run([sys.executable, script, pre, post, str(window_s), str(rearms), csvp],
++                            capture_output=True, text=True)
++        return r.stdout
++
++
++def test_uninformative_healthy_long_window_is_informative():
++    rows = [[str(10 * (i + 1)), '12450', '35', '0.28', str(12450 * (i + 1))] for i in range(20)]
++    out = _uninformative('t=0 pkts=0', 't=200 pkts=249000', 200, 0, rows)
++    assert out.startswith('INFORMATIVE'), out
++
++
++def test_uninformative_short_window_flagged():
++    rows = [[str(10 * (i + 1)), '12450', '35', '0.28', str(12450 * (i + 1))] for i in range(3)]
++    out = _uninformative('t=0 pkts=0', 't=30 pkts=37350', 30, 0, rows)
++    assert 'UNINFORMATIVE' in out and 'window < 150s' in out, out
++
++
++def test_uninformative_rearm_in_window_flagged():
++    rows = [[str(10 * (i + 1)), '12450', '35', '0.28', str(12450 * (i + 1))] for i in range(20)]
++    out = _uninformative('t=0 pkts=0', 't=200 pkts=249000', 200, 2, rows)
++    assert 'UNINFORMATIVE' in out and '2 re-arm(s) in-window' in out, out
++
++
++def test_uninformative_flat_delta_flagged():
++    rows = [[str(10 * (i + 1)), '0', '0', '0', '0'] for i in range(20)]
++    out = _uninformative('t=0 pkts=1000', 't=200 pkts=1002', 200, 0, rows)
++    assert 'UNINFORMATIVE' in out
++    assert '0x104 delta ~= 0' in out
++    assert 'rate far from 1245' in out
++
++
++def test_uninformative_rate_far_from_nominal_flagged():
++    rows = [[str(10 * (i + 1)), '1000', '5', '0.5', str(1000 * (i + 1))] for i in range(20)]  # ~100 f/s
++    out = _uninformative('t=0 pkts=0', 't=200 pkts=249000', 200, 0, rows)
++    assert 'UNINFORMATIVE' in out and 'rate far from 1245' in out, out
++
++
++# -------------------------------------------------------------------------
++# sentinel present at import time too
++# -------------------------------------------------------------------------
++
++@requires_sentinel
++def test_sentinel_present():
++    assert os.path.exists(SENTINEL)

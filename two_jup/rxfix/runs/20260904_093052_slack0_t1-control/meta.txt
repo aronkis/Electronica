@@ -1,0 +1,15 @@
+leg=A dir=fwd rx=10.0.0.148 peer=10.0.0.146 dur=600 dry=0
+rxm_148= rxm_146= drain_148= drain_146=
+resolved: DAEMON_ENV_A=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1 DAEMON_ENV_B=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1
+capture_r3_exit=0
+wedge_verdict=wedge_verdict=healthy crc=92% rate=1911f/s
+deliver_rate_pre=1911 deliver_rate_post=1911 deliver_rate_gate_pass=1 (need >=900 f/s both AND zero watchdog relaunches)
+watchdog_relaunch_rx=0 watchdog_relaunch_peer=0
+ts=2026-09-04T09:45:20-04:00
+slack=0
+fixctl_written=0x0
+fixctl_restored=1 (write issued+exit0 on both boards; UNVERIFIED, 0x208 is write-only)
+peer_poke_trigger=wedge_verdict_marker (same event that fires 148's LOOP_POKE; no fixed settle)
+stage3h_out=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_093052_slack0_t1-control/s3h
+leg_exit=0
+ts=2026-09-04T09:45:22-04:00

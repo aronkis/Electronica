@@ -1,0 +1,42 @@
+FC clk=98662 frame=0 posInFrame=98662 0 -> 1
+CEN frame=0 clk=98764 occ=24665 fc=1 pushCount=25 popCount=0 pushes=24665 pops=0 fullRAM=0 pace=0 armed=0 pushWrapPos=98662 popWrapPos=-1 pushWraps=1 popWraps=0
+ARMED clk=98766 frame=1 posInFrame=2 sampleCount=0 0 -> 1 fc=1 d3=1
+FC clk=197222 frame=1 posInFrame=98458 1 -> 2
+CEN frame=1 clk=197428 occ=24692 fc=2 pushCount=51 popCount=24639 pushes=24666 pops=24639 fullRAM=0 pace=0 armed=1 pushWrapPos=98458 popWrapPos=-1 pushWraps=2 popWraps=0
+FC clk=197430 frame=2 posInFrame=2 2 -> 1
+FC clk=295782 frame=2 posInFrame=98354 1 -> 2
+CEN frame=2 clk=296092 occ=24718 fc=2 pushCount=77 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98354 popWrapPos=2 pushWraps=3 popWraps=1
+# FORCE nfprobe clk=296093 frame=3 count 24718 -> 49227
+FC clk=296094 frame=3 posInFrame=2 2 -> 1
+FC clk=394342 frame=3 posInFrame=98250 1 -> 2
+CEN frame=3 clk=394756 occ=49253 fc=2 pushCount=103 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98250 popWrapPos=2 pushWraps=4 popWraps=2
+FC clk=394758 frame=4 posInFrame=2 2 -> 1
+FC clk=492902 frame=4 posInFrame=98146 1 -> 2
+CEN frame=4 clk=493420 occ=49279 fc=2 pushCount=129 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98146 popWrapPos=2 pushWraps=5 popWraps=3
+FC clk=493422 frame=5 posInFrame=2 2 -> 1
+FC clk=542446 frame=5 posInFrame=49026 1 -> 2
+CEN frame=5 clk=592084 occ=1 fc=2 pushCount=16387 popCount=24639 pushes=40898 pops=24640 fullRAM=0 pace=1 armed=1 pushWrapPos=49026 popWrapPos=2 pushWraps=6 popWraps=4
+FC clk=592086 frame=6 posInFrame=2 2 -> 1
+FC clk=625096 frame=6 posInFrame=33012 1 -> 2
+CEN frame=6 clk=690748 occ=27 fc=2 pushCount=16413 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=1 armed=1 pushWrapPos=33012 popWrapPos=2 pushWraps=7 popWraps=5
+FC clk=690750 frame=7 posInFrame=2 2 -> 1
+FC clk=723656 frame=7 posInFrame=32908 1 -> 2
+CEN frame=7 clk=789412 occ=53 fc=2 pushCount=16439 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=1 armed=1 pushWrapPos=32908 popWrapPos=2 pushWraps=8 popWraps=6
+FC clk=789414 frame=8 posInFrame=2 2 -> 1
+FC clk=822216 frame=8 posInFrame=32804 1 -> 2
+CEN frame=8 clk=888076 occ=79 fc=2 pushCount=16465 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=1 armed=1 pushWrapPos=32804 popWrapPos=2 pushWraps=9 popWraps=7
+FC clk=888078 frame=9 posInFrame=2 2 -> 1
+FC clk=920776 frame=9 posInFrame=32700 1 -> 2
+CEN frame=9 clk=986740 occ=105 fc=2 pushCount=16491 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=1 armed=1 pushWrapPos=32700 popWrapPos=2 pushWraps=10 popWraps=8
+FC clk=986742 frame=10 posInFrame=2 2 -> 1
+FC clk=1019336 frame=10 posInFrame=32596 1 -> 2
+CEN frame=10 clk=1085404 occ=131 fc=2 pushCount=16517 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=1 armed=1 pushWrapPos=32596 popWrapPos=2 pushWraps=11 popWraps=9
+FC clk=1085406 frame=11 posInFrame=2 2 -> 1
+FC clk=1117896 frame=11 posInFrame=32492 1 -> 2
+CEN frame=11 clk=1184068 occ=157 fc=2 pushCount=16543 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=1 armed=1 pushWrapPos=32492 popWrapPos=2 pushWraps=12 popWraps=10
+FC clk=1184070 frame=12 posInFrame=2 2 -> 1
+FC clk=1216456 frame=12 posInFrame=32388 1 -> 2
+CEN frame=12 clk=1282732 occ=183 fc=2 pushCount=16569 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=1 armed=1 pushWrapPos=32388 popWrapPos=2 pushWraps=13 popWraps=11
+FC clk=1282734 frame=13 posInFrame=2 2 -> 1
+FC clk=1315016 frame=13 posInFrame=32284 1 -> 2
+# SUMMARY sel=nfprobe K=3 NF=10 zeroEvents=0 firstZeroClk=-1 firstZeroFrame=-1 armedDropClk=-1 maxPopQuietClk=0 pushWrapsTotal=14 popWrapsTotal=12 framesRun=13

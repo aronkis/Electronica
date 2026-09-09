@@ -1,0 +1,5 @@
+leg=seqbist_s3h board=10.0.0.148 mode=hostframe dur=540 dry=0 window_s=540
+n_readings=49 rearms_in_window=0 rearm_pre_window=0 arm_verified_by_effect=1
+sink=none tgen_mode=0 gap=NA skip_every=0 corrupt_every=0 fill=NA
+ctrl_pre=0x00000030 ctrl_hostframe=0x00000010 ctrl_cleared=0x00000010 ctrl_post=0x00000010 ctrl_restored=0x00000030
+ts=2026-09-04T09:41:46-04:00

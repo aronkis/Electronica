@@ -1,0 +1,2 @@
+EXIT=0
+-rw-r--r-- 1 root root 262144 Aug 31 16:34 /tmp/rxdump.bin

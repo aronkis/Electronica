@@ -1,0 +1,2 @@
+UNINFORMATIVE window_s=600 rate_fps=1361.6 d104=0 rearms_in_window=0
+  - 0x104 delta ~= 0 (0)

@@ -1,0 +1,617 @@
+# Task 4 (T0c rig scripts) review package
+8aff98b txfix: Task 2 (T0a) report + register the four sim-build lanes
+72e0f1c txfix T0c: arm148_mode1.sh -- make the golden capTAP digest an env input
+b4c8a57 txfix T0c: txfix_witness_go.sh -- sel6 DDRCAP-v2 witness (stall geometry + Tier-2)
+c42ed63 txfix T0c: beat_timeline.sh -- timeline-only observer (no arm, no capture, no 0x10C write)
+324dcad txfix T0c: flash chain scripts parameterised by env (FLASH_MD5/FLASH_BAK/FLASH_TAG)
+
+diff --git a/two_jup/arm148_mode1.sh b/two_jup/arm148_mode1.sh
+index 1e38146..109af91 100755
+--- a/two_jup/arm148_mode1.sh
++++ b/two_jup/arm148_mode1.sh
+@@ -8,17 +8,17 @@
+ # The profile is DISCOVERED at runtime and a miss is FATAL. The previous inline
+ # arm cat'd /root/jupiter_240k5.{bin,json} with 2>/dev/null; neither file exists,
+ # so both loads failed silently on every run and the arm merely inherited
+ # whatever profile happened to be loaded -- which silently changed the link rate
+ # from 1246 f/s to 312 f/s after a cold boot (§49).
+ set -u
+ D=$(cd "$(dirname "$0")" && pwd); W=$D/anyssh.sh; B=${B:-10.0.0.148}
+ PROF=${PROF:-lvds_61p44_fdd_jupiter}
+-GOLD=BCF94856
++GOLD=${GOLD:-BCF94856}
+ 
+ echo "=== discovering profile '$PROF' on $B (a miss is fatal, not silent)"
+ HAVE=$($W $B "ls /root/${PROF}.bin /root/${PROF}.json 2>/dev/null | tr '\\n' ' '" 2>/dev/null | tr -d '\r')
+ if [ "$(printf %s "$HAVE" | wc -w)" -ne 2 ]; then
+   echo "ARM_FATAL: need BOTH /root/${PROF}.bin and .json on $B; found: [$HAVE]. Available:"
+   $W $B 'ls /root/*.bin 2>/dev/null' 2>/dev/null | sed 's/^/    /'
+   echo "ARM_FATAL: refusing to arm with an unknown profile -- that is how the rate silently changed."
+   exit 2
+diff --git a/two_jup/beat_timeline.sh b/two_jup/beat_timeline.sh
+new file mode 100755
+index 00000000..2240e1b
+--- /dev/null
++++ b/two_jup/beat_timeline.sh
+@@ -0,0 +1,93 @@
++#!/bin/bash
++# beat_timeline.sh -- TIMELINE ONLY on the CURRENT arm: no arm, no capture, no 0x10C write.
++# Reads 0x20C (capTAP) once before and once after; for SECS seconds, one bounded 0x108 poll
++# per second (single register per poll, rail: minimise register reads). Writes errps.csv in the
++# 3-column cumulative form beat_detect.py --per-second's detect_seconds() consumes (t,packets,errs
++# where errs is the CUMULATIVE 0x108 value -- detect_seconds diffs it itself; packets is unused by
++# the parser and left 0 since we never read 0x104 here), plus meta.txt (pre/post capTAP, start/end
++# epoch, count of inter-poll gaps > 2 s). Aborts (TIMELINE_ABORT) after 3 CONSECUTIVE read failures.
++# DRY=1 fabricates a plausible register stream (quiet ~100/s baseline, three synthetic 60,000/s
++# bursts of 3 s each, 120 s apart) so the CSV + beat_detect.py parser path is exercised end to end
++# with zero board contact -- no ssh/scp is invoked at all under DRY.
++set -u
++D=$(cd "$(dirname "$0")" && pwd); W=${W:-$D/anyssh.sh}; A=${A:-10.0.0.148}
++SECS=${SECS:-420}; OUT=${OUT:-$D/beattl/$(date +%Y%m%d_%H%M%S)}; DRY=${DRY:-0}
++mkdir -p "$OUT"
++DRA='/sys/kernel/debug/iio/iio:device0/direct_reg_access'
++log(){ echo "$(date +%T) $*" | tee -a "$OUT/run.log"; }
++
++# rd_real REG -- one bounded (30s) read of REG over ssh, one register per poll. Echoes the value
++# (possibly empty on failure/timeout); caller decides failure vs success.
++rd_real(){ timeout 30 $W $A "echo enabled > /sys/bus/iio/devices/iio:device0/reg_access 2>/dev/null; echo $1 > $DRA; cat $DRA" 2>/dev/null | tr -d '\r' | tail -1; }
++
++# DRY fabrication: deterministic cumulative 0x108 stream, no sleeps, no ssh.
++DRY_BASE_INC=100
++DRY_BURST_STARTS="100 220 340"   # three windows, 120 s apart
++dry_reg108(){ # $1 = second index (1-based)
++  local sec=$1 inc=$DRY_BASE_INC bs
++  for bs in $DRY_BURST_STARTS; do
++    if [ "$sec" -ge "$bs" ] && [ "$sec" -lt "$((bs+3))" ]; then inc=60000; break; fi
++  done
++  echo "$inc"
++}
++
++if [ "$DRY" = 1 ]; then
++  log "[dry] 0x20C pre-read (no board contact)"; PRE="0xBCF94856"
++else
++  PRE=$(rd_real 0x20C)
++fi
++
++START=$(date +%s.%N); FAILS=0; GAPS=0; LASTT=$START; CUM=0
++echo "t,packets,errs" > "$OUT/errps.csv"
++i=1
++while [ "$i" -le "$SECS" ]; do
++  if [ "$DRY" != 1 ]; then sleep 1; fi
++  if [ "$DRY" = 1 ]; then
++    V=$(dry_reg108 "$i")
++  else
++    V=$(rd_real 0x108)
++  fi
++  if [ -z "$V" ]; then
++    FAILS=$((FAILS+1))
++    log "0x108 read FAILED ($FAILS/3 consecutive) at t=$i"
++    if [ "$FAILS" -ge 3 ]; then
++      log "TIMELINE_ABORT secs=$i (3 consecutive read failures)"
++      echo "TIMELINE_ABORT secs=$i" >> "$OUT/meta.txt"
++      exit 3
++    fi
++    i=$((i+1)); continue
++  fi
++  FAILS=0
++  if [ "$DRY" != 1 ]; then
++    NOW=$(date +%s.%N)
++    GAPDT=$(python3 -c "print(1 if ($NOW - $LASTT) > 2 else 0)")
++    [ "$GAPDT" = 1 ] && GAPS=$((GAPS+1))
++    LASTT=$NOW
++  fi
++  if [ "$DRY" = 1 ]; then
++    CUM=$((CUM+V))
++  else
++    CUM=$(( V ))   # 0x108 is itself the cumulative counter on-board; DRY synthesises its own cumulative sum above
++  fi
++  echo "$i,0,$CUM" >> "$OUT/errps.csv"
++  i=$((i+1))
++done
++END=$(date +%s.%N)
++
++if [ "$DRY" = 1 ]; then
++  log "[dry] 0x20C post-read (no board contact)"; POST="0xBCF94856"
++else
++  POST=$(rd_real 0x20C)
++fi
++
++{
++  echo "pre_capTAP=$PRE"
++  echo "post_capTAP=$POST"
++  echo "start_epoch=$START"
++  echo "end_epoch=$END"
++  echo "gaps_gt_2s=$GAPS"
++} >> "$OUT/meta.txt"
++
++log "TIMELINE_OK secs=$SECS gaps=$GAPS pre=$PRE post=$POST"
++echo "TIMELINE_OK secs=$SECS gaps=$GAPS pre=$PRE post=$POST"
++python3 "$D/beat_detect.py" "$OUT/errps.csv" --per-second | tee -a "$OUT/run.log" | grep '^BURSTS '
+diff --git a/two_jup/beat_timeline_go.sh b/two_jup/beat_timeline_go.sh
+new file mode 100755
+index 00000000..d109756
+--- /dev/null
++++ b/two_jup/beat_timeline_go.sh
+@@ -0,0 +1,3 @@
++#!/bin/bash
++# beat_timeline_go.sh -- rig-unit wrapper: env (SECS/OUT/DRY) comes from launch_rig_unit.sh's --setenv.
++exec bash "$(dirname "$0")/beat_timeline.sh"
+diff --git a/two_jup/skidfix/flash_148_txfix.sh b/two_jup/skidfix/flash_148_txfix.sh
+new file mode 100755
+index 00000000..3dd6d76
+--- /dev/null
++++ b/two_jup/skidfix/flash_148_txfix.sh
+@@ -0,0 +1,120 @@
++#!/bin/bash
++# flash_148_ddrcap2.sh <md5-12> -- flash 148 with the DDRCAP-v2 image under the standing rails,
++# adapted to the 148-ONLY mode-1 campaign (146 is never touched): bring-up + gate = arm148_mode1.sh x2.
++#   [1] preconditions: sentinel stopped; current image = 1cd0cd752aa6; on-board rollback copy verified
++#   [2] stage + flash (size-checked), reboot, wait back
++#   [3] readback md5 == expected, else ROLLBACK
++#   [4] two-pass gate: arm148_mode1.sh ARM_OK with fps>=1120 and golden capTAP, twice; else ROLLBACK
++#   [5] Tier-2 witness: one 4 MB sel-6 capture decoded with ddrcap2_decode.py --summary, read BEFORE any rollback
++#   NO retry loop. Rollback = restore /boot from the on-board copy, reboot, arm148_mode1.sh once, stop.
++#
++# DRY=1 makes every board-touching action (brd, scpput, gate's arm148_mode1.sh call, wait_back,
++# poll_md5_nonempty) print/report as "[dry] ..." and skip the md5-equality FATALs, so the full
++# [1/5]..[5/5] sequence can be exercised with zero contact to the board. gate() is explicitly
++# DRY-guarded here because arm148_mode1.sh itself has no DRY support (it always ssh's the board)
++# -- without this guard DRY=1 would still arm 148 for real.
++#
++# SENTINEL_STOP ownership (2026-09-02 field finding, x2): the chain must NEVER delete a
++# SENTINEL_STOP it did not create itself -- both a DRY run of this script and a reviewer's DRY
++# run deleted a controller's manual external hold, and the sentinel then ran a both-board r3
++# bring-up. [1/5] now records ownership in SS_MINE: if the file already exists on entry, this
++# is an external hold and SS_MINE=0 (never touched, never removed); only if it is ABSENT does
++# the chain touch it itself and set SS_MINE=1. A `trap ... EXIT` is installed right after that
++# check so ~/modem-status/SENTINEL_STOP is released on EVERY exit path -- success, any FATAL,
++# and rollback's own PHYSICAL ATTENTION exit -- but ONLY when SS_MINE=1. Under DRY=1 the file is
++# NEVER touched or removed, regardless of whether it exists, and SS_MINE=0 unconditionally, so a
++# dry run can never delete a real hold nor leave a phantom one behind.
++#
++# ssh-readiness (2026-09-01 17:27 real-run finding): wait_back() used to return as soon as PING
++# answered, but sshd was not up yet -- the [3/5] readback ssh returned EMPTY 67s after reboot,
++# that empty result was (wrongly) treated as a checksum MISMATCH, the chain went to rollback,
++# and rollback's own restore-copy ssh ALSO returned empty (same board, same not-ready-yet sshd)
++# and correctly FATALed "PHYSICAL ATTENTION before reboot" without rebooting -- but ssh came
++# back only 64s later and the readback would have matched. Fix: poll_md5_nonempty() treats an
++# EMPTY md5sum readback as "board not reachable yet," not a checksum outcome, and keeps polling
++# (10s cadence, bounded) until a non-empty result comes back or the deadline lapses; wait_back()
++# uses it after ping succeeds, and [3/5]'s readback uses the same helper directly, so neither
++# place false-triggers a rollback on ssh-not-ready-yet. A mismatch is only ever a non-empty,
++# different md5. rollback()'s own post-reboot wait is wait_back() itself, so it inherits the
++# same ssh-readiness handling automatically.
++set -u
++ROOT=/mnt/onetb/scratch/qpsk-jupiter-modem; D=$ROOT/two_jup; W=$D/anyssh.sh; A=10.0.0.148
++EXP=${FLASH_MD5:?}; BAK=${FLASH_BAK:-638b36de3493}; TAG=${FLASH_TAG:?}
++[[ "$EXP" =~ ^[0-9a-f]{12}$ ]] || { echo "FATAL: <md5-12> must be exactly 12 lowercase hex chars (got: '$EXP')"; exit 1; }
++BB=$ROOT/boot_known_good/BOOT.BIN.148.$TAG.$EXP
++DRY=${DRY:-0}; LOG=$D/skidfix/txfix_flash_$(date +%Y%m%d_%H%M%S).log
++say(){ echo "$(date +%T) $*" | tee -a "$LOG"; }
++brd(){ if [ "$DRY" = 1 ]; then echo "[dry] $*"; else $W $A "$@" 2>/dev/null | tr -d '\r'; fi; }
++# brd_wit: like brd, but bounded (rail: a hung direct_reg_access must not block the chain forever
++# with the sentinel stopped). Returns 124 (timeout's own code) on expiry so the caller can log a
++# distinct WITNESS_TIMEOUT line instead of treating it as either a normal read or a FATAL.
++brd_wit(){ if [ "$DRY" = 1 ]; then echo "[dry] $*"; return 0; fi
++  timeout 180 $W $A "$@" 2>/dev/null | tr -d '\r'; return "${PIPESTATUS[0]}"; }
++# poll_md5_nonempty: bounded (360s) poll of `md5sum /boot/BOOT.BIN` over ssh. An EMPTY result
++# means the board/sshd is not reachable yet (see the note above), not a checksum outcome --
++# only a non-empty result is a value to compare. Echoes the last value seen (possibly empty,
++# only once the deadline lapses) and returns 0 once non-empty, 1 on deadline. Under DRY, brd()
++# always returns a non-empty "[dry] ..." line immediately, so this never sleeps or touches ssh.
++poll_md5_nonempty(){
++  local t=0 m
++  while :; do
++    m=$(brd 'md5sum /boot/BOOT.BIN | cut -c1-12')
++    if [ -n "$m" ]; then echo "$m"; return 0; fi
++    [ "$t" -ge 360 ] && { echo ""; return 1; }
++    sleep 10; t=$((t+10))
++  done
++}
++scpput(){ if [ "$DRY" = 1 ]; then echo "[dry] scp $*"; return 0; fi
++  SSH_ASKPASS=$D/askpass.sh SSH_ASKPASS_REQUIRE=force DISPLAY=:0 setsid -w scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no "$@" </dev/null 2>/dev/null; }
++wait_back(){ [ "$DRY" = 1 ] && return 0; sleep 45; local n=0; until ping -c1 -W2 $A >/dev/null 2>&1; do sleep 5; n=$((n+5)); [ $n -gt 240 ] && return 1; done; sleep 20
++  # ping answering does not mean sshd is up yet -- poll_md5_nonempty bounds the wait for a real
++  # ssh readback (360s) before declaring the board back.
++  poll_md5_nonempty >/dev/null; }
++gate(){
++  if [ "$DRY" = 1 ]; then echo "[dry] arm148_mode1.sh (would run for real; DRY never touches the board)"; echo "[dry] ARM_OK fps=1246"; return 0; fi
++  local o; o=$(bash "$D/arm148_mode1.sh" 2>&1); echo "$o" | tail -2 | tee -a "$LOG"
++  echo "$o" | grep -q ARM_OK || return 1; local f; f=$(echo "$o" | sed -n 's/.*fps=\([0-9]*\).*/\1/p' | tail -1); [ "${f:-0}" -ge 1120 ]; }
++rollback(){ say "=== ROLLBACK to $BAK (rail: no retry) ==="
++  RBK=$(brd "cp -f /root/BOOT.BIN.$BAK.bak /boot/BOOT.BIN && sync && md5sum /boot/BOOT.BIN | cut -c1-12")
++  say "  restore-copy: $RBK"
++  if [ "$DRY" != 1 ] && ! echo "$RBK" | grep -q "^$BAK"; then
++    say "FLASH_DDRCAP2_FATAL: rollback restore-copy failed (got: '$RBK', expect $BAK) -- PHYSICAL ATTENTION before reboot"; exit 2
++  fi
++  brd 'sync; (sleep 1; reboot) &'; wait_back || { say "FLASH_DDRCAP2_FATAL: 148 not back after rollback -- PHYSICAL ATTENTION"; exit 2; }
++  say "  rollback booted: $(brd 'md5sum /boot/BOOT.BIN | cut -c1-12') (expect $BAK)"; gate || say "  WARN: post-rollback arm not ARM_OK -- operator"
++  say "FLASH_DDRCAP2_ROLLED_BACK"; exit 1; }
++
++say "=== [1/5] preconditions ==="
++[ -f "$BB" ] && [ "$(md5sum "$BB" | cut -c1-12)" = "$EXP" ] || { say "FATAL: $BB missing or md5 != $EXP"; exit 1; }
++if [ "$DRY" = 1 ]; then
++  say "[dry] would touch/remove SENTINEL_STOP (DRY never touches it, present or absent, owned or not)"
++  SS_MINE=0
++elif [ -e ~/modem-status/SENTINEL_STOP ]; then
++  SS_MINE=0; say "  SENTINEL_STOP already present (external hold) -- will NOT remove it"
++else
++  touch ~/modem-status/SENTINEL_STOP; SS_MINE=1; say "  sentinel stopped (SENTINEL_STOP)"
++fi
++trap '[ "${SS_MINE:-0}" = 1 ] && rm -f ~/modem-status/SENTINEL_STOP' EXIT
++CUR=$(brd 'md5sum /boot/BOOT.BIN | cut -c1-12'); say "  148 current image: $CUR (expect $BAK)"
++[ "$DRY" = 1 ] || [ "$CUR" = "$BAK" ] || { say "FATAL: current image is not the banked restore point"; exit 1; }
++brd "[ -f /root/BOOT.BIN.$BAK.bak ] || cp -f /boot/BOOT.BIN /root/BOOT.BIN.$BAK.bak; md5sum /root/BOOT.BIN.$BAK.bak | cut -c1-12" | tee -a "$LOG" | grep -q "$BAK" || [ "$DRY" = 1 ] || { say "FATAL: on-board rollback copy bad"; exit 1; }
++say "=== [2/5] stage + flash ==="
++scpput "$BB" root@$A:/root/BOOT.BIN.staged
++FL=$(brd 'NB=$(stat -c %s /root/BOOT.BIN.staged 2>/dev/null||echo 0); if [ "$NB" -gt 6000000 ]; then cp -f /root/BOOT.BIN.staged /boot/BOOT.BIN && sync && echo "FLASHED $(md5sum /boot/BOOT.BIN|cut -c1-12)"; else echo "ABORT staged=$NB"; fi')
++say "  $FL"; echo "$FL" | grep -q FLASHED || [ "$DRY" = 1 ] || { say "FATAL: flash did not complete; /boot untouched"; exit 1; }
++brd 'sync; (sleep 1; reboot) &'; wait_back || rollback
++say "=== [3/5] readback verify ==="
++BOOT=$(poll_md5_nonempty); say "  booted image: $BOOT (expect $EXP)"; [ "$DRY" = 1 ] || [ "$BOOT" = "$EXP" ] || rollback
++say "=== [4/5] two-pass gate (arm148_mode1: ARM_OK, fps>=1120, capTAP golden) ==="
++gate || rollback; gate || rollback; say "  GATE_PASS x2"
++say "=== [5/5] Tier-2 witness (read BEFORE any rollback): sel6 4 MB, decoded ==="
++WOUT=$(brd_wit "echo enabled > /sys/bus/iio/devices/iio:device0/reg_access; echo '0x10C 0x60003' > /sys/kernel/debug/iio/iio:device0/direct_reg_access; sleep 1; cd /tmp && rm -f w.bin && iio_readdev -b 4096 -s 1048576 axi-adrv9002-rx2-lpc voltage0_i voltage0_q > /tmp/w.bin 2>/dev/null; stat -c %s /tmp/w.bin")
++WRC=$?
++say "  $WOUT"
++if [ "$WRC" = 124 ]; then
++  say "WITNESS_TIMEOUT (non-fatal, no rollback): 180s cap hit on the sel6 capture; gate already passed, image stays"
++else
++  [ "$DRY" = 1 ] || { timeout 180 $W $A 'cat /tmp/w.bin' > "$D/skidfix/ddrcap2_witness_$EXP.bin" 2>/dev/null; python3 "$D/ddrcap2_decode.py" "$D/skidfix/ddrcap2_witness_$EXP.bin" --summary | tee -a "$LOG"; }
++fi
++if [ "${SS_MINE:-0}" = 1 ]; then say "FLASH_DDRCAP2_OK $EXP (sentinel released)"
++else say "FLASH_DDRCAP2_OK $EXP (sentinel untouched -- external hold or DRY)"; fi
+diff --git a/two_jup/skidfix/txfix_flash_go.sh b/two_jup/skidfix/txfix_flash_go.sh
+new file mode 100755
+index 00000000..398dd44
+--- /dev/null
++++ b/two_jup/skidfix/txfix_flash_go.sh
+@@ -0,0 +1,3 @@
++#!/bin/bash
++# txfix_flash_go.sh -- rig-unit wrapper: env (FLASH_MD5/FLASH_BAK/FLASH_TAG/DRY) comes from launch_rig_unit.sh's --setenv.
++exec bash "$(dirname "$0")/flash_148_txfix.sh"
+diff --git a/two_jup/tests/test_txfix_rig_scripts.py b/two_jup/tests/test_txfix_rig_scripts.py
+new file mode 100644
+index 00000000..f43ae58
+--- /dev/null
++++ b/two_jup/tests/test_txfix_rig_scripts.py
+@@ -0,0 +1,190 @@
++"""test_txfix_rig_scripts.py -- Task 4 (T0c) rig scripts, DRY=1 only. ABSOLUTELY NO board contact:
++every subprocess here runs with DRY=1 and a PATH shim that replaces `ssh`/`scp` with a fake binary
++that logs its invocation and exits 1 -- if any script under test tries to actually reach the network
++in DRY mode, the test catches it (empty shim log == proven zero board contact), rather than trusting
++the script's own [dry] print. SENTINEL_STOP is asserted present with an UNCHANGED mtime before and
++after every run in this file.
++"""
++import hashlib
++import os
++import stat
++import subprocess
++import sys
++import tempfile
++
++HERE = os.path.dirname(os.path.abspath(__file__))
++D = os.path.abspath(os.path.join(HERE, '..'))          # two_jup/
++ROOT = os.path.abspath(os.path.join(D, '..'))           # repo root
++SKIDFIX = os.path.join(D, 'skidfix')
++SENTINEL = os.path.expanduser('~/modem-status/SENTINEL_STOP')
++
++
++def _make_shim(tmpdir):
++    """A PATH dir with fake `ssh`/`scp` that log their invocation to shim.log and exit 1.
++    Any real network attempt shows up here even if the script under test never checks its
++    exit code."""
++    shim = os.path.join(tmpdir, 'shim')
++    os.makedirs(shim, exist_ok=True)
++    log = os.path.join(tmpdir, 'shim.log')
++    for name in ('ssh', 'scp'):
++        p = os.path.join(shim, name)
++        with open(p, 'w') as f:
++            f.write(f'#!/bin/bash\necho "SHIM_CALLED {name} $*" >> "{log}"\nexit 1\n')
++        os.chmod(p, os.stat(p).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
++    return shim, log
++
++
++def _env(tmpdir, extra=None):
++    shim, log = _make_shim(tmpdir)
++    env = dict(os.environ)
++    env['PATH'] = shim + os.pathsep + env.get('PATH', '')
++    env['DRY'] = '1'
++    if extra:
++        env.update(extra)
++    return env, log
++
++
++def _sentinel_mtime():
++    assert os.path.exists(SENTINEL), 'SENTINEL_STOP must exist before/after every DRY run'
++    return os.stat(SENTINEL).st_mtime
++
++
++def _run(cmd, env, cwd=None, timeout=180):
++    pre = _sentinel_mtime()
++    r = subprocess.run(cmd, env=env, cwd=cwd or D, capture_output=True, text=True, timeout=timeout)
++    post = _sentinel_mtime()
++    assert pre == post, f'SENTINEL_STOP mtime changed: {pre} -> {post}'
++    return r
++
++
++def _shim_log_empty(log):
++    return (not os.path.exists(log)) or os.stat(log).st_size == 0
++
++
++def _assert_no_network(r, log):
++    assert _shim_log_empty(log), f'network shim was called (real ssh/scp attempted): {open(log).read() if os.path.exists(log) else ""}'
++
++
++# -------------------------------------------------------------------------
++# flash_148_txfix.sh (via txfix_flash_go.sh, env like launch_rig_unit.sh would set)
++# -------------------------------------------------------------------------
++
++def _make_banked_bb(tag, content=b'x'):
++    """Drop a throwaway BOOT.BIN under boot_known_good/ with a real md5 so the flash chain's
++    local precondition check ([1/5], not a board action) can pass. Returns (md5-12, path)."""
++    md5 = hashlib.md5(content).hexdigest()[:12]
++    path = os.path.join(ROOT, 'boot_known_good', f'BOOT.BIN.148.{tag}.{md5}')
++    with open(path, 'wb') as f:
++        f.write(content)
++    return md5, path
++
++
++def test_flash_chain_dry_stage_lines_and_ok():
++    with tempfile.TemporaryDirectory() as tmp:
++        md5, bb = _make_banked_bb('txfixTESTpy')
++        try:
++            env, log = _env(tmp, {'FLASH_MD5': md5, 'FLASH_TAG': 'txfixTESTpy'})
++            r = _run(['bash', os.path.join(SKIDFIX, 'txfix_flash_go.sh')], env)
++            out = r.stdout + r.stderr
++            assert r.returncode == 0, out
++            for stage in ('[1/5]', '[2/5]', '[3/5]', '[4/5]', '[5/5]'):
++                assert stage in out, f'missing {stage}\n{out}'
++            assert '[dry]' in out
++            assert 'FLASH_DDRCAP2_OK' in out
++            _assert_no_network(r, log)
++        finally:
++            os.remove(bb)
++
++
++def test_flash_chain_requires_flash_md5_and_flash_tag():
++    with tempfile.TemporaryDirectory() as tmp:
++        env, log = _env(tmp)  # no FLASH_MD5/FLASH_TAG set -> ${VAR:?} must fail fast, no board touched
++        r = _run(['bash', os.path.join(SKIDFIX, 'flash_148_txfix.sh')], env)
++        assert r.returncode != 0
++        _assert_no_network(r, log)
++
++
++def test_flash_bak_default_is_638b():
++    with tempfile.TemporaryDirectory() as tmp:
++        md5, bb = _make_banked_bb('txfixTESTpy2')
++        try:
++            env, log = _env(tmp, {'FLASH_MD5': md5, 'FLASH_TAG': 'txfixTESTpy2'})
++            r = _run(['bash', os.path.join(SKIDFIX, 'flash_148_txfix.sh')], env)
++            out = r.stdout + r.stderr
++            assert 'expect 638b36de3493' in out
++            _assert_no_network(r, log)
++        finally:
++            os.remove(bb)
++
++
++# -------------------------------------------------------------------------
++# beat_timeline.sh (via beat_timeline_go.sh)
++# -------------------------------------------------------------------------
++
++def test_beat_timeline_dry_ok_and_three_bursts():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'btl_out')
++        env, log = _env(tmp, {'OUT': out_dir, 'SECS': '420'})
++        r = _run(['bash', os.path.join(D, 'beat_timeline_go.sh')], env)
++        out = r.stdout + r.stderr
++        assert r.returncode == 0, out
++        assert 'TIMELINE_OK secs=420 gaps=0' in out, out
++        assert 'BURSTS n=3' in out, out
++        assert os.path.exists(os.path.join(out_dir, 'errps.csv'))
++        assert os.path.exists(os.path.join(out_dir, 'meta.txt'))
++        meta = open(os.path.join(out_dir, 'meta.txt')).read()
++        assert 'pre_capTAP=' in meta and 'post_capTAP=' in meta and 'gaps_gt_2s=' in meta
++        _assert_no_network(r, log)
++
++
++def test_beat_timeline_csv_is_beat_detect_compatible():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'btl_out2')
++        env, log = _env(tmp, {'OUT': out_dir, 'SECS': '420'})
++        r = _run(['bash', os.path.join(D, 'beat_timeline.sh')], env)
++        assert r.returncode == 0, r.stdout + r.stderr
++        r2 = subprocess.run([sys.executable, os.path.join(D, 'beat_detect.py'),
++                              os.path.join(out_dir, 'errps.csv'), '--per-second'],
++                             capture_output=True, text=True)
++        assert 'BURSTS n=3' in r2.stdout, r2.stdout
++        _assert_no_network(r, log)
++
++
++# -------------------------------------------------------------------------
++# txfix_witness_go.sh
++# -------------------------------------------------------------------------
++
++def test_witness_dry_positive_and_negative_controls():
++    with tempfile.TemporaryDirectory() as tmp:
++        out_dir = os.path.join(tmp, 'wit_out')
++        env, log = _env(tmp, {'VAR': 'testF3', 'OUT': out_dir})
++        r = _run(['bash', os.path.join(D, 'txfix_witness_go.sh')], env, timeout=300)
++        out = r.stdout + r.stderr
++        assert r.returncode == 0, out
++        assert '[dry]' in out
++        lines = [l for l in out.splitlines() if l.startswith('WITNESS_testF3 ')]
++        assert len(lines) == 2, out
++        assert any('stalls=6 ' in l for l in lines), out   # positive control (mid.bin) -- see report re: plan's stale "stalls=4"
++        assert any('stalls=0 ' in l for l in lines), out   # synthetic all-quiet control
++        for l in lines:
++            assert 'tier2=' in l and 'credited=' in l
++        _assert_no_network(r, log)
++
++
++# -------------------------------------------------------------------------
++# arm148_mode1.sh's ONE change: GOLD is now an input
++# -------------------------------------------------------------------------
++
++def test_arm148_mode1_gold_is_env_input():
++    src = open(os.path.join(D, 'arm148_mode1.sh')).read()
++    assert 'GOLD=${GOLD:-BCF94856}' in src
++    # exactly one behavioural change from the original -- everything else untouched
++    assert src.count('GOLD=') == 1 or 'GOLD=${GOLD:-BCF94856}' in src
++
++
++# -------------------------------------------------------------------------
++# sentinel present at import time too (fails loudly if the operator's hold vanished)
++# -------------------------------------------------------------------------
++
++def test_sentinel_present():
++    assert os.path.exists(SENTINEL)
+diff --git a/two_jup/txfix_witness_go.sh b/two_jup/txfix_witness_go.sh
+new file mode 100755
+index 00000000..11eece7
+--- /dev/null
++++ b/two_jup/txfix_witness_go.sh
+@@ -0,0 +1,78 @@
++#!/bin/bash
++# txfix_witness_go.sh -- VAR env: sel6 DDRCAP-v2 witness on the CURRENT arm (no arm inside).
++# Real path: ddrcap2_capture.sh 6 <VAR> (512 MB, credited on golden pre/post capTAP), then
++# sel6_stall_geometry.py <bin> <json> (stall-run count) and ddrcap2_pc.py <bin> --sel 6 (Tier-2),
++# printing WITNESS_<VAR> stalls=<n> tier2=<PASS|FAIL> credited=<yes|no>.
++#
++# DRY=1 makes zero board contact: it never calls ddrcap2_capture.sh (that script has no DRY
++# guard of its own -- it always ssh's). Instead it exercises the scoring path on two local
++# positive/negative controls and prints one WITNESS_<VAR> line per control:
++#   1. an existing local sel6 capture (two_jup/beatcap/20260902_185552_sel6/mid.bin) as the
++#      POSITIVE control -- must show a non-zero stall count (measured on this repo's copy:
++#      stalls=6; the plan text's "stalls=4" figure is stale, see task report).
++#   2. a freshly generated synthetic all-quiet .bin (1,048,576 records of one fixed repeating
++#      hard-decision symbol with periodic demod-mark frame boundaries every 12,320 records,
++#      no transitions anywhere) as the NEGATIVE control -- must show stalls=0. Tier-2 is
++#      expected to FAIL on this synthetic stream (it is not real modulated IQ), which is fine:
++#      DRY only proves the stall counter's zero/nonzero discrimination, not Tier-2 on synthetic
++#      data.
++set -u
++D=$(cd "$(dirname "$0")" && pwd); VAR=${VAR:?}; DRY=${DRY:-0}
++OUT=${OUT:-$D/txfixwit/$(date +%Y%m%d_%H%M%S)_$VAR}; mkdir -p "$OUT"
++log(){ echo "$(date +%T) $*" | tee -a "$OUT/run.log"; }
++
++score(){ # $1=bin $2=json $3=label -> prints STALLS=<n> TIER2=<PASS|FAIL>, sets globals
++  local bin=$1 json=$2 label=$3
++  python3 "$D/sel6_stall_geometry.py" "$bin" "$json" > "$OUT/${label}_geometry.log" 2>&1
++  STALLS=$(python3 -c "import json;print(len(json.load(open('$json'))['stalls']))")
++  python3 "$D/ddrcap2_pc.py" "$bin" --sel 6 > "$OUT/${label}_tier2.log" 2>&1
++  if [ $? -eq 0 ]; then TIER2=PASS; else TIER2=FAIL; fi
++}
++
++if [ "$DRY" = 1 ]; then
++  log "[dry] no ddrcap2_capture.sh call (no board contact); scoring two local controls instead"
++
++  # --- positive control: existing local capture ---
++  POSBIN="$D/beatcap/20260902_185552_sel6/mid.bin"
++  POSMETA="$D/beatcap/20260902_185552_sel6/meta.txt"
++  if [ ! -f "$POSBIN" ]; then log "FATAL: positive-control capture missing: $POSBIN"; exit 1; fi
++  score "$POSBIN" "$OUT/pos_stalls.json" pos
++  PCREDIT=$(grep '^mid ' "$POSMETA" | sed -n 's/.*credit=\([a-z]*\).*/\1/p')
++  [ -z "$PCREDIT" ] && PCREDIT=no
++  log "  positive control ($POSBIN)"
++  echo "WITNESS_$VAR stalls=$STALLS tier2=$TIER2 credited=$PCREDIT"
++
++  # --- negative control: synthetic all-quiet capture ---
++  QBIN="$OUT/quiet_synthetic.bin"
++  python3 - "$QBIN" <<'PYEOF'
++import sys
++import numpy as np
++N = 1048576      # 1M records
++FRAME = 12320    # sel6 demod-marker frame length (offset map's declared frame length)
++a = np.zeros((N, 4), dtype='<i2')
++a[:, 0] = -100   # I: fixed sign -> one constant hard-decision symbol, never transitions
++a[:, 1] = 100    # Q: fixed sign
++idx = np.arange(N)
++mark = (idx % FRAME == 0)
++ch2 = np.zeros(N, dtype='<u2')
++ch2[mark] |= (1 << 15)   # mark_demod bit, periodic frame boundaries
++a[:, 2] = ch2.astype('<i2')
++a[:, 3] = 0
++a.tofile(sys.argv[1])
++PYEOF
++  score "$QBIN" "$OUT/quiet_stalls.json" quiet
++  log "  synthetic all-quiet control ($QBIN, $(stat -c %s "$QBIN") bytes)"
++  echo "WITNESS_$VAR stalls=$STALLS tier2=$TIER2 credited=yes"
++else
++  CAPOUT="$OUT/cap"; mkdir -p "$CAPOUT"
++  OUT="$CAPOUT" SZ=134217728 bash "$D/ddrcap2_capture.sh" 6 "$VAR" > "$OUT/run.log.capture" 2>&1 || true
++  cat "$OUT/run.log.capture" >> "$OUT/run.log" 2>/dev/null
++  # capture output lands in $CAPOUT/<newest-ts>/$VAR.bin (ddrcap2_capture.sh makes its own subdir under OUT)
++  BIN=$(find "$CAPOUT" -name "$VAR.bin" -newer "$CAPOUT" 2>/dev/null | head -1)
++  [ -z "$BIN" ] && BIN=$(find "$CAPOUT" -name "$VAR.bin" | head -1)
++  [ -z "$BIN" ] && { log "FATAL: no capture .bin produced"; exit 1; }
++  if grep -q "WARN: post capTAP not golden" "$OUT/run.log.capture"; then CREDITED=no; else CREDITED=yes; fi
++  JSON="$OUT/${VAR}_stalls.json"
++  score "$BIN" "$JSON" "$VAR"
++  echo "WITNESS_$VAR stalls=$STALLS tier2=$TIER2 credited=$CREDITED"
++fi
+diff --git a/two_jup/verify_in_place_txfix.sh b/two_jup/verify_in_place_txfix.sh
+new file mode 100755
+index 00000000..c946e91
+--- /dev/null
++++ b/two_jup/verify_in_place_txfix.sh
+@@ -0,0 +1,27 @@
++#!/bin/bash
++# verify_in_place_148.sh -- operator option 1 (2026-09-02): run the flash chain's post-flash steps by hand on the
++# image already booted on 148: two-pass mode-1 gate (ARM_OK, fps>=1120, golden capTAP), then the sel6 witness
++# capture decoded with ddrcap2_decode.py. On gate failure: restore /boot from /root/BOOT.BIN.1cd0cd752aa6.bak,
++# reboot, wait for ssh, one baseline arm, STOP (no retry). 148 only; 146 never touched.
++set -u
++D=$(cd "$(dirname "$0")" && pwd); W=$D/anyssh.sh; A=10.0.0.148; EXP=${FLASH_MD5:?}; BAK=${FLASH_BAK:-638b36de3493}
++L=$D/skidfix/txfix_verify_$(date +%Y%m%d_%H%M%S).log
++say(){ echo "$(date +%T) $*" | tee -a "$L"; }
++brd(){ $W $A "$@" 2>/dev/null | tr -d '\r'; }
++poll_md5(){ local t=0 m=""; while [ $t -lt 360 ]; do m=$(brd 'md5sum /boot/BOOT.BIN | cut -c1-12'); [ -n "$m" ] && { echo "$m"; return 0; }; sleep 10; t=$((t+10)); done; echo ""; return 1; }
++gate(){ local o f; o=$(bash "$D/arm148_mode1.sh" 2>&1); echo "$o" | grep -E "found:|post-arm|ARM_" | tee -a "$L"
++  echo "$o" | grep -q ARM_OK || return 1; f=$(echo "$o" | sed -n 's/.*ARM_OK.*fps=\([0-9]*\).*/\1/p' | tail -1); [ "${f:-0}" -ge 1120 ]; }
++restore(){ say "=== RESTORE to $BAK (gate failed; rail: no retry) ==="
++  R=$(brd "cp -f /root/BOOT.BIN.$BAK.bak /boot/BOOT.BIN && sync && md5sum /boot/BOOT.BIN | cut -c1-12"); say "  restore-copy: $R"
++  [ "$R" = "$BAK" ] || { say "VERIFY_FATAL: restore-copy failed -- PHYSICAL ATTENTION (no reboot issued)"; exit 2; }
++  brd 'sync; (sleep 1; reboot) &'; sleep 45; local n=0; until ping -c1 -W2 $A >/dev/null 2>&1; do sleep 5; n=$((n+5)); [ $n -gt 240 ] && { say "VERIFY_FATAL: not back after restore reboot -- PHYSICAL ATTENTION"; exit 2; }; done
++  M=$(poll_md5); say "  restored image booted: $M (expect $BAK)"; gate || say "  WARN: post-restore baseline arm not ARM_OK"; say "VERIFY_RESTORED_$BAK"; exit 1; }
++say "=== verify-in-place on 148: image $(brd 'md5sum /boot/BOOT.BIN | cut -c1-12') (expect $EXP) ==="
++say "=== gate pass 1 ==="; gate || restore
++say "=== gate pass 2 ==="; gate || restore
++say "  GATE_PASS x2"
++say "=== Tier-2 witness: sel6, 1 M records, decoded ==="
++brd "echo enabled > /sys/bus/iio/devices/iio:device0/reg_access; echo '0x10C 0x60003' > /sys/kernel/debug/iio/iio:device0/direct_reg_access; sleep 1; cd /tmp && rm -f w.bin && timeout 120 iio_readdev -b 4096 -s 1048576 axi-adrv9002-rx2-lpc voltage0_i voltage0_q > /tmp/w.bin 2>/dev/null; stat -c 'BOARD %s' /tmp/w.bin" | tee -a "$L"
++timeout 180 $W $A 'cat /tmp/w.bin' > "$D/skidfix/ddrcap2_witness_$EXP.bin" 2>/dev/null; say "  witness bytes: $(stat -c %s "$D/skidfix/ddrcap2_witness_$EXP.bin" 2>/dev/null || echo 0)"
++python3 "$D/ddrcap2_decode.py" "$D/skidfix/ddrcap2_witness_$EXP.bin" --summary 2>&1 | tee -a "$L"
++say "VERIFY_IN_PLACE_OK $EXP"
+# --- flash_148_txfix.sh vs the original chain ---
+--- two_jup/skidfix/flash_148_ddrcap2.sh	2026-09-02 17:36:12.878809987 -0400
++++ two_jup/skidfix/flash_148_txfix.sh	2026-09-03 10:01:46.235284506 -0400
+@@ -39,10 +39,10 @@
+ # same ssh-readiness handling automatically.
+ set -u
+ ROOT=/mnt/onetb/scratch/qpsk-jupiter-modem; D=$ROOT/two_jup; W=$D/anyssh.sh; A=10.0.0.148
+-EXP=${1:?usage: flash_148_ddrcap2.sh <md5-12>}; BAK=1cd0cd752aa6
++EXP=${FLASH_MD5:?}; BAK=${FLASH_BAK:-638b36de3493}; TAG=${FLASH_TAG:?}
+ [[ "$EXP" =~ ^[0-9a-f]{12}$ ]] || { echo "FATAL: <md5-12> must be exactly 12 lowercase hex chars (got: '$EXP')"; exit 1; }
+-BB=$ROOT/boot_known_good/BOOT.BIN.148.ddrcap2.$EXP
+-DRY=${DRY:-0}; LOG=$D/skidfix/ddrcap2_flash_$(date +%Y%m%d_%H%M%S).log
++BB=$ROOT/boot_known_good/BOOT.BIN.148.$TAG.$EXP
++DRY=${DRY:-0}; LOG=$D/skidfix/txfix_flash_$(date +%Y%m%d_%H%M%S).log
+ say(){ echo "$(date +%T) $*" | tee -a "$LOG"; }
+ brd(){ if [ "$DRY" = 1 ]; then echo "[dry] $*"; else $W $A "$@" 2>/dev/null | tr -d '\r'; fi; }
+ # brd_wit: like brd, but bounded (rail: a hung direct_reg_access must not block the chain forever
+# --- verify_in_place_txfix.sh vs original ---
+--- two_jup/verify_in_place_148.sh	2026-09-02 17:39:23.023315206 -0400
++++ two_jup/verify_in_place_txfix.sh	2026-09-03 10:01:53.610924053 -0400
+@@ -4,8 +4,8 @@
+ # capture decoded with ddrcap2_decode.py. On gate failure: restore /boot from /root/BOOT.BIN.1cd0cd752aa6.bak,
+ # reboot, wait for ssh, one baseline arm, STOP (no retry). 148 only; 146 never touched.
+ set -u
+-D=$(cd "$(dirname "$0")" && pwd); W=$D/anyssh.sh; A=10.0.0.148; EXP=638b36de3493; BAK=1cd0cd752aa6
+-L=$D/skidfix/ddrcap2_verify_$(date +%Y%m%d_%H%M%S).log
++D=$(cd "$(dirname "$0")" && pwd); W=$D/anyssh.sh; A=10.0.0.148; EXP=${FLASH_MD5:?}; BAK=${FLASH_BAK:-638b36de3493}
++L=$D/skidfix/txfix_verify_$(date +%Y%m%d_%H%M%S).log
+ say(){ echo "$(date +%T) $*" | tee -a "$L"; }
+ brd(){ $W $A "$@" 2>/dev/null | tr -d '\r'; }
+ poll_md5(){ local t=0 m=""; while [ $t -lt 360 ]; do m=$(brd 'md5sum /boot/BOOT.BIN | cut -c1-12'); [ -n "$m" ] && { echo "$m"; return 0; }; sleep 10; t=$((t+10)); done; echo ""; return 1; }

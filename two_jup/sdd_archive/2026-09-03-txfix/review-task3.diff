@@ -1,0 +1,671 @@
+# Task 3 (T0b kit/build scripts) review package
+dfa16d3 txfix: sim_txfix_force.cpp harness + TREE/OBJ/HARNESS params on the build scripts
+4fa993c txfix: txfix_lint.sh -- lenient 5-top + strict -Wall gate for the variant trees
+
+diff --git a/jupiter_byte_txfix_fetch.sh b/jupiter_byte_txfix_fetch.sh
+new file mode 100755
+index 00000000..1930b9a
+--- /dev/null
++++ b/jupiter_byte_txfix_fetch.sh
+@@ -0,0 +1,95 @@
++#!/bin/bash
++# jupiter_byte_txfix_fetch.sh <kit>
++#
++# Fetches a finished TXFIX build's BOOT.BIN from hdl-dev-2, banks it into
++# boot_known_good/ under this repo's naming convention, and appends its row
++# to boot_known_good/README.md and boot_known_good/MD5SUMS.
++#
++# <kit> is a local kit dir basename, e.g. jupiter_byte_txfixF3_build. Reads
++# <kit>/TXFIX_VARIANT (written by jupiter_byte_txfix_kit.sh) for the variant
++# tag; REMOTE_DIR/BOOT.BIN path matches build_txfix.tcl's bootgen output
++# (<REMOTE_DIR>/hdl_prj_jupiter_composite/vivado_ip_prj/boot/BOOT.BIN).
++#
++# Does NOT flash anything and never touches the board (10.0.0.148/146). The
++# README row is stamped "BUILT, NOT flashed, sim gate pending" -- the silicon
++# lane (Task 8/T3) is the only place that later edits it to "flashed"/
++# "verified".
++#
++# NOT run automatically by anything in this repo; invoked by hand (or by the
++# Vivado-lane task) only after build_txfix.sh's remote unit has printed
++# TXFIX_BUILD_DONE in the remote log.
++set -u
++KIT="${1:?usage: jupiter_byte_txfix_fetch.sh <kit-dir-name-or-path>}"
++HERE=$(cd "$(dirname "$0")" && pwd)
++KIT_BASENAME=$(basename "$KIT")
++KIT_LOCAL="$HERE/$KIT_BASENAME"
++REMOTE_HOST=hdl-dev-2
++REMOTE_DIR_EXPANDED="/home/tcollins/qpsk-builds/$KIT_BASENAME"
++REMOTE_BOOT="$REMOTE_DIR_EXPANDED/hdl_prj_jupiter_composite/vivado_ip_prj/boot/BOOT.BIN"
++BANK="$HERE/boot_known_good"
++README="$BANK/README.md"
++MD5SUMS="$BANK/MD5SUMS"
++
++if [ ! -d "$KIT_LOCAL" ]; then echo "TXFIX_FETCH_NO_KIT $KIT_LOCAL"; exit 1; fi
++if [ ! -f "$KIT_LOCAL/TXFIX_VARIANT" ]; then
++  echo "TXFIX_FETCH_NO_VARIANT_MARKER $KIT_LOCAL/TXFIX_VARIANT missing"; exit 1
++fi
++VARIANT=$(head -1 "$KIT_LOCAL/TXFIX_VARIANT")
++case "$VARIANT" in F1|F2|F3) ;; *) echo "TXFIX_FETCH_BAD_VARIANT '$VARIANT'"; exit 1 ;; esac
++TAG="txfix${VARIANT}"
++
++WORK=$(mktemp -d)
++trap 'rm -rf "$WORK"' EXIT
++LOCAL_TMP="$WORK/BOOT.BIN"
++
++echo "TXFIX_FETCH scp start $(date -Is) $REMOTE_HOST:$REMOTE_BOOT"
++scp -p "$REMOTE_HOST:$REMOTE_BOOT" "$LOCAL_TMP"
++RC=$?
++if [ $RC -ne 0 ]; then echo "TXFIX_FETCH_SCP_FAILED rc=$RC"; exit 1; fi
++echo "TXFIX_FETCH scp done $(date -Is)"
++
++MD5_FULL=$(md5sum "$LOCAL_TMP" | awk '{print $1}')
++MD5_12=${MD5_FULL:0:12}
++DEST_NAME="BOOT.BIN.148.${TAG}.${MD5_12}"
++DEST="$BANK/$DEST_NAME"
++
++if [ -e "$DEST" ]; then
++  EXIST_MD5=$(md5sum "$DEST" | awk '{print $1}')
++  if [ "$EXIST_MD5" = "$MD5_FULL" ]; then
++    echo "TXFIX_FETCH_ALREADY_BANKED $DEST (md5 matches, no-op)"
++    exit 0
++  else
++    echo "TXFIX_FETCH_REFUSE_COLLISION $DEST exists with a DIFFERENT md5 ($EXIST_MD5 != $MD5_FULL) -- refusing to overwrite"
++    exit 1
++  fi
++fi
++
++cp "$LOCAL_TMP" "$DEST"
++echo "TXFIX_FETCH banked $DEST md5=$MD5_FULL"
++
++# --- README.md row: follow the existing 148 table format (see the
++#     BOOT.BIN.148.ddrcap2.638b36de3493 row for the pattern) ---
++ROW="| \`$DEST_NAME\` | \`$MD5_12\` | TXFIX $VARIANT: fix build from jupiter_byte_ddrcap2_build (DDRCAP-v2 instrument unchanged) via txfix_inject.py, fetched from hdl-dev-2 kit $KIT_BASENAME. **BUILT, NOT flashed, sim gate pending.** |"
++if grep -qF "$DEST_NAME" "$README"; then
++  echo "TXFIX_FETCH_README_ROW_ALREADY_PRESENT (skipping append)"
++else
++  printf '%s\n' "$ROW" >> "$README"
++  echo "TXFIX_FETCH readme row appended: $ROW"
++fi
++
++# --- MD5SUMS line (bare filename, matches how `md5sum -c` is run from
++#     inside boot_known_good/) ---
++MD5_LINE="$MD5_FULL  $DEST_NAME"
++if grep -qF "$DEST_NAME" "$MD5SUMS"; then
++  echo "TXFIX_FETCH_MD5SUMS_LINE_ALREADY_PRESENT (skipping append)"
++else
++  printf '%s\n' "$MD5_LINE" >> "$MD5SUMS"
++  echo "TXFIX_FETCH md5sums line appended: $MD5_LINE"
++fi
++
++echo "TXFIX_FETCH verify start $(date -Is)"
++VERIFY_OUT=$(cd "$BANK" && grep -F "$DEST_NAME" MD5SUMS | md5sum -c - 2>&1)
++VRC=$?
++echo "$VERIFY_OUT"
++if [ $VRC -ne 0 ]; then echo "TXFIX_FETCH_VERIFY_FAILED"; exit 1; fi
++echo "TXFIX_FETCH_DONE variant=$VARIANT dest=$DEST_NAME md5=$MD5_FULL"
+diff --git a/jupiter_byte_txfix_kit.sh b/jupiter_byte_txfix_kit.sh
+new file mode 100755
+index 00000000..9d76465
+--- /dev/null
++++ b/jupiter_byte_txfix_kit.sh
+@@ -0,0 +1,133 @@
++#!/bin/bash
++# jupiter_byte_txfix_kit.sh <VARIANT>   (VARIANT = F1|F2|F3)
++#
++# Makes a TXFIX build kit: jupiter_byte_txfix<VARIANT>_build/ = a copy of
++# jupiter_byte_ddrcap2_build (the DDRCAP-v2 instrument stays unchanged, sel6
++# witness must keep working) with the fix-variant RTL patches injected into
++# every loose .v mirror under hdl_prj_jupiter_composite/ (ipcore/
++# TxRxCompo_ip_v1_0/hdl/, hdlsrc/commhdlQPSKTxRxLoopback/, and
++# vivado_ip_prj/ipcore/TxRxCompo_ip_v1_0/hdl/) and the two
++# TxRxCompo_ip_v1_0.zip members (which live at different paths under the
++# composite tree).
++#
++# Exclusions on the copy mirror build_ddrcap.sh's rsync (never carry heavy/
++# derived Vivado state or a stale BOOT.BIN/LAUNCHED marker into a new kit):
++#   vivado_prj.runs/{synth_1,impl_1}, vivado_prj.cache, vivado_prj.sim,
++#   vivado_prj.hw, *.log *.jou *.str, boot/BOOT.BIN, LAUNCHED
++#
++# After the copy, build_txfix.sh/.tcl (this repo's generic templates, see
++# two_jup/skidfix/txfix_build.{sh,tcl}.tmpl) are installed into the kit,
++# replacing the ddrcap2-specific build_ddrcap.sh/.tcl -- REMOTE_DIR in
++# build_txfix.sh is derived from the kit's own basename, so it never collides
++# with another kit's remote build dir. timing_gate.tcl is carried over
++# unmodified from the ddrcap2 kit.
++#
++# Then two_jup/skidfix/txfix_inject.py <kit>/hdl_prj_jupiter_composite
++# <VARIANT> patches the netlist (contract: prints
++# "TXFIX_INJECT variant=... zips=2 zips_verified=2", nonzero on failure).
++# This script independently re-verifies (marker grep in loose .v + unzip -p
++# of both zip members) before writing <kit>/TXFIX_VARIANT.
++#
++# Refuses to run on a kit dir that already carries a TXFIX_VARIANT marker,
++# and refuses to overwrite an existing kit dir that lacks one (ambiguous
++# state -- remove or bank it manually first).
++set -u
++VARIANT="${1:-}"
++case "$VARIANT" in
++  F1|F2|F3) ;;
++  *) echo "TXFIX_KIT_BAD_VARIANT '$VARIANT' -- usage: jupiter_byte_txfix_kit.sh <F1|F2|F3>"; exit 1 ;;
++esac
++
++HERE=$(cd "$(dirname "$0")" && pwd)
++SRC="$HERE/jupiter_byte_ddrcap2_build"
++KIT="$HERE/jupiter_byte_txfix${VARIANT}_build"
++INJECTOR="$HERE/two_jup/skidfix/txfix_inject.py"
++TMPL_SH="$HERE/two_jup/skidfix/txfix_build.sh.tmpl"
++TMPL_TCL="$HERE/two_jup/skidfix/txfix_build.tcl.tmpl"
++TMPL_README="$HERE/two_jup/skidfix/txfix_kit_readme.md.tmpl"
++
++if [ ! -d "$SRC" ]; then echo "TXFIX_KIT_NO_SRC $SRC"; exit 1; fi
++if [ ! -f "$INJECTOR" ]; then echo "TXFIX_KIT_NO_INJECTOR $INJECTOR (Task 2 not landed yet)"; exit 1; fi
++if [ ! -f "$TMPL_SH" ] || [ ! -f "$TMPL_TCL" ]; then echo "TXFIX_KIT_NO_TEMPLATE $TMPL_SH / $TMPL_TCL"; exit 1; fi
++if [ ! -f "$TMPL_README" ]; then echo "TXFIX_KIT_NO_TEMPLATE $TMPL_README"; exit 1; fi
++
++if [ -f "$KIT/TXFIX_VARIANT" ]; then
++  echo "TXFIX_KIT_REFUSE_ALREADY_TAGGED $KIT already has TXFIX_VARIANT: $(cat "$KIT/TXFIX_VARIANT" | tr '\n' ' ')"
++  exit 1
++fi
++if [ -e "$KIT" ]; then
++  echo "TXFIX_KIT_REFUSE_EXISTS $KIT exists with no TXFIX_VARIANT marker -- remove or bank it manually before rerunning"
++  exit 1
++fi
++
++echo "TXFIX_KIT copy start $(date -Is) $SRC -> $KIT"
++mkdir -p "$KIT"
++rsync -a \
++  --exclude 'vivado_prj.runs/synth_1/' \
++  --exclude 'vivado_prj.runs/impl_1/' \
++  --exclude 'vivado_prj.cache/' \
++  --exclude 'vivado_prj.sim/' \
++  --exclude 'vivado_prj.hw/' \
++  --exclude '*.log' --exclude '*.jou' --exclude '*.str' \
++  --exclude 'boot/BOOT.BIN' \
++  --exclude 'LAUNCHED' \
++  "$SRC"/ "$KIT"/
++RC=$?
++if [ $RC -ne 0 ]; then echo "TXFIX_KIT_COPY_FAILED rc=$RC"; exit 1; fi
++echo "TXFIX_KIT copy done $(date -Is)"
++
++cp "$TMPL_SH" "$KIT/build_txfix.sh"
++chmod +x "$KIT/build_txfix.sh"
++cp "$TMPL_TCL" "$KIT/build_txfix.tcl"
++sed "s/@VARIANT@/$VARIANT/g" "$TMPL_README" > "$KIT/README.md"
++echo "TXFIX_KIT installed build_txfix.sh + build_txfix.tcl + README.md (templates: $TMPL_SH, $TMPL_TCL, $TMPL_README)"
++
++# Injector recurses (os.walk) over the whole tree it's given, patching every
++# loose-.v copy it finds by basename (incl. the TxRxCompo_ip_src_ prefixed
++# names used inside the Vivado IP kit, at all 3 locations they're mirrored:
++# ipcore/TxRxCompo_ip_v1_0/hdl/, hdlsrc/commhdlQPSKTxRxLoopback/, and
++# vivado_ip_prj/ipcore/TxRxCompo_ip_v1_0/hdl/) plus the two
++# TxRxCompo_ip_v1_0.zip members (which live at DIFFERENT paths under the
++# composite tree, not both under ipcore/) -- so it must be pointed at the
++# whole composite tree, exactly as the plan specifies.
++COMPOSITE="$KIT/hdl_prj_jupiter_composite"
++if [ ! -d "$COMPOSITE" ]; then echo "TXFIX_KIT_NO_COMPOSITE $COMPOSITE"; exit 1; fi
++
++echo "TXFIX_KIT inject start $(date -Is) variant=$VARIANT dir=$COMPOSITE"
++python3 "$INJECTOR" "$COMPOSITE" "$VARIANT"
++RC=$?
++if [ $RC -ne 0 ]; then echo "TXFIX_KIT_INJECT_FAILED rc=$RC"; exit 1; fi
++echo "TXFIX_KIT inject done $(date -Is)"
++
++# --- independent re-verification (do not just trust the injector's own printout) ---
++MARKER="TXFIX_${VARIANT}"
++LOOSE_HITS=$(grep -rl "$MARKER" "$COMPOSITE" --include='*.v' 2>/dev/null | wc -l)
++if [ "$LOOSE_HITS" -lt 1 ]; then
++  echo "TXFIX_KIT_VERIFY_FAILED no loose .v under $COMPOSITE contains marker $MARKER"
++  exit 1
++fi
++echo "TXFIX_KIT_VERIFY loose_v_hits=$LOOSE_HITS marker=$MARKER"
++
++ZIP_COUNT=0
++ZIP_OK=0
++while IFS= read -r Z; do
++  [ -z "$Z" ] && continue
++  ZIP_COUNT=$((ZIP_COUNT+1))
++  if unzip -p "$Z" 2>/dev/null | strings | grep -q "$MARKER"; then
++    ZIP_OK=$((ZIP_OK+1))
++    echo "TXFIX_KIT_VERIFY zip_ok $Z"
++  else
++    echo "TXFIX_KIT_VERIFY zip_missing_marker $Z"
++  fi
++done < <(find "$COMPOSITE" -iname 'TxRxCompo_ip_v1_0.zip')
++
++echo "TXFIX_KIT_VERIFY zips=$ZIP_COUNT zips_with_marker=$ZIP_OK"
++if [ "$ZIP_COUNT" -ne 2 ] || [ "$ZIP_OK" -ne 2 ]; then
++  echo "TXFIX_KIT_VERIFY_FAILED expected exactly 2 zip members carrying $MARKER, got zips=$ZIP_COUNT with_marker=$ZIP_OK"
++  exit 1
++fi
++
++INJ_COMMIT=$(cd "$HERE" && git log -1 --format=%H -- two_jup/skidfix/txfix_inject.py 2>/dev/null)
++if [ -z "$INJ_COMMIT" ]; then INJ_COMMIT="UNCOMMITTED"; fi
++{ echo "$VARIANT"; echo "$INJ_COMMIT"; } > "$KIT/TXFIX_VARIANT"
++echo "TXFIX_KIT_DONE variant=$VARIANT kit=$KIT injector_commit=$INJ_COMMIT"
+diff --git a/two_jup/skidfix/txfix_build.sh.tmpl b/two_jup/skidfix/txfix_build.sh.tmpl
+new file mode 100755
+index 00000000..0512262
+--- /dev/null
++++ b/two_jup/skidfix/txfix_build.sh.tmpl
+@@ -0,0 +1,105 @@
++#!/bin/bash
++# build_txfix.sh -- full BD-regenerating build for a TXFIX fix-variant image
++# (F1/F2/F3). Copy of jupiter_byte_ddrcap2_build/build_ddrcap.sh, generalised:
++# REMOTE_DIR is derived from this kit's own basename (not hard-coded) so F1/F2/F3
++# can build in independent remote dirs without clobbering each other, and JOBS
++# is an env override (default 6) threaded through to build_txfix.tcl via
++# `set_param general.maxThreads $env(JOBS)` / `-jobs $env(JOBS)` in both
++# launch_runs calls -- so two variants can each run at -jobs 3 concurrently
++# without oversubscribing hdl-dev-2 (8 cores). See the plan's Vivado
++# constraints paragraph: hdl-dev-2 has 8 cores / 61 GB RAM; three concurrent
++# builds at full jobs is oversubscribed and disk-tight (67 GB free at last
++# check, 86% used) -- this script preflights disk and concurrent-unit state
++# before touching the remote host.
++#
++# This script never deletes anything remote (old kit dirs, e.g.
++# jupiter_byte_beatfix2_build, are referenced by system.bd's mem_init_sys.txt
++# on hdl-dev-2 and must survive).
++#
++# Usage: build_txfix.sh [--dry]
++#   --dry   do everything (sync, preflight) except the remote systemd-run
++#           launch; prints the exact remote launch command instead.
++set -u
++KIT_LOCAL=$(cd "$(dirname "$0")" && pwd)
++KIT=$(basename "$KIT_LOCAL")
++REMOTE_HOST=hdl-dev-2
++REMOTE_DIR="~/qpsk-builds/$KIT"
++REMOTE_DIR_EXPANDED="/home/tcollins/qpsk-builds/$KIT"
++JOBS="${JOBS:-6}"
++ALLOW_CONCURRENT="${ALLOW_CONCURRENT:-0}"
++DRY=0
++if [ "${1:-}" = "--dry" ]; then DRY=1; fi
++
++case "$KIT" in
++  jupiter_byte_txfix*_build) ;;
++  *) echo "TXFIX_BUILD_BAD_KIT $KIT (expected jupiter_byte_txfix<VARIANT>_build)"; exit 1 ;;
++esac
++if [ ! -f "$KIT_LOCAL/TXFIX_VARIANT" ]; then
++  echo "TXFIX_BUILD_NO_VARIANT_MARKER $KIT_LOCAL/TXFIX_VARIANT missing -- run jupiter_byte_txfix_kit.sh first"
++  exit 1
++fi
++VARIANT=$(head -1 "$KIT_LOCAL/TXFIX_VARIANT")
++
++echo "TXFIX_BUILD preflight start $(date -Is) kit=$KIT variant=$VARIANT jobs=$JOBS"
++
++# --- preflight: remote disk + concurrent-unit check (never destructive) -----
++FREE_KB=$(ssh "$REMOTE_HOST" "df -Pk \$HOME | tail -1 | awk '{print \$4}'")
++if [ -z "$FREE_KB" ]; then
++  echo "TXFIX_BUILD_PREFLIGHT_FAILED could not read remote free disk"; exit 1
++fi
++FREE_GB=$((FREE_KB / 1024 / 1024))
++if [ "$FREE_GB" -lt 25 ]; then
++  echo "TXFIX_BUILD_PREFLIGHT_FAILED free=${FREE_GB}GB < 25GB on $REMOTE_HOST"; exit 1
++fi
++echo "TXFIX_BUILD preflight disk free=${FREE_GB}GB"
++
++ACTIVE_UNITS=$(ssh "$REMOTE_HOST" "systemctl --user list-units --state=running,active 'txfix-build-*' 'ddrcap-build-*' --no-legend 2>/dev/null | awk '{print \$1}'")
++if [ -n "$ACTIVE_UNITS" ] && [ "$ALLOW_CONCURRENT" != "1" ]; then
++  echo "TXFIX_BUILD_PREFLIGHT_FAILED concurrent build unit(s) active on $REMOTE_HOST: $ACTIVE_UNITS (set ALLOW_CONCURRENT=1 to override, e.g. two variants at JOBS=3 each)"
++  exit 1
++fi
++if [ -n "$ACTIVE_UNITS" ]; then
++  echo "TXFIX_BUILD preflight NOTE: proceeding alongside active unit(s) [$ACTIVE_UNITS] under ALLOW_CONCURRENT=1"
++fi
++
++echo "TXFIX_BUILD sync start $(date -Is)"
++rsync -a --delete \
++  --exclude 'vivado_prj.runs/synth_1/' \
++  --exclude 'vivado_prj.runs/impl_1/' \
++  --exclude 'vivado_prj.cache/' \
++  --exclude 'vivado_prj.sim/' \
++  --exclude 'vivado_prj.hw/' \
++  --exclude '*.log' --exclude '*.jou' --exclude '*.str' \
++  --exclude 'boot/BOOT.BIN' \
++  --exclude 'LAUNCHED' \
++  "$KIT_LOCAL"/ "$REMOTE_HOST:$REMOTE_DIR"/
++RC=$?
++if [ $RC -ne 0 ]; then echo "TXFIX_BUILD_SYNC_FAILED rc=$RC"; exit 1; fi
++echo "TXFIX_BUILD sync done $(date -Is)"
++
++UNIT="txfix-build-${KIT#jupiter_byte_}-$(date +%s)"
++LAUNCH_CMD="REMOTE_DIR='$REMOTE_DIR_EXPANDED' UNIT='$UNIT' JOBS='$JOBS' VARIANT='$VARIANT' bash -s"
++
++if [ $DRY -eq 1 ]; then
++  echo "TXFIX_BUILD_DRY unit=$UNIT remote_dir=$REMOTE_DIR_EXPANDED jobs=$JOBS variant=$VARIANT"
++  echo "TXFIX_BUILD_DRY would run: ssh $REMOTE_HOST \"$LAUNCH_CMD\" <<'REMOTE' ... REMOTE (systemd-run --user --unit=$UNIT ... timeout 14400 vivado -mode batch -notrace -source \$REMOTE_DIR/build_txfix.tcl > \$REMOTE_DIR/build_txfix_vivado.log 2>&1)"
++  echo "TXFIX_BUILD_DRY log would be at: $REMOTE_DIR_EXPANDED/build_txfix_vivado.log"
++  exit 0
++fi
++
++ssh "$REMOTE_HOST" "$LAUNCH_CMD" <<'REMOTE'
++set -u
++export PATH=/opt/Xilinx/2025.1/Vivado/bin:/usr/bin:/bin
++Z="$REMOTE_DIR/hdl_prj_jupiter_composite/vivado_ip_prj"
++rm -f "$Z/boot/BOOT.BIN"
++systemd-run --user --unit="$UNIT" --collect \
++  --working-directory="$Z" \
++  --setenv=PATH=/opt/Xilinx/2025.1/Vivado/bin:/usr/bin:/bin \
++  --setenv=JOBS="$JOBS" \
++  --setenv=VARIANT="$VARIANT" \
++  bash -c "timeout 14400 vivado -mode batch -notrace -source \"$REMOTE_DIR/build_txfix.tcl\" > \"$REMOTE_DIR/build_txfix_vivado.log\" 2>&1"
++echo "TXFIX_UNIT $UNIT started $(date -Is)"
++REMOTE
++echo "TXFIX_BUILD launched on $REMOTE_HOST as unit $UNIT ; remote tree: $REMOTE_DIR_EXPANDED"
++echo "  check with: ssh $REMOTE_HOST systemctl --user status $UNIT"
++echo "  log at:     ssh $REMOTE_HOST tail -f $REMOTE_DIR_EXPANDED/build_txfix_vivado.log"
+diff --git a/two_jup/skidfix/txfix_build.tcl.tmpl b/two_jup/skidfix/txfix_build.tcl.tmpl
+new file mode 100644
+index 00000000..a703f9d
+--- /dev/null
++++ b/two_jup/skidfix/txfix_build.tcl.tmpl
+@@ -0,0 +1,46 @@
++# build_txfix.tcl -- full-flow build for a TXFIX fix-variant image (F1/F2/F3).
++# Copy of jupiter_byte_ddrcap2_build/build_ddrcap.tcl: does NOT re-wire the BD
++# (the injector patches the TxRxCompo_ip_v1_0 netlist sources in place, no BD
++# change), regenerates output products, resets and re-runs synth/impl from
++# scratch, produces BOOT.BIN. JOBS comes from env (build_txfix.sh sets it,
++# default 6) so two variants can run concurrently at JOBS=3 each without
++# oversubscribing hdl-dev-2 (8 cores). Keeps timing_gate.tcl usage, bootgen,
++# and the BYTE_BUILD_DONE md5= marker exactly as build_ddrcap.tcl does, then
++# adds a final TXFIX_BUILD_DONE line carrying the variant and the modem-scoped
++# WNS from timing_gate.tcl's TIMING_GATE_WNS line ($_mwns, in caller scope
++# after `source`).
++#
++# Run with cwd = <build_dir>/hdl_prj_jupiter_composite/vivado_ip_prj, via
++#   vivado -mode batch -notrace -source <build_dir>/build_txfix.tcl
++set _jobs 6
++if {[info exists ::env(JOBS)] && [string is integer -strict $::env(JOBS)]} {
++    set _jobs $::env(JOBS)
++}
++set _variant "UNKNOWN"
++if {[info exists ::env(VARIANT)]} { set _variant $::env(VARIANT) }
++puts "=== TXFIX_BUILD: variant=$_variant jobs=$_jobs ==="
++
++open_project vivado_prj.xpr
++update_ip_catalog -rebuild -scan_changes
++report_ip_status -quiet
++set_property top system_top [current_fileset]
++generate_target all [get_files system.bd]
++update_compile_order -fileset sources_1
++set_param general.maxThreads $_jobs
++catch {reset_run impl_1}; catch {reset_run synth_1}
++foreach r [get_runs -quiet system_*_synth_1] { catch { reset_run $r } }
++puts "=== synth ==="; launch_runs synth_1 -jobs $_jobs; wait_on_run synth_1
++if {[get_property PROGRESS [get_runs synth_1]] ne "100%"} { puts "SYNTH_FAILED [get_property STATUS [get_runs synth_1]]"; exit 1 }
++puts "=== pre-impl timing gate ==="; source [file join [file dirname [info script]] timing_gate.tcl]
++puts "=== impl+bit ==="; launch_runs impl_1 -to_step write_bitstream -jobs $_jobs; wait_on_run impl_1
++if {[get_property PROGRESS [get_runs impl_1]] ne "100%"} { puts "IMPL_FAILED [get_property STATUS [get_runs impl_1]]"; exit 1 }
++set b projects/common/boot/jupiter_sdr; file mkdir boot
++file copy -force [get_property DIRECTORY [get_runs impl_1]]/system_top.bit boot/system_top.bit
++foreach f {u-boot.elf zynq.bif fsbl.elf bl31.elf pmufw.elf regs.init} { file copy -force $b/$f boot/$f }
++cd boot; exec bootgen -arch zynqmp -image zynq.bif -o BOOT.BIN -w
++set _bb_md5 [lindex [exec md5sum BOOT.BIN] 0]
++puts "BYTE_BUILD_DONE md5=$_bb_md5"
++set _wns "UNKNOWN"
++if {[info exists _mwns]} { set _wns $_mwns }
++puts "TXFIX_BUILD_DONE variant=$_variant md5=$_bb_md5 wns=$_wns"
++exit
+diff --git a/two_jup/skidfix/txfix_kit_readme.md.tmpl b/two_jup/skidfix/txfix_kit_readme.md.tmpl
+new file mode 100644
+index 00000000..70e37c3
+--- /dev/null
++++ b/two_jup/skidfix/txfix_kit_readme.md.tmpl
+@@ -0,0 +1,65 @@
++# jupiter_byte_txfix@VARIANT@_build
++
++TXFIX fix-variant Vivado build kit for the 120.2 s transmit-stall fix
++(session §87-§90; plan `/home/tcollins/.claude/plans/happy-bubbling-owl.md`).
++Gitignored build tree (like every `jupiter_byte_*_build/` dir) -- this file,
++and the tracked templates it was generated from, are the only parts of the
++kit meant to live in git.
++
++## What this is
++
++A copy of `jupiter_byte_ddrcap2_build` (the DDRCAP-v2 instrument, sel6
++witness included, is carried unchanged) with variant `@VARIANT@`'s RTL fix
++patched into `hdl_prj_jupiter_composite/ipcore/TxRxCompo_ip_v1_0/` -- both
++the loose `.v` files and the two `TxRxCompo_ip_v1_0.zip` members -- by
++`two_jup/skidfix/txfix_inject.py`. Made by `jupiter_byte_txfix_kit.sh
++@VARIANT@` at the repo root.
++
++- `TXFIX_VARIANT` -- two lines: the variant tag, then the git commit of
++  `txfix_inject.py` that produced this kit. Presence of this file is the
++  "already injected" marker; `jupiter_byte_txfix_kit.sh` refuses to run again
++  on a kit dir that has one.
++- `build_txfix.sh` / `build_txfix.tcl` -- this repo's generic TXFIX build
++  scripts (see `two_jup/skidfix/txfix_build.{sh,tcl}.tmpl`), installed here
++  in place of the ddrcap2 kit's `build_ddrcap.sh`/`.tcl`. `REMOTE_DIR` is
++  derived from this kit's own directory name, so F1/F2/F3 build in
++  independent remote dirs on hdl-dev-2 and never collide.
++- `timing_gate.tcl` -- unmodified from the ddrcap2 kit (modem-scoped
++  pre-implementation WNS gate, floor -1.0 ns).
++
++## Fix content (variant @VARIANT@)
++
++See the plan's "Fix variants -- exact patches" section for the exact diffs.
++Variants are cumulative: F2 = F1 + saturating `frameCount`; F3 = F2 +
++fullRAM runaway fix. Only ONE variant's patches are applied to this kit
++(the one named in `TXFIX_VARIANT`) -- do not hand-patch a second variant's
++changes into an existing kit; make a fresh kit with `jupiter_byte_txfix_kit.sh
++<other-variant>` instead.
++
++## Build
++
++```
++JOBS=6 ./build_txfix.sh          # launches the real Vivado build on hdl-dev-2
++JOBS=6 ./build_txfix.sh --dry    # preflight + sync only, prints the launch command
++```
++
++Preflights hdl-dev-2 free disk (>= 25 GB) and refuses to launch alongside
++another active `txfix-build-*`/`ddrcap-build-*` unit unless
++`ALLOW_CONCURRENT=1`. Never deletes anything remote. Remote log:
++`~/qpsk-builds/<this-kit-name>/build_txfix_vivado.log`; on success it ends
++with `BYTE_BUILD_DONE md5=...` then `TXFIX_BUILD_DONE variant=@VARIANT@
++md5=... wns=...`.
++
++## Fetch + bank
++
++`jupiter_byte_txfix_fetch.sh <this-kit-name>` (run from the repo root, after
++the remote build finishes) scp's the BOOT.BIN, md5-bank it under
++`boot_known_good/BOOT.BIN.148.txfix@VARIANT@.<md5-12>`, and appends the
++README/MD5SUMS rows there, stamped "BUILT, NOT flashed, sim gate pending".
++
++## Rails
++
++No board contact from anything in this kit or its build/fetch scripts
++(10.0.0.148/146 are never touched here). Flashing is a separate, later,
++sim-gated step owned by the silicon lane (T3/Task 8), never launched by
++`build_txfix.sh` or `jupiter_byte_txfix_fetch.sh`.
+# --- build_txfix.sh.tmpl vs build_ddrcap.sh ---
+--- jupiter_byte_ddrcap2_build/build_ddrcap.sh	2026-09-02 15:19:03.267016200 -0400
++++ two_jup/skidfix/txfix_build.sh.tmpl	2026-09-03 10:01:52.883369524 -0400
+@@ -1,23 +1,68 @@
+ #!/bin/bash
+-# build_ddrcap.sh -- full BD-regenerating build for the DDR-capture image.
+-# Modeled on jupiter_byte_final_build/build_final.sh, but since Task 4 step 1
+-# regenerated and saved the BD (ddrcap_bd.tcl -> system.bd), this build must
+-# run the full flow (build_ddrcap.tcl: generate_target/synth/timing-gate/
+-# impl/bootgen), not a resynth_*.tcl.
++# build_txfix.sh -- full BD-regenerating build for a TXFIX fix-variant image
++# (F1/F2/F3). Copy of jupiter_byte_ddrcap2_build/build_ddrcap.sh, generalised:
++# REMOTE_DIR is derived from this kit's own basename (not hard-coded) so F1/F2/F3
++# can build in independent remote dirs without clobbering each other, and JOBS
++# is an env override (default 6) threaded through to build_txfix.tcl via
++# `set_param general.maxThreads $env(JOBS)` / `-jobs $env(JOBS)` in both
++# launch_runs calls -- so two variants can each run at -jobs 3 concurrently
++# without oversubscribing hdl-dev-2 (8 cores). See the plan's Vivado
++# constraints paragraph: hdl-dev-2 has 8 cores / 61 GB RAM; three concurrent
++# builds at full jobs is oversubscribed and disk-tight (67 GB free at last
++# check, 86% used) -- this script preflights disk and concurrent-unit state
++# before touching the remote host.
+ #
+-# Builds on hdl-dev-2 (/opt/Xilinx/2025.1/Vivado, ~/qpsk-builds/) to leave
+-# this host free, per the Task 4 brief. hdl-dev-2 does not share this host's
+-# filesystem, so the tree is rsync'd over first. The long Vivado run itself is
+-# launched as a transient systemd --user unit ON hdl-dev-2 so it survives
+-# this session ending (setsid nohup children were killed at session exit on
+-# this host before -- see MEMORY.md "Background jobs: use systemd-run --user").
++# This script never deletes anything remote (old kit dirs, e.g.
++# jupiter_byte_beatfix2_build, are referenced by system.bd's mem_init_sys.txt
++# on hdl-dev-2 and must survive).
++#
++# Usage: build_txfix.sh [--dry]
++#   --dry   do everything (sync, preflight) except the remote systemd-run
++#           launch; prints the exact remote launch command instead.
+ set -u
+ KIT_LOCAL=$(cd "$(dirname "$0")" && pwd)
++KIT=$(basename "$KIT_LOCAL")
+ REMOTE_HOST=hdl-dev-2
+-REMOTE_DIR='~/qpsk-builds/jupiter_byte_ddrcap2_build'
+-REMOTE_DIR_EXPANDED=/home/tcollins/qpsk-builds/jupiter_byte_ddrcap2_build
++REMOTE_DIR="~/qpsk-builds/$KIT"
++REMOTE_DIR_EXPANDED="/home/tcollins/qpsk-builds/$KIT"
++JOBS="${JOBS:-6}"
++ALLOW_CONCURRENT="${ALLOW_CONCURRENT:-0}"
++DRY=0
++if [ "${1:-}" = "--dry" ]; then DRY=1; fi
++
++case "$KIT" in
++  jupiter_byte_txfix*_build) ;;
++  *) echo "TXFIX_BUILD_BAD_KIT $KIT (expected jupiter_byte_txfix<VARIANT>_build)"; exit 1 ;;
++esac
++if [ ! -f "$KIT_LOCAL/TXFIX_VARIANT" ]; then
++  echo "TXFIX_BUILD_NO_VARIANT_MARKER $KIT_LOCAL/TXFIX_VARIANT missing -- run jupiter_byte_txfix_kit.sh first"
++  exit 1
++fi
++VARIANT=$(head -1 "$KIT_LOCAL/TXFIX_VARIANT")
++
++echo "TXFIX_BUILD preflight start $(date -Is) kit=$KIT variant=$VARIANT jobs=$JOBS"
++
++# --- preflight: remote disk + concurrent-unit check (never destructive) -----
++FREE_KB=$(ssh "$REMOTE_HOST" "df -Pk \$HOME | tail -1 | awk '{print \$4}'")
++if [ -z "$FREE_KB" ]; then
++  echo "TXFIX_BUILD_PREFLIGHT_FAILED could not read remote free disk"; exit 1
++fi
++FREE_GB=$((FREE_KB / 1024 / 1024))
++if [ "$FREE_GB" -lt 25 ]; then
++  echo "TXFIX_BUILD_PREFLIGHT_FAILED free=${FREE_GB}GB < 25GB on $REMOTE_HOST"; exit 1
++fi
++echo "TXFIX_BUILD preflight disk free=${FREE_GB}GB"
+ 
+-echo "DDRCAP_BUILD sync start $(date -Is)"
++ACTIVE_UNITS=$(ssh "$REMOTE_HOST" "systemctl --user list-units --state=running,active 'txfix-build-*' 'ddrcap-build-*' --no-legend 2>/dev/null | awk '{print \$1}'")
++if [ -n "$ACTIVE_UNITS" ] && [ "$ALLOW_CONCURRENT" != "1" ]; then
++  echo "TXFIX_BUILD_PREFLIGHT_FAILED concurrent build unit(s) active on $REMOTE_HOST: $ACTIVE_UNITS (set ALLOW_CONCURRENT=1 to override, e.g. two variants at JOBS=3 each)"
++  exit 1
++fi
++if [ -n "$ACTIVE_UNITS" ]; then
++  echo "TXFIX_BUILD preflight NOTE: proceeding alongside active unit(s) [$ACTIVE_UNITS] under ALLOW_CONCURRENT=1"
++fi
++
++echo "TXFIX_BUILD sync start $(date -Is)"
+ rsync -a --delete \
+   --exclude 'vivado_prj.runs/synth_1/' \
+   --exclude 'vivado_prj.runs/impl_1/' \
+@@ -26,13 +71,23 @@
+   --exclude 'vivado_prj.hw/' \
+   --exclude '*.log' --exclude '*.jou' --exclude '*.str' \
+   --exclude 'boot/BOOT.BIN' \
++  --exclude 'LAUNCHED' \
+   "$KIT_LOCAL"/ "$REMOTE_HOST:$REMOTE_DIR"/
+ RC=$?
+-if [ $RC -ne 0 ]; then echo "DDRCAP_BUILD_SYNC_FAILED rc=$RC"; exit 1; fi
+-echo "DDRCAP_BUILD sync done $(date -Is)"
++if [ $RC -ne 0 ]; then echo "TXFIX_BUILD_SYNC_FAILED rc=$RC"; exit 1; fi
++echo "TXFIX_BUILD sync done $(date -Is)"
++
++UNIT="txfix-build-${KIT#jupiter_byte_}-$(date +%s)"
++LAUNCH_CMD="REMOTE_DIR='$REMOTE_DIR_EXPANDED' UNIT='$UNIT' JOBS='$JOBS' VARIANT='$VARIANT' bash -s"
++
++if [ $DRY -eq 1 ]; then
++  echo "TXFIX_BUILD_DRY unit=$UNIT remote_dir=$REMOTE_DIR_EXPANDED jobs=$JOBS variant=$VARIANT"
++  echo "TXFIX_BUILD_DRY would run: ssh $REMOTE_HOST \"$LAUNCH_CMD\" <<'REMOTE' ... REMOTE (systemd-run --user --unit=$UNIT ... timeout 14400 vivado -mode batch -notrace -source \$REMOTE_DIR/build_txfix.tcl > \$REMOTE_DIR/build_txfix_vivado.log 2>&1)"
++  echo "TXFIX_BUILD_DRY log would be at: $REMOTE_DIR_EXPANDED/build_txfix_vivado.log"
++  exit 0
++fi
+ 
+-UNIT="ddrcap-build-$(date +%s)"
+-ssh "$REMOTE_HOST" "REMOTE_DIR='$REMOTE_DIR_EXPANDED' UNIT='$UNIT' bash -s" <<'REMOTE'
++ssh "$REMOTE_HOST" "$LAUNCH_CMD" <<'REMOTE'
+ set -u
+ export PATH=/opt/Xilinx/2025.1/Vivado/bin:/usr/bin:/bin
+ Z="$REMOTE_DIR/hdl_prj_jupiter_composite/vivado_ip_prj"
+@@ -40,9 +95,11 @@
+ systemd-run --user --unit="$UNIT" --collect \
+   --working-directory="$Z" \
+   --setenv=PATH=/opt/Xilinx/2025.1/Vivado/bin:/usr/bin:/bin \
+-  bash -c "timeout 14400 vivado -mode batch -notrace -source \"$REMOTE_DIR/build_ddrcap.tcl\" > \"$REMOTE_DIR/build_ddrcap_vivado.log\" 2>&1"
+-echo "DDRCAP_UNIT $UNIT started $(date -Is)"
++  --setenv=JOBS="$JOBS" \
++  --setenv=VARIANT="$VARIANT" \
++  bash -c "timeout 14400 vivado -mode batch -notrace -source \"$REMOTE_DIR/build_txfix.tcl\" > \"$REMOTE_DIR/build_txfix_vivado.log\" 2>&1"
++echo "TXFIX_UNIT $UNIT started $(date -Is)"
+ REMOTE
+-echo "DDRCAP_BUILD launched on $REMOTE_HOST as unit $UNIT ; remote tree: $REMOTE_DIR_EXPANDED"
++echo "TXFIX_BUILD launched on $REMOTE_HOST as unit $UNIT ; remote tree: $REMOTE_DIR_EXPANDED"
+ echo "  check with: ssh $REMOTE_HOST systemctl --user status $UNIT"
+-echo "  log at:     ssh $REMOTE_HOST tail -f $REMOTE_DIR_EXPANDED/build_ddrcap_vivado.log"
++echo "  log at:     ssh $REMOTE_HOST tail -f $REMOTE_DIR_EXPANDED/build_txfix_vivado.log"
+# --- tcl vs build_ddrcap.tcl ---
+--- jupiter_byte_ddrcap2_build/build_ddrcap.tcl	2026-08-31 21:09:57.585113829 -0400
++++ two_jup/skidfix/txfix_build.tcl.tmpl	2026-09-03 10:02:07.230533983 -0400
+@@ -1,30 +1,46 @@
+-# build_ddrcap.tcl -- full-flow build for the DDR-capture image. The BD was
+-# already patched, wired (ddrcap_bd.tcl) and validated/saved as system.bd
+-# BEFORE this tcl runs (Task 4 step 1). This tcl does NOT re-wire the BD; it
+-# regenerates output products from the already-saved system.bd, resets and
+-# re-runs synth/impl from scratch (required: BD regenerated, so incremental
+-# runs from the pre-patch project are not valid), and produces BOOT.BIN.
++# build_txfix.tcl -- full-flow build for a TXFIX fix-variant image (F1/F2/F3).
++# Copy of jupiter_byte_ddrcap2_build/build_ddrcap.tcl: does NOT re-wire the BD
++# (the injector patches the TxRxCompo_ip_v1_0 netlist sources in place, no BD
++# change), regenerates output products, resets and re-runs synth/impl from
++# scratch, produces BOOT.BIN. JOBS comes from env (build_txfix.sh sets it,
++# default 6) so two variants can run concurrently at JOBS=3 each without
++# oversubscribing hdl-dev-2 (8 cores). Keeps timing_gate.tcl usage, bootgen,
++# and the BYTE_BUILD_DONE md5= marker exactly as build_ddrcap.tcl does, then
++# adds a final TXFIX_BUILD_DONE line carrying the variant and the modem-scoped
++# WNS from timing_gate.tcl's TIMING_GATE_WNS line ($_mwns, in caller scope
++# after `source`).
+ #
+ # Run with cwd = <build_dir>/hdl_prj_jupiter_composite/vivado_ip_prj, via
+-#   vivado -mode batch -notrace -source <build_dir>/build_ddrcap.tcl
+-# (info script's dirname must be <build_dir>, where timing_gate.tcl lives --
+-# same layout as resynth_final.tcl / jupiter_byte_final_build).
++#   vivado -mode batch -notrace -source <build_dir>/build_txfix.tcl
++set _jobs 6
++if {[info exists ::env(JOBS)] && [string is integer -strict $::env(JOBS)]} {
++    set _jobs $::env(JOBS)
++}
++set _variant "UNKNOWN"
++if {[info exists ::env(VARIANT)]} { set _variant $::env(VARIANT) }
++puts "=== TXFIX_BUILD: variant=$_variant jobs=$_jobs ==="
++
+ open_project vivado_prj.xpr
+ update_ip_catalog -rebuild -scan_changes
+ report_ip_status -quiet
+ set_property top system_top [current_fileset]
+ generate_target all [get_files system.bd]
+ update_compile_order -fileset sources_1
+-set_param general.maxThreads 6
++set_param general.maxThreads $_jobs
+ catch {reset_run impl_1}; catch {reset_run synth_1}
+ foreach r [get_runs -quiet system_*_synth_1] { catch { reset_run $r } }
+-puts "=== synth ==="; launch_runs synth_1 -jobs 6; wait_on_run synth_1
++puts "=== synth ==="; launch_runs synth_1 -jobs $_jobs; wait_on_run synth_1
+ if {[get_property PROGRESS [get_runs synth_1]] ne "100%"} { puts "SYNTH_FAILED [get_property STATUS [get_runs synth_1]]"; exit 1 }
+ puts "=== pre-impl timing gate ==="; source [file join [file dirname [info script]] timing_gate.tcl]
+-puts "=== impl+bit ==="; launch_runs impl_1 -to_step write_bitstream -jobs 6; wait_on_run impl_1
++puts "=== impl+bit ==="; launch_runs impl_1 -to_step write_bitstream -jobs $_jobs; wait_on_run impl_1
+ if {[get_property PROGRESS [get_runs impl_1]] ne "100%"} { puts "IMPL_FAILED [get_property STATUS [get_runs impl_1]]"; exit 1 }
+ set b projects/common/boot/jupiter_sdr; file mkdir boot
+ file copy -force [get_property DIRECTORY [get_runs impl_1]]/system_top.bit boot/system_top.bit
+ foreach f {u-boot.elf zynq.bif fsbl.elf bl31.elf pmufw.elf regs.init} { file copy -force $b/$f boot/$f }
+ cd boot; exec bootgen -arch zynqmp -image zynq.bif -o BOOT.BIN -w
+-puts "BYTE_BUILD_DONE md5=[exec md5sum BOOT.BIN]"; exit
++set _bb_md5 [lindex [exec md5sum BOOT.BIN] 0]
++puts "BYTE_BUILD_DONE md5=$_bb_md5"
++set _wns "UNKNOWN"
++if {[info exists _mwns]} { set _wns $_mwns }
++puts "TXFIX_BUILD_DONE variant=$_variant md5=$_bb_md5 wns=$_wns"
++exit

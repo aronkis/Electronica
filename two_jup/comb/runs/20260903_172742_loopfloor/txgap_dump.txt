@@ -1,0 +1,1 @@
+qpsk_tun txgap: n=6000 empty=6000 gt20us=0 gt50us=0 gt200us=0 max_us=18 p99_us=12 mean_us=6.4 idle_batch=0

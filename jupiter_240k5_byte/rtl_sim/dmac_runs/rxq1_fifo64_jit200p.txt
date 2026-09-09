@@ -1,0 +1,9 @@
+RESULT mode=rxq1 upstream=fifo depth=64 M=16 period=545 maskuser=0 nframes=1000 prearm=3000 jitter=200/1
+SCORE transfers=62 offered=992 good=976 lost=16 junk_slots=16 dup=0 PER=1.613% lost_per_transfer=0.258
+HOLE_BINS 8:2
+HOLE_POS(slot in transfer) 0:2
+JUNK_POS(slot in transfer) 8:2 9:2 10:2 11:2 12:2 13:2 14:2 15:2
+RECON offered_words=191005 fifo_dropped=4 accepted=191001 ddr_written=190992 in_flight(acc-written)=9 bad_addr=0 upstream_backlog=0 user_beats_accepted=1000
+WITNESS blocked_cycles_waiting_for_sync=0 blocked_cycles_engine_idle=0 (word period 545 clk)
+HANDOFF(active fall -> next active rise) n=0
+SYNCWAIT(active rise -> first accepted beat) n=1 min=6 mean=6.0 max=6 clk

@@ -1,0 +1,8 @@
+566,673 beats, 46 demod markers, skew +1, frame 12320 symbols
+scored 46 frames: 12 placed, 34 displacement-inexplicable
+  aligned at 0      : 12
+  on a known rung   : 0  []
+  INTERMEDIATE (0,6176): 0   <-- §51 falsifier: any of these kills 'jump'
+  0<->rung transitions observed: 0
+  *** UNINFORMATIVE: this capture contains no 0<->rung transition.
+  *** Per §51 it does NOT count as support for 'jump'.

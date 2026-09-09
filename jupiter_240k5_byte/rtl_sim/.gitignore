@@ -1,0 +1,8 @@
+obj_seqbist_gate/
+seqbist_build_stamp.h
+beat_runs/seqbist_g*
+beat_runs/seqbist_build.log
+beat_runs/sm_g*
+beat_runs/pace*
+beat_runs/dbg1*
+beat_runs/rate1*

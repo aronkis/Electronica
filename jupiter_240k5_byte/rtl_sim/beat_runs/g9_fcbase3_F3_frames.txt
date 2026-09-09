@@ -1,0 +1,162 @@
+FC clk=98662 frame=0 posInFrame=98662 0 -> 1
+CEN frame=0 clk=98764 occ=24665 fc=1 pushCount=25 popCount=0 pushes=24665 pops=0 fullRAM=0 pace=0 armed=0 pushWrapPos=98662 popWrapPos=-1 pushWraps=1 popWraps=0
+ARMED clk=98766 frame=1 posInFrame=2 sampleCount=0 0 -> 1 fc=1 d3=1
+FC clk=197222 frame=1 posInFrame=98458 1 -> 2
+CEN frame=1 clk=197428 occ=24692 fc=2 pushCount=51 popCount=24639 pushes=24666 pops=24639 fullRAM=0 pace=0 armed=1 pushWrapPos=98458 popWrapPos=-1 pushWraps=2 popWraps=0
+FC clk=197430 frame=2 posInFrame=2 2 -> 1
+FC clk=295782 frame=2 posInFrame=98354 1 -> 2
+CEN frame=2 clk=296092 occ=24718 fc=2 pushCount=77 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98354 popWrapPos=2 pushWraps=3 popWraps=1
+FC clk=296094 frame=3 posInFrame=2 2 -> 1
+FC clk=394342 frame=3 posInFrame=98250 1 -> 2
+CEN frame=3 clk=394756 occ=24744 fc=2 pushCount=103 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98250 popWrapPos=2 pushWraps=4 popWraps=2
+FC clk=394758 frame=4 posInFrame=2 2 -> 1
+FC clk=492902 frame=4 posInFrame=98146 1 -> 2
+CEN frame=4 clk=493420 occ=24770 fc=2 pushCount=129 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98146 popWrapPos=2 pushWraps=5 popWraps=3
+FC clk=493422 frame=5 posInFrame=2 2 -> 1
+FC clk=591462 frame=5 posInFrame=98042 1 -> 2
+CEN frame=5 clk=592084 occ=24796 fc=2 pushCount=155 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=98042 popWrapPos=2 pushWraps=6 popWraps=4
+FC clk=592086 frame=6 posInFrame=2 2 -> 1
+FC clk=690022 frame=6 posInFrame=97938 1 -> 2
+CEN frame=6 clk=690748 occ=24822 fc=2 pushCount=181 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97938 popWrapPos=2 pushWraps=7 popWraps=5
+FC clk=690750 frame=7 posInFrame=2 2 -> 1
+FC clk=788582 frame=7 posInFrame=97834 1 -> 2
+CEN frame=7 clk=789412 occ=24848 fc=2 pushCount=207 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97834 popWrapPos=2 pushWraps=8 popWraps=6
+FC clk=789414 frame=8 posInFrame=2 2 -> 1
+FC clk=887142 frame=8 posInFrame=97730 1 -> 2
+CEN frame=8 clk=888076 occ=24874 fc=2 pushCount=233 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97730 popWrapPos=2 pushWraps=9 popWraps=7
+FC clk=888078 frame=9 posInFrame=2 2 -> 1
+FC clk=985702 frame=9 posInFrame=97626 1 -> 2
+CEN frame=9 clk=986740 occ=24900 fc=2 pushCount=259 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97626 popWrapPos=2 pushWraps=10 popWraps=8
+FC clk=986742 frame=10 posInFrame=2 2 -> 1
+FC clk=1084262 frame=10 posInFrame=97522 1 -> 2
+CEN frame=10 clk=1085404 occ=24926 fc=2 pushCount=285 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97522 popWrapPos=2 pushWraps=11 popWraps=9
+FC clk=1085406 frame=11 posInFrame=2 2 -> 1
+FC clk=1182822 frame=11 posInFrame=97418 1 -> 2
+CEN frame=11 clk=1184068 occ=24952 fc=2 pushCount=311 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97418 popWrapPos=2 pushWraps=12 popWraps=10
+FC clk=1184070 frame=12 posInFrame=2 2 -> 1
+FC clk=1281382 frame=12 posInFrame=97314 1 -> 2
+CEN frame=12 clk=1282732 occ=24978 fc=2 pushCount=337 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97314 popWrapPos=2 pushWraps=13 popWraps=11
+FC clk=1282734 frame=13 posInFrame=2 2 -> 1
+FC clk=1379942 frame=13 posInFrame=97210 1 -> 2
+CEN frame=13 clk=1381396 occ=25004 fc=2 pushCount=363 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97210 popWrapPos=2 pushWraps=14 popWraps=12
+FC clk=1381398 frame=14 posInFrame=2 2 -> 1
+FC clk=1478502 frame=14 posInFrame=97106 1 -> 2
+CEN frame=14 clk=1480060 occ=25030 fc=2 pushCount=389 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97106 popWrapPos=2 pushWraps=15 popWraps=13
+FC clk=1480062 frame=15 posInFrame=2 2 -> 1
+FC clk=1577062 frame=15 posInFrame=97002 1 -> 2
+CEN frame=15 clk=1578724 occ=25056 fc=2 pushCount=415 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=97002 popWrapPos=2 pushWraps=16 popWraps=14
+FC clk=1578726 frame=16 posInFrame=2 2 -> 1
+FC clk=1675622 frame=16 posInFrame=96898 1 -> 2
+CEN frame=16 clk=1677388 occ=25082 fc=2 pushCount=441 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=96898 popWrapPos=2 pushWraps=17 popWraps=15
+FC clk=1677390 frame=17 posInFrame=2 2 -> 1
+FC clk=1774182 frame=17 posInFrame=96794 1 -> 2
+CEN frame=17 clk=1776052 occ=25108 fc=2 pushCount=467 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=96794 popWrapPos=2 pushWraps=18 popWraps=16
+FC clk=1776054 frame=18 posInFrame=2 2 -> 1
+FC clk=1872742 frame=18 posInFrame=96690 1 -> 2
+CEN frame=18 clk=1874716 occ=25134 fc=2 pushCount=493 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=96690 popWrapPos=2 pushWraps=19 popWraps=17
+FC clk=1874718 frame=19 posInFrame=2 2 -> 1
+FC clk=1971302 frame=19 posInFrame=96586 1 -> 2
+CEN frame=19 clk=1973380 occ=25160 fc=2 pushCount=519 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=96586 popWrapPos=2 pushWraps=20 popWraps=18
+FC clk=1973382 frame=20 posInFrame=2 2 -> 1
+FC clk=2069862 frame=20 posInFrame=96482 1 -> 2
+CEN frame=20 clk=2072044 occ=25186 fc=2 pushCount=545 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=96482 popWrapPos=2 pushWraps=21 popWraps=19
+FC clk=2072046 frame=21 posInFrame=2 2 -> 1
+FC clk=2168422 frame=21 posInFrame=96378 1 -> 2
+CEN frame=21 clk=2170708 occ=25212 fc=2 pushCount=571 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=96378 popWrapPos=2 pushWraps=22 popWraps=20
+FC clk=2170710 frame=22 posInFrame=2 2 -> 1
+FC clk=2266982 frame=22 posInFrame=96274 1 -> 2
+CEN frame=22 clk=2269372 occ=25238 fc=2 pushCount=597 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=96274 popWrapPos=2 pushWraps=23 popWraps=21
+FC clk=2269374 frame=23 posInFrame=2 2 -> 1
+FC clk=2365542 frame=23 posInFrame=96170 1 -> 2
+CEN frame=23 clk=2368036 occ=25264 fc=2 pushCount=623 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=96170 popWrapPos=2 pushWraps=24 popWraps=22
+FC clk=2368038 frame=24 posInFrame=2 2 -> 1
+FC clk=2464102 frame=24 posInFrame=96066 1 -> 2
+CEN frame=24 clk=2466700 occ=25290 fc=2 pushCount=649 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=96066 popWrapPos=2 pushWraps=25 popWraps=23
+FC clk=2466702 frame=25 posInFrame=2 2 -> 1
+FC clk=2562662 frame=25 posInFrame=95962 1 -> 2
+CEN frame=25 clk=2565364 occ=25316 fc=2 pushCount=675 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95962 popWrapPos=2 pushWraps=26 popWraps=24
+FC clk=2565366 frame=26 posInFrame=2 2 -> 1
+FC clk=2661222 frame=26 posInFrame=95858 1 -> 2
+CEN frame=26 clk=2664028 occ=25342 fc=2 pushCount=701 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95858 popWrapPos=2 pushWraps=27 popWraps=25
+FC clk=2664030 frame=27 posInFrame=2 2 -> 1
+FC clk=2759782 frame=27 posInFrame=95754 1 -> 2
+CEN frame=27 clk=2762692 occ=25368 fc=2 pushCount=727 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95754 popWrapPos=2 pushWraps=28 popWraps=26
+FC clk=2762694 frame=28 posInFrame=2 2 -> 1
+FC clk=2858342 frame=28 posInFrame=95650 1 -> 2
+CEN frame=28 clk=2861356 occ=25394 fc=2 pushCount=753 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95650 popWrapPos=2 pushWraps=29 popWraps=27
+FC clk=2861358 frame=29 posInFrame=2 2 -> 1
+FC clk=2956902 frame=29 posInFrame=95546 1 -> 2
+CEN frame=29 clk=2960020 occ=25420 fc=2 pushCount=779 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95546 popWrapPos=2 pushWraps=30 popWraps=28
+FC clk=2960022 frame=30 posInFrame=2 2 -> 1
+FC clk=3055462 frame=30 posInFrame=95442 1 -> 2
+CEN frame=30 clk=3058684 occ=25446 fc=2 pushCount=805 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95442 popWrapPos=2 pushWraps=31 popWraps=29
+FC clk=3058686 frame=31 posInFrame=2 2 -> 1
+FC clk=3154022 frame=31 posInFrame=95338 1 -> 2
+CEN frame=31 clk=3157348 occ=25472 fc=2 pushCount=831 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95338 popWrapPos=2 pushWraps=32 popWraps=30
+FC clk=3157350 frame=32 posInFrame=2 2 -> 1
+FC clk=3252582 frame=32 posInFrame=95234 1 -> 2
+CEN frame=32 clk=3256012 occ=25498 fc=2 pushCount=857 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95234 popWrapPos=2 pushWraps=33 popWraps=31
+FC clk=3256014 frame=33 posInFrame=2 2 -> 1
+FC clk=3351142 frame=33 posInFrame=95130 1 -> 2
+CEN frame=33 clk=3354676 occ=25524 fc=2 pushCount=883 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95130 popWrapPos=2 pushWraps=34 popWraps=32
+FC clk=3354678 frame=34 posInFrame=2 2 -> 1
+FC clk=3449702 frame=34 posInFrame=95026 1 -> 2
+CEN frame=34 clk=3453340 occ=25550 fc=2 pushCount=909 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=95026 popWrapPos=2 pushWraps=35 popWraps=33
+FC clk=3453342 frame=35 posInFrame=2 2 -> 1
+FC clk=3548262 frame=35 posInFrame=94922 1 -> 2
+CEN frame=35 clk=3552004 occ=25576 fc=2 pushCount=935 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=94922 popWrapPos=2 pushWraps=36 popWraps=34
+FC clk=3552006 frame=36 posInFrame=2 2 -> 1
+FC clk=3646822 frame=36 posInFrame=94818 1 -> 2
+CEN frame=36 clk=3650668 occ=25602 fc=2 pushCount=961 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=94818 popWrapPos=2 pushWraps=37 popWraps=35
+FC clk=3650670 frame=37 posInFrame=2 2 -> 1
+FC clk=3745382 frame=37 posInFrame=94714 1 -> 2
+CEN frame=37 clk=3749332 occ=25628 fc=2 pushCount=987 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=94714 popWrapPos=2 pushWraps=38 popWraps=36
+FC clk=3749334 frame=38 posInFrame=2 2 -> 1
+FC clk=3843942 frame=38 posInFrame=94610 1 -> 2
+CEN frame=38 clk=3847996 occ=25654 fc=2 pushCount=1013 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=94610 popWrapPos=2 pushWraps=39 popWraps=37
+FC clk=3847998 frame=39 posInFrame=2 2 -> 1
+FC clk=3942502 frame=39 posInFrame=94506 1 -> 2
+CEN frame=39 clk=3946660 occ=25680 fc=2 pushCount=1039 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=94506 popWrapPos=2 pushWraps=40 popWraps=38
+FC clk=3946662 frame=40 posInFrame=2 2 -> 1
+# FORCE fcbase3 clk=3962664 frame=40 sampleCount=4001 frameCount 1 -> 3 (single tick, nothing else forced)
+FC clk=3962664 frame=40 posInFrame=16004 1 -> 3
+CEN frame=40 clk=4045324 occ=25706 fc=3 pushCount=1065 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=94402 popWrapPos=2 pushWraps=41 popWraps=39
+FC clk=4045326 frame=41 posInFrame=2 3 -> 2
+FC clk=4139622 frame=41 posInFrame=94298 2 -> 3
+CEN frame=41 clk=4143988 occ=25732 fc=3 pushCount=1091 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=94298 popWrapPos=2 pushWraps=42 popWraps=40
+FC clk=4143990 frame=42 posInFrame=2 3 -> 2
+FC clk=4238182 frame=42 posInFrame=94194 2 -> 3
+CEN frame=42 clk=4242652 occ=25758 fc=3 pushCount=1117 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=94194 popWrapPos=2 pushWraps=43 popWraps=41
+FC clk=4242654 frame=43 posInFrame=2 3 -> 2
+FC clk=4336742 frame=43 posInFrame=94090 2 -> 3
+CEN frame=43 clk=4341316 occ=25784 fc=3 pushCount=1143 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=94090 popWrapPos=2 pushWraps=44 popWraps=42
+FC clk=4341318 frame=44 posInFrame=2 3 -> 2
+FC clk=4435302 frame=44 posInFrame=93986 2 -> 3
+CEN frame=44 clk=4439980 occ=25810 fc=3 pushCount=1169 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=93986 popWrapPos=2 pushWraps=45 popWraps=43
+FC clk=4439982 frame=45 posInFrame=2 3 -> 2
+FC clk=4533862 frame=45 posInFrame=93882 2 -> 3
+CEN frame=45 clk=4538644 occ=25836 fc=3 pushCount=1195 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=93882 popWrapPos=2 pushWraps=46 popWraps=44
+FC clk=4538646 frame=46 posInFrame=2 3 -> 2
+FC clk=4632422 frame=46 posInFrame=93778 2 -> 3
+CEN frame=46 clk=4637308 occ=25862 fc=3 pushCount=1221 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=93778 popWrapPos=2 pushWraps=47 popWraps=45
+FC clk=4637310 frame=47 posInFrame=2 3 -> 2
+FC clk=4730982 frame=47 posInFrame=93674 2 -> 3
+CEN frame=47 clk=4735972 occ=25888 fc=3 pushCount=1247 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=93674 popWrapPos=2 pushWraps=48 popWraps=46
+FC clk=4735974 frame=48 posInFrame=2 3 -> 2
+FC clk=4829542 frame=48 posInFrame=93570 2 -> 3
+CEN frame=48 clk=4834636 occ=25914 fc=3 pushCount=1273 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=93570 popWrapPos=2 pushWraps=49 popWraps=47
+FC clk=4834638 frame=49 posInFrame=2 3 -> 2
+FC clk=4928102 frame=49 posInFrame=93466 2 -> 3
+CEN frame=49 clk=4933300 occ=25940 fc=3 pushCount=1299 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=93466 popWrapPos=2 pushWraps=50 popWraps=48
+FC clk=4933302 frame=50 posInFrame=2 3 -> 2
+FC clk=5026662 frame=50 posInFrame=93362 2 -> 3
+CEN frame=50 clk=5031964 occ=25966 fc=3 pushCount=1325 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=93362 popWrapPos=2 pushWraps=51 popWraps=49
+FC clk=5031966 frame=51 posInFrame=2 3 -> 2
+FC clk=5125222 frame=51 posInFrame=93258 2 -> 3
+CEN frame=51 clk=5130628 occ=25992 fc=3 pushCount=1351 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=93258 popWrapPos=2 pushWraps=52 popWraps=50
+FC clk=5130630 frame=52 posInFrame=2 3 -> 2
+FC clk=5223782 frame=52 posInFrame=93154 2 -> 3
+CEN frame=52 clk=5229292 occ=26018 fc=3 pushCount=1377 popCount=24639 pushes=24666 pops=24640 fullRAM=0 pace=0 armed=1 pushWrapPos=93154 popWrapPos=2 pushWraps=53 popWraps=51
+FC clk=5229294 frame=53 posInFrame=2 3 -> 2
+FC clk=5322342 frame=53 posInFrame=93050 2 -> 3
+# SUMMARY sel=fcbase3 K=40 NF=50 zeroEvents=0 firstZeroClk=-1 firstZeroFrame=-1 armedDropClk=-1 maxPopQuietClk=0 pushWrapsTotal=54 popWrapsTotal=52 framesRun=53

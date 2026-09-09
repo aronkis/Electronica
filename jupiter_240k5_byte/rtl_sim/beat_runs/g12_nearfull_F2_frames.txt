@@ -1,0 +1,141 @@
+# TXFS edge clk=210 frame=0 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=1
+# frameCount change clk=98662 frame=0 0 -> 1
+# FRAME 0 complete: txFrameStart edges=1
+# TXFS edge clk=98874 frame=1 sampleCount=27 mark_now=1 mark_latch=1 ddrcapRecIdx=1
+# frameCount change clk=197222 frame=1 1 -> 2
+# FRAME 1 complete: txFrameStart edges=1
+# frameCount change clk=197430 frame=2 2 -> 1
+# TXFS edge clk=197538 frame=2 sampleCount=27 mark_now=1 mark_latch=1 ddrcapRecIdx=1
+# frameCount change clk=295782 frame=2 1 -> 2
+# FRAME 2 complete: txFrameStart edges=1
+# nearfull armed at frame 3 wrap
+# nearfull FORCE clk=296093 frame=3 variant=0 pre_count=24718 target=49227
+# nearfull frameCount(local) change clk=296094 frame=3 2 -> 1
+# frameCount change clk=296094 frame=3 2 -> 1
+# TXFS edge clk=296202 frame=3 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=12274
+# nearfull frameCount(local) change clk=394342 frame=3 1 -> 2
+# frameCount change clk=394342 frame=3 1 -> 2
+# FRAME 3 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=394758 frame=4 2 -> 1
+# frameCount change clk=394758 frame=4 2 -> 1
+# TXFS edge clk=394866 frame=4 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=24594
+# nearfull frameCount(local) change clk=492902 frame=4 1 -> 2
+# frameCount change clk=492902 frame=4 1 -> 2
+# FRAME 4 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=493422 frame=5 2 -> 1
+# frameCount change clk=493422 frame=5 2 -> 1
+# nearfull fullRAM change clk=493426 frame=5 0 -> 1 count=49280 push=24771 pop=0
+# TXFS edge clk=493530 frame=5 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=36914
+# nearfull frameCount(local) change clk=542446 frame=5 1 -> 2
+# frameCount change clk=542446 frame=5 1 -> 2
+# nearfull fullRAM change clk=558356 frame=5 1 -> 0 count=0 push=7954 pop=16207
+# FRAME 5 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=592086 frame=6 2 -> 1
+# frameCount change clk=592086 frame=6 2 -> 1
+# TXFS edge clk=592194 frame=6 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=49234
+# nearfull frameCount(local) change clk=625096 frame=6 1 -> 2
+# frameCount change clk=625096 frame=6 1 -> 2
+# FRAME 6 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=690750 frame=7 2 -> 1
+# frameCount change clk=690750 frame=7 2 -> 1
+# TXFS edge clk=690858 frame=7 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=61554
+# nearfull frameCount(local) change clk=723656 frame=7 1 -> 2
+# frameCount change clk=723656 frame=7 1 -> 2
+# FRAME 7 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=789414 frame=8 2 -> 1
+# frameCount change clk=789414 frame=8 2 -> 1
+# TXFS edge clk=789522 frame=8 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=73874
+# nearfull frameCount(local) change clk=822216 frame=8 1 -> 2
+# frameCount change clk=822216 frame=8 1 -> 2
+# FRAME 8 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=888078 frame=9 2 -> 1
+# frameCount change clk=888078 frame=9 2 -> 1
+# TXFS edge clk=888186 frame=9 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=86194
+# nearfull frameCount(local) change clk=920776 frame=9 1 -> 2
+# frameCount change clk=920776 frame=9 1 -> 2
+# FRAME 9 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=986742 frame=10 2 -> 1
+# frameCount change clk=986742 frame=10 2 -> 1
+# TXFS edge clk=986850 frame=10 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=98514
+# nearfull frameCount(local) change clk=1019336 frame=10 1 -> 2
+# frameCount change clk=1019336 frame=10 1 -> 2
+# FRAME 10 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1085406 frame=11 2 -> 1
+# frameCount change clk=1085406 frame=11 2 -> 1
+# TXFS edge clk=1085514 frame=11 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=110834
+# nearfull frameCount(local) change clk=1117896 frame=11 1 -> 2
+# frameCount change clk=1117896 frame=11 1 -> 2
+# FRAME 11 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1184070 frame=12 2 -> 1
+# frameCount change clk=1184070 frame=12 2 -> 1
+# TXFS edge clk=1184178 frame=12 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=123154
+# nearfull frameCount(local) change clk=1216456 frame=12 1 -> 2
+# frameCount change clk=1216456 frame=12 1 -> 2
+# FRAME 12 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1282734 frame=13 2 -> 1
+# frameCount change clk=1282734 frame=13 2 -> 1
+# TXFS edge clk=1282842 frame=13 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=135474
+# nearfull frameCount(local) change clk=1315016 frame=13 1 -> 2
+# frameCount change clk=1315016 frame=13 1 -> 2
+# FRAME 13 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1381398 frame=14 2 -> 1
+# frameCount change clk=1381398 frame=14 2 -> 1
+# TXFS edge clk=1381506 frame=14 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=147794
+# nearfull frameCount(local) change clk=1413576 frame=14 1 -> 2
+# frameCount change clk=1413576 frame=14 1 -> 2
+# FRAME 14 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1480062 frame=15 2 -> 1
+# frameCount change clk=1480062 frame=15 2 -> 1
+# TXFS edge clk=1480170 frame=15 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=160114
+# nearfull frameCount(local) change clk=1512136 frame=15 1 -> 2
+# frameCount change clk=1512136 frame=15 1 -> 2
+# FRAME 15 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1578726 frame=16 2 -> 1
+# frameCount change clk=1578726 frame=16 2 -> 1
+# TXFS edge clk=1578834 frame=16 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=172434
+# nearfull frameCount(local) change clk=1610696 frame=16 1 -> 2
+# frameCount change clk=1610696 frame=16 1 -> 2
+# FRAME 16 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1677390 frame=17 2 -> 1
+# frameCount change clk=1677390 frame=17 2 -> 1
+# TXFS edge clk=1677498 frame=17 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=184754
+# nearfull frameCount(local) change clk=1709256 frame=17 1 -> 2
+# frameCount change clk=1709256 frame=17 1 -> 2
+# FRAME 17 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1776054 frame=18 2 -> 1
+# frameCount change clk=1776054 frame=18 2 -> 1
+# TXFS edge clk=1776162 frame=18 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=197074
+# nearfull frameCount(local) change clk=1807816 frame=18 1 -> 2
+# frameCount change clk=1807816 frame=18 1 -> 2
+# FRAME 18 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1874718 frame=19 2 -> 1
+# frameCount change clk=1874718 frame=19 2 -> 1
+# TXFS edge clk=1874826 frame=19 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=209394
+# nearfull frameCount(local) change clk=1906376 frame=19 1 -> 2
+# frameCount change clk=1906376 frame=19 1 -> 2
+# FRAME 19 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=1973382 frame=20 2 -> 1
+# frameCount change clk=1973382 frame=20 2 -> 1
+# TXFS edge clk=1973490 frame=20 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=221714
+# nearfull frameCount(local) change clk=2004936 frame=20 1 -> 2
+# frameCount change clk=2004936 frame=20 1 -> 2
+# FRAME 20 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=2072046 frame=21 2 -> 1
+# frameCount change clk=2072046 frame=21 2 -> 1
+# TXFS edge clk=2072154 frame=21 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=234034
+# nearfull frameCount(local) change clk=2103496 frame=21 1 -> 2
+# frameCount change clk=2103496 frame=21 1 -> 2
+# FRAME 21 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=2170710 frame=22 2 -> 1
+# frameCount change clk=2170710 frame=22 2 -> 1
+# TXFS edge clk=2170818 frame=22 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=246354
+# nearfull frameCount(local) change clk=2202056 frame=22 1 -> 2
+# frameCount change clk=2202056 frame=22 1 -> 2
+# FRAME 22 complete: txFrameStart edges=1
+# nearfull frameCount(local) change clk=2269374 frame=23 2 -> 1
+# frameCount change clk=2269374 frame=23 2 -> 1
+# TXFS edge clk=2269482 frame=23 sampleCount=27 mark_now=1 mark_latch=0 ddrcapRecIdx=258674
+# nearfull frameCount(local) change clk=2300616 frame=23 1 -> 2
+# frameCount change clk=2300616 frame=23 1 -> 2
+# nearfull SUMMARY variant=0 target=49227 pre_count=24718 saw_full=1 full_clk=493426 saw_pop_abort=0 pop_abort_clk=-1
+# FRAME 23 (final, possibly partial) txFrameStart edges=1

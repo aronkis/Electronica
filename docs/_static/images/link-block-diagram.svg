@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="adi-figure no-background"
+     viewBox="0 0 1100 660" width="100%"
+     style="max-width: 1080px; height: auto;">
+  <style>
+    svg.adi-figure {
+      --adi-fill-info:   #d4e1ec;
+      --adi-fill-drv:    #cbd9e8;
+      --adi-fill-mcu:    #f4dca0;
+      --adi-fill-hw:     #f7c8a4;
+      --adi-fill-app:    #e0d0e8;
+      --adi-fill-blank:  #ffffff;
+      --adi-box-stroke:  #c9bfa9;
+      --adi-panel-bg:    #f7f1e6;
+      --adi-panel-stroke:#e3dcc9;
+      --adi-datax-bg:    #e4ecf6;
+      --adi-datax-stroke:#b6c4dc;
+      --adi-text-strong: #2b2a26;
+      --adi-text-muted:  #6b6660;
+      --adi-arrow:       #b3aa97;
+      --adi-accent:      #6b8aaa;
+    }
+    @media (prefers-color-scheme: dark) {
+      svg.adi-figure {
+        --adi-fill-info: #2a3a52; --adi-fill-drv: #243246;
+        --adi-fill-mcu: #4d402a;  --adi-fill-hw: #4d3525;
+        --adi-fill-app: #3d2e48;  --adi-fill-blank: #14181e;
+        --adi-box-stroke: #4a5260;
+        --adi-panel-bg: #1a2028;  --adi-panel-stroke: #3a424b;
+        --adi-datax-bg: #1f2a3d;  --adi-datax-stroke: #3a4960;
+        --adi-text-strong: #e5e5e5; --adi-text-muted: #aaaaaa;
+        --adi-arrow: #6a7484;      --adi-accent: #7da3c4;
+      }
+    }
+    body.dark svg.adi-figure {
+      --adi-fill-info: #2a3a52; --adi-fill-drv: #243246;
+      --adi-fill-mcu: #4d402a;  --adi-fill-hw: #4d3525;
+      --adi-fill-app: #3d2e48;  --adi-fill-blank: #14181e;
+      --adi-box-stroke: #4a5260;
+      --adi-panel-bg: #1a2028;  --adi-panel-stroke: #3a424b;
+      --adi-datax-bg: #1f2a3d;  --adi-datax-stroke: #3a4960;
+      --adi-text-strong: #e5e5e5; --adi-text-muted: #aaaaaa;
+      --adi-arrow: #6a7484;      --adi-accent: #7da3c4;
+    }
+    svg.adi-figure .adi-panel { fill: var(--adi-panel-bg); stroke: var(--adi-panel-stroke); stroke-width: 1.25; }
+    svg.adi-figure .adi-datax-band { fill: var(--adi-datax-bg); stroke: var(--adi-datax-stroke); stroke-width: 1.25; }
+    svg.adi-figure .adi-title { font: 600 18px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-strong); }
+    svg.adi-figure .adi-subtitle { font: 13px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); }
+    svg.adi-figure .adi-section-label { font: 600 11px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); letter-spacing: 0.04em; }
+    svg.adi-figure .box { stroke: var(--adi-box-stroke); stroke-width: 1.25; }
+    svg.adi-figure .box-text { font: 600 13px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-strong); }
+    svg.adi-figure .box-desc { font: 11px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); }
+    svg.adi-figure .arrow { stroke: var(--adi-arrow); stroke-width: 1.5; fill: none; }
+    svg.adi-figure .arrowhead-fill { fill: var(--adi-arrow); }
+    svg.adi-figure .note-text { font: italic 11px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--adi-text-muted); }
+    svg.adi-figure .accent-text { fill: var(--adi-accent); }
+  </style>
+
+  <defs>
+    <marker id="lb-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" class="arrowhead-fill"/>
+    </marker>
+  </defs>
+
+  <rect x="10" y="10" width="1080" height="640" rx="14" class="adi-panel"/>
+
+  <text x="550" y="38" class="adi-title" text-anchor="middle">End-to-end link (forward direction, 146 &#8594; 148)</text>
+  <text x="550" y="58" class="adi-subtitle" text-anchor="middle">Reverse direction (148 &#8594; 146) is the mirror image on the same hardware</text>
+
+  <!-- ============== TX board panel ============== -->
+  <text x="50" y="90" class="adi-section-label">BOARD 10.0.0.146 — TX SIDE</text>
+  <rect x="40" y="98" width="430" height="470" rx="10" class="adi-datax-band"/>
+
+  <rect x="70" y="115" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-app)"/>
+  <text x="255" y="138" class="box-text" text-anchor="middle">qpsk_tun daemon (host, Linux)</text>
+  <text x="255" y="156" class="box-desc" text-anchor="middle">TUN interface &#8594; frame + CRC-32 &#8594; TX submit ring</text>
+
+  <line x1="255" y1="173" x2="255" y2="196" class="arrow" marker-end="url(#lb-arrow)"/>
+
+  <rect x="70" y="198" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-drv)"/>
+  <text x="255" y="221" class="box-text" text-anchor="middle">tx_byte_dma (ADI axi_dmac @ 0x9D100000)</text>
+  <text x="255" y="239" class="box-desc" text-anchor="middle">MM2S from the reserved DDR carve &#183; 3080 B per frame transfer</text>
+
+  <line x1="255" y1="256" x2="255" y2="279" class="arrow" marker-end="url(#lb-arrow)"/>
+
+  <rect x="70" y="281" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-mcu)"/>
+  <text x="255" y="304" class="box-text" text-anchor="middle">TX byte plane (fabric)</text>
+  <text x="255" y="322" class="box-desc" text-anchor="middle">TX byte FIFO &#8594; ByteBitShifter (word &#8594; bit unpack, ~half zero-pad)</text>
+
+  <line x1="255" y1="339" x2="255" y2="362" class="arrow" marker-end="url(#lb-arrow)"/>
+
+  <rect x="70" y="364" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-mcu)"/>
+  <text x="255" y="387" class="box-text" text-anchor="middle">QPSK modulator (HDL Coder netlist)</text>
+  <text x="255" y="405" class="box-desc" text-anchor="middle">commhdlQPSKTxRxLoopback TX chain &#183; RRC pulse shaping</text>
+
+  <line x1="255" y1="422" x2="255" y2="445" class="arrow" marker-end="url(#lb-arrow)"/>
+
+  <rect x="70" y="447" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-hw)"/>
+  <text x="255" y="470" class="box-text" text-anchor="middle">ADRV9002 transceiver + antenna</text>
+  <text x="255" y="488" class="box-desc" text-anchor="middle">DAC &#8594; RF up-conversion &#8594; air</text>
+
+  <!-- ============== RF air band ============== -->
+  <line x1="440" y1="476" x2="630" y2="476" class="arrow" marker-end="url(#lb-arrow)"/>
+  <text x="535" y="464" class="box-desc accent-text" text-anchor="middle">RF, over the air</text>
+  <text x="535" y="496" class="note-text" text-anchor="middle">240 kSym class</text>
+  <text x="535" y="512" class="note-text" text-anchor="middle">49332 samples/frame</text>
+
+  <!-- ============== RX board panel ============== -->
+  <text x="640" y="90" class="adi-section-label">BOARD 10.0.0.148 — RX SIDE</text>
+  <rect x="630" y="98" width="430" height="470" rx="10" class="adi-datax-band"/>
+
+  <rect x="660" y="447" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-hw)"/>
+  <text x="845" y="470" class="box-text" text-anchor="middle">ADRV9002 transceiver + antenna</text>
+  <text x="845" y="488" class="box-desc" text-anchor="middle">RF down-conversion &#8594; ADC samples into the fabric</text>
+
+  <line x1="845" y1="445" x2="845" y2="422" class="arrow" marker-end="url(#lb-arrow)"/>
+
+  <rect x="660" y="364" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-mcu)"/>
+  <text x="845" y="387" class="box-text" text-anchor="middle">QPSK receiver (HDL Coder netlist)</text>
+  <text x="845" y="405" class="box-desc" text-anchor="middle">AGC &#8594; RRC MF &#8594; symbol sync &#8594; CFC &#8594; carrier sync &#8594; demod</text>
+
+  <line x1="845" y1="362" x2="845" y2="339" class="arrow" marker-end="url(#lb-arrow)"/>
+
+  <rect x="660" y="281" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-mcu)"/>
+  <text x="845" y="304" class="box-text" text-anchor="middle">RX byte plane (fabric)</text>
+  <text x="845" y="322" class="box-desc" text-anchor="middle">ByteSerializer (191&#215;64-bit words/frame) &#8594; 1536-word byte FIFO</text>
+
+  <line x1="845" y1="279" x2="845" y2="256" class="arrow" marker-end="url(#lb-arrow)"/>
+
+  <rect x="660" y="198" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-drv)"/>
+  <text x="845" y="221" class="box-text" text-anchor="middle">rx_byte_dma (ADI axi_dmac @ 0x9D200000)</text>
+  <text x="845" y="239" class="box-desc" text-anchor="middle">S2MM into the reserved DDR carve &#183; M frames per transfer</text>
+
+  <line x1="845" y1="196" x2="845" y2="173" class="arrow" marker-end="url(#lb-arrow)"/>
+
+  <rect x="660" y="115" width="370" height="58" rx="8" class="box" fill="var(--adi-fill-app)"/>
+  <text x="845" y="138" class="box-text" text-anchor="middle">qpsk_tun daemon (host, Linux)</text>
+  <text x="845" y="156" class="box-desc" text-anchor="middle">RX drain &#8594; CRC score &#8594; TUN interface (delivered packets)</text>
+
+  <!-- ============== Frame geometry footer ============== -->
+  <text x="50" y="592" class="adi-section-label">R3 = f1536 FRAME GEOMETRY</text>
+  <rect x="40" y="600" width="1020" height="38" rx="8" class="box" fill="var(--adi-fill-info)"/>
+  <text x="550" y="617" class="box-desc" text-anchor="middle">12333 symbols/frame &#183; 803 &#181;s/frame &#183; 1245 frames/s &#183; delivered payload 191 &#215; 64-bit words = 1528 B/frame &#183; TX transfer 3080 B (~half zero-pad slack)</text>
+  <text x="550" y="632" class="note-text" text-anchor="middle">Campaign goal: delivered PER &lt; 1% both directions, ARQ off &#8212; float simulation decodes these captures near-perfectly</text>
+</svg>

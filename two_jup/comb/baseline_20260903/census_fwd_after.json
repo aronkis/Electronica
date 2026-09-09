@@ -1,0 +1,50 @@
+{
+  "path": "two_jup/r3cap/ballpark_fwd_after_20260903_151147/frames.bin",
+  "usable": true,
+  "dur": 723.151457921,
+  "live_end": 722.0,
+  "wedged": false,
+  "fail_class_census": {
+    "counts": {
+      "OK": 877783,
+      "MAGIC": 0,
+      "LEN": 0,
+      "CRC": 0,
+      "ZEROTAIL": 0
+    },
+    "n": 877783,
+    "degenerate_all_ok": true
+  },
+  "fail_class_crc_ok_crosstab": {
+    "table": {
+      "crc_ok=0": {
+        "OK": 68479,
+        "MAGIC": 0,
+        "LEN": 0,
+        "CRC": 0,
+        "ZEROTAIL": 0
+      },
+      "crc_ok=1": {
+        "OK": 809304,
+        "MAGIC": 0,
+        "LEN": 0,
+        "CRC": 0,
+        "ZEROTAIL": 0
+      }
+    },
+    "crc_ok0_fail_class0": 68479,
+    "crc_ok1_fail_class_nonzero": 0
+  },
+  "run_bins": {
+    "1": 36811,
+    "2": 15392,
+    "3-4": 453,
+    "5-20": 173,
+    "21-100": 3,
+    ">100": 0
+  },
+  "validity_frac": 0.9999950574753831,
+  "n_slots": 880209,
+  "slot_lo": 41904,
+  "slot_hi": 922112
+}

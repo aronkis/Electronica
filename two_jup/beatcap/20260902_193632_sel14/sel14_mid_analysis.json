@@ -1,0 +1,13 @@
+{
+ "file": "beatcap/20260902_193632_sel14/mid.bin",
+ "n_frames": 1360,
+ "boundaries_scored": 1359,
+ "baseline_median": 0.0005953564965527395,
+ "baseline_mad": 0.006237977681547276,
+ "threshold": -0.049308464955825464,
+ "dip_events": [
+  615
+ ],
+ "corr_min": -0.2419411899186006,
+ "corr_max": 0.031752834148544504
+}

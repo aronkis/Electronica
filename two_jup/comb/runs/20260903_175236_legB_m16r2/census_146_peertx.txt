@@ -1,0 +1,8 @@
+=== cap  live 718s/740s [WEDGE] ===
+  fail_class census (n=874846): {'OK': 842789, 'MAGIC': 26855, 'LEN': 280, 'CRC': 4922, 'ZEROTAIL': 0}
+  run-length bins: {'1': 19901, '2': 5739, '3-4': 38, '5-20': 97, '21-100': 7, '>100': 0}
+  onset histogram (failhdr n_records=33481 raw, 32057 in live window, wrapped=False): n_none=32057 n_have=0
+  class4 split (windowed): n_class4=0  delivery_hole(fzo==0)=0  alignloss(fzo>0)=0
+  [CAVEAT] TX<->RX join classification (never_sent/sent_not_decoded) is decided by seq membership ONLY. The t_submit_ns span is an ANNOTATION (unjoinable_time), never a veto on classification -- CLOCK_MONOTONIC is per-machine and NOT comparable across boards, so unjoinable_time is a meaningful coverage check only for a same-host (loopback) capture; on a cross-board leg, report it, do not interpret it.
+  TX<->RX join (txlog n_records=939203, wrapped=False, t_submit_span=[15496406498911, 16250716283783]):
+    lost_rx=32763  never_sent=0  sent_not_decoded=32763  unjoinable_time(annotation only)=32763  decoded_not_delivered=UNCLASSIFIED (no delivery-confirmation source given)

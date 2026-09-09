@@ -1,0 +1,7 @@
+=== wedge-aware acceptance analysis (live-link windows, settle 15s, wedge-guard 2s) ===
+  cap: live 718s/740s [WEDGE truncated]  PER=3.742% (32763/875542)  CP95UL=3.782%  lag33=0.379  bins={'1': 19901, '2': 5739, '3-4': 38, '5-20': 97, '21-100': 7, '>100': 0}
+
+  POOLED live-window: PER=3.742% (32763/875542)  CP95UL=3.782%
+  per-run spread: 3.742%..3.742%
+  wedges during captures: 1 (real events; auto-recovered in normal ops by lock_watchdog, disabled during captures)
+  GATE (<1% at CP95 upper limit, live-link): NOT MET

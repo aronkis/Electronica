@@ -1,0 +1,14 @@
+leg=A dir=fwd rx=10.0.0.148 peer=10.0.0.146 dur=600 dry=0
+probe=C
+poke=in_voltage0_gain_control_mode=spi in_voltage0_hardwaregain=@keep in_voltage0_agc_tracking_en=0 in_voltage0_bbdc_rejection_tracking_en=0 in_voltage0_rfdc_tracking_en=0 in_voltage0_rssi_tracking_en=0 in_voltage0_quadrature_fic_tracking_en=0
+attr_before=in_voltage0_gain_control_mode=automatic;in_voltage0_hardwaregain=34.000000 dB;in_voltage0_agc_tracking_en=1;in_voltage0_bbdc_rejection_tracking_en=1;in_voltage0_rfdc_tracking_en=1;in_voltage0_rssi_tracking_en=1;in_voltage0_quadrature_fic_tracking_en=1;
+attr_after=in_voltage0_gain_control_mode=spi;in_voltage0_hardwaregain=34.000000 dB;in_voltage0_agc_tracking_en=0;in_voltage0_bbdc_rejection_tracking_en=0;in_voltage0_rfdc_tracking_en=0;in_voltage0_rssi_tracking_en=0;in_voltage0_quadrature_fic_tracking_en=0;
+attr_write_fails=0
+attr_restored=1 (1 = every attribute read back at its before-value)
+rxm_148= rxm_146= drain_148= drain_146=
+resolved: DAEMON_ENV_A=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1 DAEMON_ENV_B=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1 RX_ATTR_POKE=in_voltage0_gain_control_mode=spi in_voltage0_hardwaregain=@keep in_voltage0_agc_tracking_en=0 in_voltage0_bbdc_rejection_tracking_en=0 in_voltage0_rfdc_tracking_en=0 in_voltage0_rssi_tracking_en=0 in_voltage0_quadrature_fic_tracking_en=0
+capture_r3_exit=3
+wedge_verdict=wedge_verdict=MID_CAPTURE_WEDGE after 12s (delivery flatlined 12s) -- NOT usable data
+deliver_rate_pre=955 deliver_rate_post=955 deliver_rate_gate_pass=0 (need >=1000 f/s both AND zero watchdog relaunches)
+watchdog_relaunch_rx=0 watchdog_relaunch_peer=0
+ts=2026-09-03T23:07:46-04:00

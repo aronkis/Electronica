@@ -1,0 +1,62 @@
+=== W1 verdict: mode=ctrl label=at rest, post-flash run=two_jup/rxfix/runs/atrest_164541 ===
+
+-- structural / decode checks (independent of any prediction) --
+   readings usable: 3/3
+   witA[31:16] == 0 on every reading (decode check PASS)
+   occTrue <= 32 on every reading (decode check PASS)
+
+-- per-reading deltas --
+             occ         d_poe         d_pof      d_frames         d_cSS         d_cRH        d_cCFC         d_cCS         d_cPD         d_cPC
+               1             0             0         13628     168085912     168085912     168085912     168085912     168085912     167908735
+               1             0             0         13613     167885975     167885975     167885975     167885975     167885975     167709019
+
+-- census control --
+   Brief: "each delta over 10 s equals the emitted-frame count x 12,333 within
+   +-1 frame (frames from the checker / 0x104), all six equal to each other."
+   The +-1 FRAME HALF OF THAT IS NOT ACHIEVABLE against 0x104, and not because
+   of noise: 0x104 is not behind the W1 freeze (only the eight W1 words are), so
+   it is sampled aux_lag_s AFTER the frozen census.  The achievable bound is
+   computed per reading below as rate x aux_lag_s.  Split into two tests:
+
+   (a) STRONG, EXACT (one coherent frozen snapshot, no pairing error):
+       the five pre-discard census deltas equal each other.
+       RESULT: EQUAL on all 2 readings.
+
+   (b) cPC is EXPECTED TO BE SHORT BY 13 PER FRAME -- by design, not a deletion.
+       sample_discard_controller drops the 13-slot inter-frame guard, so
+       cPC delta = 12,320 x frames while every stage above it is 12,333 x frames
+       (W1_REGMAP sec 3).  Pre-registered separately BEFORE the leg so a designed
+       guard-drop is not read as evidence for P2-alt.
+       2026-09-04T16:45:52-04:00  frames(from cSS)= 13628.96  cPC exp=   167908736 got=   167908735  diff=        -1
+       2026-09-04T16:46:02-04:00  frames(from cSS)= 13612.74  cPC exp=   167709009 got=   167709019  diff=       +10
+
+   (c) WEAK, bounded (frames from the un-frozen 0x104):
+       2026-09-04T16:45:52-04:00  0x104 delta=   13628  cSS/12333= 13628.96  diff=   +0.96 frames  pairing bound=+-62.7 frames (aux_lag=0.046s)
+       2026-09-04T16:46:02-04:00  0x104 delta=   13613  cSS/12333= 13612.74  diff=   -0.26 frames  pairing bound=+-62.6 frames (aux_lag=0.046s)
+
+-- counter wrap accounting (coordinator item 2) --
+   read spacing: min 10.0s max 11.0s over 2 intervals
+   census wrap horizon 279s -> no interval reaches it (all deltas unambiguous)
+   edge   wrap horizon 1659s -> no interval reaches it (all deltas unambiguous)
+   wraps traversed over the whole window (sum of per-interval deltas / modulus):
+     cSS   total    335,971,887  =   0.08 x 2^32
+     cRH   total    335,971,887  =   0.08 x 2^32
+     cCFC  total    335,971,887  =   0.08 x 2^32
+     cCS   total    335,971,887  =   0.08 x 2^32
+     cPD   total    335,971,887  =   0.08 x 2^32
+     cPC   total    335,617,754  =   0.08 x 2^32
+     pop_on_empty total        0  =  0.00 x 2^16
+     push_on_full total        0  =  0.00 x 2^16
+   (every figure above is accumulated from consecutive reads, never leg-end
+    minus leg-start -- a raw end-minus-start subtraction would alias.)
+
+-- edge counters --
+   pop_on_empty: total delta over the window = 0, per reading [0, 0]
+   push_on_full: total delta over the window = 0, per reading [0, 0]
+   witA occupancy values seen: [1]
+   cumulative pop_on_empty (last reading) = 44, push_on_full = 0
+
+-- Step 2 control verdicts --
+   NULL (steady loopback): pop_on_empty delta 0 and push_on_full delta 0 -> PASS (poe=0, pof=0)
+   occupancy constant in steady loopback -> PASS (values [1])
+   pointer fields advance mod 32 between reads -> PASS (2 distinct (push,pop) pairs)

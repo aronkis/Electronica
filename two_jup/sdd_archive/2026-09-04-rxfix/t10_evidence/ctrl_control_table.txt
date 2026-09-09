@@ -1,0 +1,39 @@
+=== W1 Step-2 control table (run /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260904_164756_w1_ctrl) ===
+reads: pre=3 freeze-hold=1 post=3
+
+  [pre 1] cSS=167732165 cRH=167732165 cCFC=167732165 cCS=167732165 cPD=167732165 cPC=167555365  d0x104=13602  occ=1 push=18 pop=17  poe=10 pof=0
+  [pre 2] cSS=167588577 cRH=167588577 cCFC=167588577 cCS=167588578 cPD=167588577 cPC=167411920  d0x104=13588  occ=1 push=19 pop=18  poe=10 pof=0
+  [post 1] cSS=167928089 cRH=167928089 cCFC=167928089 cCS=167928088 cPD=167928089 cPC=167751081  d0x104=13616  occ=1 push=20 pop=19  poe=44 pof=0
+  [post 2] cSS=168463530 cRH=168463530 cCFC=168463530 cCS=168463530 cPD=168463530 cPC=168285950  d0x104=13660  occ=1 push=30 pop=29  poe=44 pof=0
+
+=== CONTROL TABLE ===
+tap                          verdict                                control / evidence
+----------------------------------------------------------------------------------------------------------------------
+freeze path (0x208 bit 4)    PASS                                   freeze held 10 s -> every one of the 8 word deltas exactly 0
+                                                                    freeze_effective=True on the 10 s HOLD read (two frozen sweeps 10 s apart compared word for word)
+cSS                          PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [167732165, 167588577, 167928089, 168463530]
+cRH                          PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [167732165, 167588577, 167928089, 168463530]
+cCFC                         PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [167732165, 167588577, 167928089, 168463530]
+cCS                          PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [167732165, 167588578, 167928088, 168463530]
+cPD                          PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [167732165, 167588577, 167928089, 168463530]
+cPC                          PASS                                   advances (12,320/frame, not 12,333)
+                                                                    deltas [167555365, 167411920, 167751081, 168285950]  (expected SHORT by 13/frame: sample_discard_controller guard drop)
+witA occupancy               PASS                                   nonzero and/or changing across the arm; constant after
+                                                                    occ values [1]
+witA pointers                PASS                                   advance mod 32 between reads
+                                                                    6 distinct (push,pop) pairs: [(13, 12), (18, 17), (19, 18), (20, 19), (27, 26), (30, 29)]
+pop_on_empty (witB[15:0])    PASS (LIVE)                            ARM TRANSIENT: cumulative jumps >= 1 across the re-arm (or restarts from nonzero if it clears on reset)
+                                                                    pre-re-arm cumulative=10, post-re-arm cumulative=44, mod-2^16 jump=34, counter_cleared_on_reset=False
+push_on_full (witB[31:16])   NOT EXERCISED                          arm transient >= 1 IF acquisition overshoots (sim: 17). A zero here is NOT a failure -- unexercised in sim (task-9 concern 2)
+                                                                    pre=0, post=0, jump=0
+edge counters NULL           PASS                                   steady loopback (one clock, drift 0): poe and pof deltas both 0
+                                                                    per-interval (d_poe,d_pof) = [(0, 0), (0, 0), (0, 0), (0, 0)]
+stuck-at sweep               PASS                                   witA/witB and each census slot differ between at least two reads
+                                                                    6 readings compared
+
+TAPS FAILING THEIR CONTROL: none

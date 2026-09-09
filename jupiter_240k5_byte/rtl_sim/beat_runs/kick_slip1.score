@@ -1,0 +1,9 @@
+566,660 beats, 46 demod markers, skew +1, frame 12320 symbols
+scored 46 frames: 46 placed, 0 displacement-inexplicable
+  aligned at 0      : 45
+  on a known rung   : 0  []
+  INTERMEDIATE (0,6176): 0   <-- §51 falsifier: any of these kills 'jump'
+  0<->rung transitions observed: 2
+     frame 12: 0 -> 12319   (step 12319)
+     frame 13: 12319 -> 0   (step 12319)
+  *** CONSISTENT WITH JUMP: a transition is present and no intermediate offset appears.

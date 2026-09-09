@@ -1,0 +1,22 @@
+# Task 11 — R3s: skip-only guard-band steering, acquisition-safe, gated on the NON-REPEATING legs (sim only)
+
+## Why (read two_jup/sdd_archive/2026-09-04-rxfix/task-7-report.md first, then task-6-report.md §R3)
+Task 7 settled H-B on real content: the Rate_Handle ring reaching its EMPTY edge is the death event. At −10 ppm the hole recurs every 8.1 frames and 2.10 frames die per hole (42 of 46 losses within ±1 frame of a hole; 26.0 % post-edge, 78.1 % at −40 ppm). The guard already turns the empty edge into a skipped pop (a skipped TIME slot, not a lost symbol: cSS = cRH), so the frames die because of WHERE in the frame the skip lands, not because a symbol is lost. R3 (task 7) failed for two reasons that are both about its predicate, not about steering: the extra-pop branch (occ ≥ 30) fired during acquisition and destroyed framing; and the low branch (occ ≤ 2) fires at 0 ppm because the ring settles at occupancy 1 after acquisition on the TGEN stream, breaking s = 0 bit-identity.
+
+## The variant to cut: RXFIX_R3S in two_jup/skidfix/rxfix_inject.py (new marker, R3 untouched)
+1. **Skip branch only.** Remove the extra-pop branch entirely (positive-SRO / FULL edge is a separate problem for the reverse leg; out of scope).
+2. **Armed only by evidence of drain.** Steering is disabled until the guard's own pop_on_empty has fired at least once AFTER lock (define lock = first Preamble_Detector sync, or ≥ N = 8 frames after the last acquisition-phase push_on_full/pop_on_empty burst — choose the definition that is derivable in RTL with a few flops, state it). Before arming, the RTL is bit-identical to baseline by construction; this is what makes s = 0 identity hold (the 0 ppm non-repeating leg has 34 acquisition holes and none afterwards → never arms).
+3. **When armed:** in each inter-frame guard band (the 13-slot window where sample_discard_controller / End_Generator is inactive — take the window definition from R3), if occupancy ≤ 1, skip exactly one pop there (r3s_skips witness), so the deficit is absorbed in the guard band before the guard would suppress a pop mid-frame. At most one skip per frame.
+4. Witnesses: r3s_armed (1 bit), r3s_skips (count), plus the existing rh_pop_on_empty / push_on_full. No new IP ports (structural insertion as R3 did); lint clean; injector tests (exactly-once anchors, 3 mirrors + 2 zip members + verify_zip, --sim-tree) — add to two_jup/skidfix/test_rxfix_inject.py and keep the existing 39+ green.
+
+## Gate (sro harness, jupiter_240k5_byte/rtl_sim/wrap_byte_sro.v + sim_sro.cpp; stimuli already on disk in two_jup/comb/sro_sim/: n_p000.iq, n_m2p5.iq, n_m10.iq, n_m40.iq non-repeating 428 frames; s_m10.iq tiled)
+Pre-registered, write to two_jup/comb/RXFIX_R3S_SIM_GATE.md before running:
+- n_p000: byte-identical delivered stream to baseline b_p000 (md5 equal), r3s_armed = 0 throughout, r3s_skips = 0.
+- n_m10: LOSS ≤ 0.5 % (baseline 10.93 %), r3s_skips ≈ 21 (one per hole cycle inside the window), rh_pop_on_empty in the scored window ≈ 0 (the steering pre-empts the guard), lost frames not hole-aligned.
+- n_m40: LOSS < 5 % (baseline 78.1 %), r3s_skips ≈ 211.
+- s_m10 (tiled control): LOSS ≤ 0.5 % (baseline 22.01 %).
+- Falsifier that ends this line: n_m10 still loses ~2 frames per skip (losses aligned to r3s_skips) → the position of the skipped slot does NOT matter → the death is not a framing-window effect; then dump ±64 beats around ONE skip at every stage output (Rate_Handle out, CFC, Carrier_Synchronizer, Preamble_Detector correlator/peak/Timing_Adjust, Packet_Controller) and report which stage's behaviour first differs from the no-skip frame — that dump is the deliverable in the failure case.
+Score with score_t7.py (seq denominator) and the task-7 hole/loss alignment tool; exit-gated; legs as systemd-run --user units with WorkingDirectory set; NO background sleep polls, NO Monitor loops — write a heartbeat unit (like t7hb) and end your turn when parked; the controller resumes you on unit exit.
+
+## Rails
+Sim only, no board contact. Do not modify Task 7's files or units; add new files. HEARTBEAT task11 <ISO> <state> ≤ 5 min in two_jup/sdd_archive/2026-09-04-rxfix/progress.md; ledger lines `Task 11:`; commit -s + trailer `Claude-Session: https://claude.ai/code/session_019NZLGbxoaPRkDnKFMPiBrq`; commit implies push; labels [sim]/[netlist]/[inferred]; report two_jup/sdd_archive/2026-09-04-rxfix/task-11-report.md; return only status, commits, one-line summary, concerns. No subagents.

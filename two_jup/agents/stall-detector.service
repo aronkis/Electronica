@@ -1,0 +1,7 @@
+[Unit]
+Description=RXFIX campaign stall detector (lanes + agent heartbeats)
+[Service]
+Type=oneshot
+Environment=STALL_STALE_MIN=5
+WorkingDirectory=/mnt/onetb/scratch/qpsk-jupiter-modem
+ExecStart=/usr/bin/python3 /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/agents/stall_detector.py

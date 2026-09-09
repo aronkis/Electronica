@@ -1,0 +1,8 @@
+[Unit]
+Description=Re-render RXFIX pipeline page every 5 minutes
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=render-pipeline.service
+[Install]
+WantedBy=timers.target

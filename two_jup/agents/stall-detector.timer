@@ -1,0 +1,8 @@
+[Unit]
+Description=Run the TXFIX stall detector every 5 minutes
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=stall-detector.service
+[Install]
+WantedBy=timers.target

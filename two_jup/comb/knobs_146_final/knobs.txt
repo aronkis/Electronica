@@ -1,0 +1,502 @@
+### host analog 2026-09-04T04:18:11+01:00
+### iio devices
+/sys/bus/iio/devices/iio:device0 name=mwipcore0:mwipcore_regs
+/sys/bus/iio/devices/iio:device1 name=xilinx-ams
+/sys/bus/iio/devices/iio:device2 name=adrv9002-phy
+/sys/bus/iio/devices/iio:device3 name=axi-adrv9002-rx-lpc
+/sys/bus/iio/devices/iio:device4 name=axi-adrv9002-rx2-lpc
+/sys/bus/iio/devices/iio:device5 name=axi-adrv9002-tx-lpc
+/sys/bus/iio/devices/iio:device6 name=axi-adrv9002-tx2-lpc
+### PHY=/sys/bus/iio/devices/iio:device2  (bringup_r2r3.sh hardcodes iio:device2 -- confirm/deny above)
+### ls /sys/bus/iio/devices/iio:device2
+frequency_hopping_hop1_signal_trigger
+frequency_hopping_hop1_table_a
+frequency_hopping_hop1_table_b
+frequency_hopping_hop1_table_select
+frequency_hopping_hop2_signal_trigger
+frequency_hopping_hop2_table_a
+frequency_hopping_hop2_table_b
+frequency_hopping_hop2_table_select
+frequency_hopping_hop_table_select_available
+initial_calibrations
+initial_calibrations_available
+in_temp0_input
+in_voltage0_agc_tracking_en
+in_voltage0_bbdc_loop_gain_raw
+in_voltage0_bbdc_rejection_en
+in_voltage0_bbdc_rejection_tracking_en
+in_voltage0_decimated_power
+in_voltage0_digital_gain_control_mode
+in_voltage0_digital_gain_control_mode_available
+in_voltage0_dynamic_adc_switch_en
+in_voltage0_en
+in_voltage0_ensm_mode
+in_voltage0_ensm_mode_available
+in_voltage0_gain_control_mode
+in_voltage0_gain_control_mode_available
+in_voltage0_hardwaregain
+in_voltage0_hd_tracking_en
+in_voltage0_interface_gain
+in_voltage0_interface_gain_available
+in_voltage0_nco_frequency
+in_voltage0_orx_bbdc_rejection_en
+in_voltage0_orx_en
+in_voltage0_orx_hardwaregain
+in_voltage0_orx_label
+in_voltage0_orx_quadrature_w_poly_tracking_en
+in_voltage0_port_en_mode
+in_voltage0_port_en_mode_available
+in_voltage0_quadrature_fic_tracking_en
+in_voltage0_quadrature_w_poly_tracking_en
+in_voltage0_rf_bandwidth
+in_voltage0_rfdc_tracking_en
+in_voltage0_rssi
+in_voltage0_rssi_tracking_en
+in_voltage0_sampling_frequency
+in_voltage1_agc_tracking_en
+in_voltage1_bbdc_loop_gain_raw
+in_voltage1_bbdc_rejection_en
+in_voltage1_bbdc_rejection_tracking_en
+in_voltage1_decimated_power
+in_voltage1_digital_gain_control_mode
+in_voltage1_digital_gain_control_mode_available
+in_voltage1_dynamic_adc_switch_en
+in_voltage1_en
+in_voltage1_ensm_mode
+in_voltage1_ensm_mode_available
+in_voltage1_gain_control_mode
+in_voltage1_gain_control_mode_available
+in_voltage1_hardwaregain
+in_voltage1_hd_tracking_en
+in_voltage1_interface_gain
+in_voltage1_interface_gain_available
+in_voltage1_nco_frequency
+in_voltage1_orx_bbdc_rejection_en
+in_voltage1_orx_en
+in_voltage1_orx_hardwaregain
+in_voltage1_orx_label
+in_voltage1_orx_quadrature_w_poly_tracking_en
+in_voltage1_port_en_mode
+in_voltage1_port_en_mode_available
+in_voltage1_quadrature_fic_tracking_en
+in_voltage1_quadrature_w_poly_tracking_en
+in_voltage1_rf_bandwidth
+in_voltage1_rfdc_tracking_en
+in_voltage1_rssi
+in_voltage1_rssi_tracking_en
+in_voltage1_sampling_frequency
+in_voltage2_en
+in_voltage2_input
+in_voltage3_en
+in_voltage3_input
+in_voltage4_en
+in_voltage4_input
+in_voltage5_en
+in_voltage5_input
+multi_chip_sync
+name
+of_node
+out_altvoltage0_RX1_LO_frequency
+out_altvoltage0_RX1_LO_label
+out_altvoltage1_RX2_LO_frequency
+out_altvoltage1_RX2_LO_label
+out_altvoltage2_TX1_LO_frequency
+out_altvoltage2_TX1_LO_label
+out_altvoltage3_TX2_LO_frequency
+out_altvoltage3_TX2_LO_label
+out_voltage0_atten_control_mode
+out_voltage0_atten_control_mode_available
+out_voltage0_close_loop_gain_tracking_en
+out_voltage0_dpd_frequency_hopping_regions
+out_voltage0_dpd_region0_coefficients
+out_voltage0_dpd_region1_coefficients
+out_voltage0_dpd_region2_coefficients
+out_voltage0_dpd_region3_coefficients
+out_voltage0_dpd_region4_coefficients
+out_voltage0_dpd_region5_coefficients
+out_voltage0_dpd_region6_coefficients
+out_voltage0_dpd_region7_coefficients
+out_voltage0_en
+out_voltage0_ensm_mode
+out_voltage0_ensm_mode_available
+out_voltage0_hardwaregain
+out_voltage0_lo_leakage_tracking_en
+out_voltage0_loopback_delay_tracking_en
+out_voltage0_nco_frequency
+out_voltage0_pa_correction_tracking_en
+out_voltage0_port_en_mode
+out_voltage0_port_en_mode_available
+out_voltage0_port_select
+out_voltage0_port_select_available
+out_voltage0_quadrature_tracking_en
+out_voltage0_rf_bandwidth
+out_voltage0_sampling_frequency
+out_voltage1_atten_control_mode
+out_voltage1_atten_control_mode_available
+out_voltage1_close_loop_gain_tracking_en
+out_voltage1_dpd_frequency_hopping_regions
+out_voltage1_dpd_region0_coefficients
+out_voltage1_dpd_region1_coefficients
+out_voltage1_dpd_region2_coefficients
+out_voltage1_dpd_region3_coefficients
+out_voltage1_dpd_region4_coefficients
+out_voltage1_dpd_region5_coefficients
+out_voltage1_dpd_region6_coefficients
+out_voltage1_dpd_region7_coefficients
+out_voltage1_en
+out_voltage1_ensm_mode
+out_voltage1_ensm_mode_available
+out_voltage1_hardwaregain
+out_voltage1_lo_leakage_tracking_en
+out_voltage1_loopback_delay_tracking_en
+out_voltage1_nco_frequency
+out_voltage1_pa_correction_tracking_en
+out_voltage1_port_en_mode
+out_voltage1_port_en_mode_available
+out_voltage1_port_select
+out_voltage1_port_select_available
+out_voltage1_quadrature_tracking_en
+out_voltage1_rf_bandwidth
+out_voltage1_sampling_frequency
+out_voltage2_en
+out_voltage2_input
+out_voltage3_en
+out_voltage3_input
+out_voltage4_en
+out_voltage4_input
+out_voltage5_en
+out_voltage5_input
+power
+profile_config
+stream_config
+subsystem
+uevent
+waiting_for_supplier
+warmboot_coefficients
+warmboot_coefficients_file
+### gain-control + rx0 attributes (read-only, reg_access excluded)
+in_voltage0_gain_control_mode = automatic|
+in_voltage0_gain_control_mode_available = spi pin automatic|
+in_voltage0_hardwaregain = 34.000000 dB|
+in_voltage0_ensm_mode = rf_enabled|
+in_voltage0_ensm_mode_available = calibrated primed rf_enabled|
+in_voltage0_interface_gain = 0dB|
+in_voltage0_interface_gain_available = 0dB|
+in_voltage0_digital_gain_control_mode = spi|
+in_voltage0_digital_gain_control_mode_available = automatic spi|
+in_voltage0_rssi = 25.853 dB|
+in_voltage0_rf_bandwidth = 40000000|
+in_voltage0_sampling_frequency = 61440000|
+in_voltage0_nco_frequency = cat: '/sys/bus/iio/devices/iio:device2/in_voltage0_nco_frequency': Unknown error 524|
+in_voltage0_bbdc_rejection_tracking_en = 1|
+in_voltage0_rfdc_tracking_en = 1|
+in_voltage0_agc_tracking_en = 1|
+in_voltage0_hd_tracking_en = 0|
+in_voltage0_rssi_tracking_en = 1|
+### every *tracking* / *cal* / *gain* named node on the phy (values, safe ones only)
+initial_calibrations = off|
+initial_calibrations_available = off auto run|
+in_voltage0_agc_tracking_en = 1|
+in_voltage0_bbdc_loop_gain_raw = 1048576|
+in_voltage0_bbdc_rejection_tracking_en = 1|
+in_voltage0_digital_gain_control_mode = spi|
+in_voltage0_digital_gain_control_mode_available = automatic spi|
+in_voltage0_gain_control_mode = automatic|
+in_voltage0_gain_control_mode_available = spi pin automatic|
+in_voltage0_hardwaregain = 34.000000 dB|
+in_voltage0_hd_tracking_en = 0|
+in_voltage0_interface_gain = 0dB|
+in_voltage0_interface_gain_available = 0dB|
+in_voltage0_orx_hardwaregain = cat: '/sys/bus/iio/devices/iio:device2/in_voltage0_orx_hardwaregain': No such device|
+in_voltage0_orx_quadrature_w_poly_tracking_en = cat: '/sys/bus/iio/devices/iio:device2/in_voltage0_orx_quadrature_w_poly_tracking_en': No such device|
+in_voltage0_quadrature_fic_tracking_en = 1|
+in_voltage0_quadrature_w_poly_tracking_en = 0|
+in_voltage0_rfdc_tracking_en = 1|
+in_voltage0_rssi_tracking_en = 1|
+in_voltage1_agc_tracking_en = 1|
+in_voltage1_bbdc_loop_gain_raw = 1048576|
+in_voltage1_bbdc_rejection_tracking_en = 1|
+in_voltage1_digital_gain_control_mode = spi|
+in_voltage1_digital_gain_control_mode_available = automatic spi|
+in_voltage1_gain_control_mode = spi|
+in_voltage1_gain_control_mode_available = spi pin automatic|
+in_voltage1_hardwaregain = 34.000000 dB|
+in_voltage1_hd_tracking_en = 0|
+in_voltage1_interface_gain = 0dB|
+in_voltage1_interface_gain_available = 0dB|
+in_voltage1_orx_hardwaregain = cat: '/sys/bus/iio/devices/iio:device2/in_voltage1_orx_hardwaregain': No such device|
+in_voltage1_orx_quadrature_w_poly_tracking_en = cat: '/sys/bus/iio/devices/iio:device2/in_voltage1_orx_quadrature_w_poly_tracking_en': No such device|
+in_voltage1_quadrature_fic_tracking_en = 1|
+in_voltage1_quadrature_w_poly_tracking_en = 0|
+in_voltage1_rfdc_tracking_en = 1|
+in_voltage1_rssi_tracking_en = 1|
+out_voltage0_close_loop_gain_tracking_en = 0|
+out_voltage0_hardwaregain = 0.000000 dB|
+out_voltage0_lo_leakage_tracking_en = 0|
+out_voltage0_loopback_delay_tracking_en = 0|
+out_voltage0_pa_correction_tracking_en = 0|
+out_voltage0_quadrature_tracking_en = 0|
+out_voltage1_close_loop_gain_tracking_en = 0|
+out_voltage1_hardwaregain = -40.000000 dB|
+out_voltage1_lo_leakage_tracking_en = 0|
+out_voltage1_loopback_delay_tracking_en = 0|
+out_voltage1_pa_correction_tracking_en = 0|
+out_voltage1_quadrature_tracking_en = 0|
+SKIPPED (never read): profile_config
+SKIPPED (never read): stream_config
+### ls -la /sys/kernel/debug/iio/iio:device2
+total 0
+drwxr-xr-x 2 root root 0 Jan  1  1970 .
+drwxr-xr-x 8 root root 0 Jan  1  1970 ..
+-rw------- 1 root root 0 Jan  1  1970 agpio0_direction
+-rw------- 1 root root 0 Jan  1  1970 agpio0_value
+-rw------- 1 root root 0 Jan  1  1970 agpio10_direction
+-rw------- 1 root root 0 Jan  1  1970 agpio10_value
+-rw------- 1 root root 0 Jan  1  1970 agpio11_direction
+-rw------- 1 root root 0 Jan  1  1970 agpio11_value
+-rw------- 1 root root 0 Jan  1  1970 agpio1_direction
+-rw------- 1 root root 0 Jan  1  1970 agpio1_value
+-rw------- 1 root root 0 Jan  1  1970 agpio2_direction
+-rw------- 1 root root 0 Jan  1  1970 agpio2_value
+-rw------- 1 root root 0 Jan  1  1970 agpio3_direction
+-rw------- 1 root root 0 Jan  1  1970 agpio3_value
+-rw------- 1 root root 0 Sep  4 04:14 agpio4_direction
+-rw------- 1 root root 0 Sep  4 04:14 agpio4_value
+-rw------- 1 root root 0 Sep  4 04:14 agpio5_direction
+-rw------- 1 root root 0 Sep  4 04:14 agpio5_value
+-rw------- 1 root root 0 Sep  4 04:14 agpio6_direction
+-rw------- 1 root root 0 Sep  4 04:14 agpio6_value
+-rw------- 1 root root 0 Sep  4 04:14 agpio7_direction
+-rw------- 1 root root 0 Sep  4 04:14 agpio7_value
+-rw------- 1 root root 0 Jan  1  1970 agpio8_direction
+-rw------- 1 root root 0 Jan  1  1970 agpio8_value
+-rw------- 1 root root 0 Jan  1  1970 agpio9_direction
+-rw------- 1 root root 0 Jan  1  1970 agpio9_value
+-r-------- 1 root root 0 Jan  1  1970 api_version
+-rw------- 1 root root 0 Jan  1  1970 dev_clkout_div
+-rw------- 1 root root 0 Jan  1  1970 dgpio0_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio0_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio10_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio10_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio11_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio11_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio12_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio12_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio13_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio13_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio14_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio14_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio15_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio15_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio1_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio1_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio2_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio2_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio3_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio3_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio4_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio4_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio5_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio5_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio6_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio6_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio7_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio7_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio8_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio8_value
+-rw------- 1 root root 0 Jan  1  1970 dgpio9_direction
+-rw------- 1 root root 0 Jan  1  1970 dgpio9_value
+-rw-r--r-- 1 root root 0 Jan  1  1970 direct_reg_access
+-r-------- 1 root root 0 Jan  1  1970 fh_config_dump
+-rw------- 1 root root 0 Jan  1  1970 fh_hop1_pin_set
+-r-------- 1 root root 0 Jan  1  1970 fh_hop1_table_a_dump
+-r-------- 1 root root 0 Jan  1  1970 fh_hop1_table_b_dump
+-rw------- 1 root root 0 Jan  1  1970 fh_hop1_table_select_pin_set
+-rw------- 1 root root 0 Jan  1  1970 fh_hop2_pin_set
+-r-------- 1 root root 0 Jan  1  1970 fh_hop2_table_a_dump
+-r-------- 1 root root 0 Jan  1  1970 fh_hop2_table_b_dump
+-rw------- 1 root root 0 Jan  1  1970 fh_hop2_table_select_pin_set
+-rw------- 1 root root 0 Jan  1  1970 fh_hop_table_mode_select
+-rw------- 1 root root 0 Jan  1  1970 fh_max_lo_freq_hz
+-rw------- 1 root root 0 Jan  1  1970 fh_max_rx_gain
+-rw------- 1 root root 0 Jan  1  1970 fh_max_tx_atten_mdb
+-rw------- 1 root root 0 Jan  1  1970 fh_min_frame_duration_us
+-rw------- 1 root root 0 Jan  1  1970 fh_min_lo_freq_hz
+-rw------- 1 root root 0 Jan  1  1970 fh_min_rx_gain
+-rw------- 1 root root 0 Jan  1  1970 fh_min_tx_atten_mdb
+-rw------- 1 root root 0 Jan  1  1970 fh_mode
+### debugfs tracking / cal nodes (values; reg_access + triggers NEVER read)
+SKIPPED (never read): agpio0_direction
+SKIPPED (never read): agpio10_direction
+SKIPPED (never read): agpio11_direction
+SKIPPED (never read): agpio1_direction
+SKIPPED (never read): agpio2_direction
+SKIPPED (never read): agpio3_direction
+SKIPPED (never read): agpio4_direction
+SKIPPED (never read): agpio5_direction
+SKIPPED (never read): agpio6_direction
+SKIPPED (never read): agpio7_direction
+SKIPPED (never read): agpio8_direction
+SKIPPED (never read): agpio9_direction
+SKIPPED (never read): dgpio0_direction
+SKIPPED (never read): dgpio10_direction
+SKIPPED (never read): dgpio11_direction
+SKIPPED (never read): dgpio12_direction
+SKIPPED (never read): dgpio13_direction
+SKIPPED (never read): dgpio14_direction
+SKIPPED (never read): dgpio15_direction
+SKIPPED (never read): dgpio1_direction
+SKIPPED (never read): dgpio2_direction
+SKIPPED (never read): dgpio3_direction
+SKIPPED (never read): dgpio4_direction
+SKIPPED (never read): dgpio5_direction
+SKIPPED (never read): dgpio6_direction
+SKIPPED (never read): dgpio7_direction
+SKIPPED (never read): dgpio8_direction
+SKIPPED (never read): dgpio9_direction
+SKIPPED (never read): direct_reg_access
+fh_max_rx_gain = 255|
+fh_min_rx_gain = 187|
+pll_aux_calibration_mode = 0|
+pll_aux_power_scale = 5|
+pll_lo1_calibration_mode = 0|
+pll_lo1_power_scale = 5|
+pll_lo2_calibration_mode = 0|
+pll_lo2_power_scale = 5|
+rx0_agc_agcMode = 1|
+rx0_agc_attackDelay_us = 10|
+rx0_agc_changeGainIfThreshHigh = 3|
+rx0_agc_config = peakWaitTime: 4|maxGainIndex: 255|minGainIndex: 187|
+rx0_agc_enableFastRecoveryLoop = N|
+rx0_agc_enableSyncPulseForGainCounter = N|
+rx0_agc_gainUpdateCounter = 11520|
+rx0_agc_lowThreshPreventGainInc = N|
+rx0_agc_maxGainIndex = 255|
+rx0_agc_minGainIndex = 187|
+rx0_agc_peak.agcUnderRangeHighInterval = 4|
+rx0_agc_peak.agcUnderRangeLowInterval = 50|
+rx0_agc_peak.agcUnderRangeMidInterval = 2|
+rx0_agc_peak.apdGainStepAttack = 2|
+rx0_agc_peak.apdGainStepRecovery = 0|
+rx0_agc_peak.apdHighThresh = 21|
+rx0_agc_peak.apdLowerThreshPeakExceededCount = 3|
+rx0_agc_peak.apdLowThresh = 12|
+rx0_agc_peak.apdUpperThreshPeakExceededCount = 6|
+rx0_agc_peak.enableHbOverload = Y|
+rx0_agc_peak.feedback_apd_high_hb_high = 0|
+rx0_agc_peak.feedback_apd_low_hb_low = 0|
+rx0_agc_peak.hbGainStepAttack = 2|
+rx0_agc_peak.hbGainStepHighRecovery = 2|
+rx0_agc_peak.hbGainStepLowRecovery = 6|
+rx0_agc_peak.hbGainStepMidRecovery = 4|
+rx0_agc_peak.hbHighThresh = 13044|
+rx0_agc_peak.hbOverloadDurationCount = 1|
+rx0_agc_peak.hbOverloadPowerMode = 0|
+rx0_agc_peak.hbOverloadThreshCount = 1|
+rx0_agc_peak.hbUnderRangeHighThresh = 7335|
+rx0_agc_peak.hbUnderRangeHighThreshExceededCount = 3|
+rx0_agc_peak.hbUnderRangeLowThresh = 5826|
+rx0_agc_peak.hbUnderRangeLowThreshExceededCount = 3|
+rx0_agc_peak.hbUnderRangeMidThresh = 8230|
+rx0_agc_peak.hbUnderRangeMidThreshExceededCount = 3|
+rx0_agc_peak.hbUpperThreshPeakExceededCount = 6|
+rx0_agc_peakWaitTime = 4|
+rx0_agc_power.feedback_apd_high_apd_low = 0|
+rx0_agc_power.feedback_inner_high_inner_low = 0|
+rx0_agc_power.overRangeHighPowerGainStepAttack = 4|
+rx0_agc_power.overRangeHighPowerThresh = 0|
+rx0_agc_power.overRangeLowPowerGainStepAttack = 4|
+rx0_agc_power.overRangeLowPowerThresh = 7|
+rx0_agc_power.powerEnableMeasurement = Y|
+rx0_agc_power.powerMeasurementDelay = 2|
+rx0_agc_power.powerMeasurementDuration = 10|
+rx0_agc_power.rxTddPowerMeasDelay = 0|
+rx0_agc_power.rxTddPowerMeasDuration = 0|
+rx0_agc_power.underRangeHighPowerGainStepRecovery = 2|
+rx0_agc_power.underRangeHighPowerThresh = 10|
+rx0_agc_power.underRangeLowPowerGainStepRecovery = 4|
+rx0_agc_power.underRangeLowPowerThresh = 4|
+SKIPPED (never read): rx0_agc_resetOnRxon
+SKIPPED (never read): rx0_agc_resetOnRxonGainIndex
+rx0_agc_slowLoopSettlingDelay = 16|
+rx0_cals_internal_path_delay_ns = 2294|
+rx0_gain_control_pin_mode = min_gain_index: 187|max_gain_index: 255|increment_step_size: 1|
+rx1_agc_agcMode = 1|
+rx1_agc_attackDelay_us = 10|
+rx1_agc_changeGainIfThreshHigh = 3|
+rx1_agc_config = peakWaitTime: 4|maxGainIndex: 255|minGainIndex: 187|
+rx1_agc_enableFastRecoveryLoop = N|
+rx1_agc_enableSyncPulseForGainCounter = N|
+rx1_agc_gainUpdateCounter = 11520|
+rx1_agc_lowThreshPreventGainInc = N|
+rx1_agc_maxGainIndex = 255|
+rx1_agc_minGainIndex = 187|
+rx1_agc_peak.agcUnderRangeHighInterval = 4|
+rx1_agc_peak.agcUnderRangeLowInterval = 50|
+rx1_agc_peak.agcUnderRangeMidInterval = 2|
+rx1_agc_peak.apdGainStepAttack = 2|
+rx1_agc_peak.apdGainStepRecovery = 0|
+rx1_agc_peak.apdHighThresh = 21|
+rx1_agc_peak.apdLowerThreshPeakExceededCount = 3|
+rx1_agc_peak.apdLowThresh = 12|
+rx1_agc_peak.apdUpperThreshPeakExceededCount = 6|
+rx1_agc_peak.enableHbOverload = Y|
+rx1_agc_peak.feedback_apd_high_hb_high = 0|
+rx1_agc_peak.feedback_apd_low_hb_low = 0|
+rx1_agc_peak.hbGainStepAttack = 2|
+rx1_agc_peak.hbGainStepHighRecovery = 2|
+rx1_agc_peak.hbGainStepLowRecovery = 6|
+rx1_agc_peak.hbGainStepMidRecovery = 4|
+rx1_agc_peak.hbHighThresh = 13044|
+rx1_agc_peak.hbOverloadDurationCount = 1|
+rx1_agc_peak.hbOverloadPowerMode = 0|
+rx1_agc_peak.hbOverloadThreshCount = 1|
+rx1_agc_peak.hbUnderRangeHighThresh = 7335|
+rx1_agc_peak.hbUnderRangeHighThreshExceededCount = 3|
+rx1_agc_peak.hbUnderRangeLowThresh = 5826|
+rx1_agc_peak.hbUnderRangeLowThreshExceededCount = 3|
+rx1_agc_peak.hbUnderRangeMidThresh = 8230|
+rx1_agc_peak.hbUnderRangeMidThreshExceededCount = 3|
+rx1_agc_peak.hbUpperThreshPeakExceededCount = 6|
+rx1_agc_peakWaitTime = 4|
+rx1_agc_power.feedback_apd_high_apd_low = 0|
+rx1_agc_power.feedback_inner_high_inner_low = 0|
+rx1_agc_power.overRangeHighPowerGainStepAttack = 4|
+rx1_agc_power.overRangeHighPowerThresh = 0|
+rx1_agc_power.overRangeLowPowerGainStepAttack = 4|
+rx1_agc_power.overRangeLowPowerThresh = 7|
+rx1_agc_power.powerEnableMeasurement = Y|
+rx1_agc_power.powerMeasurementDelay = 2|
+rx1_agc_power.powerMeasurementDuration = 10|
+rx1_agc_power.rxTddPowerMeasDelay = 0|
+rx1_agc_power.rxTddPowerMeasDuration = 0|
+rx1_agc_power.underRangeHighPowerGainStepRecovery = 2|
+rx1_agc_power.underRangeHighPowerThresh = 10|
+rx1_agc_power.underRangeLowPowerGainStepRecovery = 4|
+rx1_agc_power.underRangeLowPowerThresh = 4|
+SKIPPED (never read): rx1_agc_resetOnRxon
+SKIPPED (never read): rx1_agc_resetOnRxonGainIndex
+rx1_agc_slowLoopSettlingDelay = 16|
+rx1_cals_internal_path_delay_ns = 2294|
+rx1_gain_control_pin_mode = min_gain_index: 187|max_gain_index: 255|increment_step_size: 1|
+tx0_additional_power_scale = 4|
+tx0_cals_internal_path_delay_ns = 443|
+tx0_clgc_gain_target_hundredthdB = 0|
+SKIPPED (never read): tx0_dpd_reset_luts
+SKIPPED (never read): tx0_external_path_delay_calibrate
+tx0_pre_lut_scale = 8|
+tx1_additional_power_scale = 4|
+tx1_cals_internal_path_delay_ns = 443|
+tx1_clgc_gain_target_hundredthdB = 0|
+SKIPPED (never read): tx1_dpd_reset_luts
+SKIPPED (never read): tx1_external_path_delay_calibrate
+tx1_pre_lut_scale = 8|
+### hardwaregain series (5 reads, 1 s apart -- is the AGC hunting?)
+t1 34.000000 dB  mode=automatic
+t2 34.000000 dB  mode=automatic
+t3 34.000000 dB  mode=automatic
+t4 34.000000 dB  mode=automatic
+t5 34.000000 dB  mode=automatic
+### daemon / link state (context only)
+qpsk_tun not running
+### END

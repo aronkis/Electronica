@@ -1,0 +1,763 @@
+# Task 1 (T4 monitoring) review package
+5801c36 txfix T4: complete -- NEXT_STEPS.md campaign block, task-1 report, ledger closed
+8fae11b txfix T4: render_pipeline.py gains a Lanes / stalls block
+1d13466 txfix T4: add watch_unit.sh, stall_detector.py, lanes.json, stall-detector units
+
+diff --git a/two_jup/NEXT_STEPS.md b/two_jup/NEXT_STEPS.md
+index 3ae6c11..8804e8f 100644
+--- a/two_jup/NEXT_STEPS.md
++++ b/two_jup/NEXT_STEPS.md
+@@ -1,8 +1,23 @@
+ # Next steps — updated 2026-09-03 09:40 (controller)
+ 
++## TXFIX campaign running (2026-09-03)
++Operator approved the fix-build + test plan (`/home/tcollins/.claude/plans/happy-bubbling-owl.md`);
++the "decision pending" section below is superseded by that approval. Ledger:
++`two_jup/sdd_archive/2026-09-03-txfix/progress.md`. Tasks 1-4 dispatched in parallel
++(T4 monitoring, T0a injector, T0b build kit, T0c rig scripts); sim/Vivado/silicon lanes
++follow once T0a/T0b/T0c land. Monitoring is live: `two_jup/agents/watch_unit.sh` (per-unit
++controller watcher, independent of any agent), `two_jup/agents/stall_detector.py` +
++`lanes.json` + `stall-detector.timer` (user unit, every 5 min, self-tested live 2026-09-03
++10:03-10:06: fabricated stale lane -> `STALL lane=selftest`, deduped on rerun, `CLEAR`
++on resolution, `UNITEXIT`/`.done` on the watched unit's exit). `lanes.json` is currently
++`[]` — populated by the lane agents (T1 sim / T2 Vivado / T3 silicon) as their units start.
++Dashboard `render_pipeline.py` renders a "Lanes / stalls" block from `lanes.json` +
++`~/modem-status/stalls.json` + NOTIFY `.done` files. Rig rails unchanged: 148 only, 146
++never, full-rails flash only, sentinel stays stopped during flashes.
++
+ ## Where we are
+ - **Error source FOUND [silicon + RTL + sim]:** the transmitter's `Data_Bits_FIFO` (Bit_Packetizer) pop-enable latch is cleared mid-frame whenever the unguarded 2-bit `frameCount` reads 0; pops stop, the modulator holds one bit to the frame end, the payload resumes delayed by the stall length = the "rung". Receiver fully exonerated (§82–§89).
+ - **Second defect [sim, §90]:** fullRAM back-pressure runs away (producer pushes every tick until the uint16 count wraps; ~16k RAM bits overwritten).
+ - **Open [sim/silicon]:** what sets the 120.2 s recurrence and the ~1.0 s per-state persistence — the +26 slots/frame drift ticks at 0.76 s / 3.04 s and the natural abort self-cancels in sim (§90 + correction).
+ 
+ ## Decision pending (operator)
+diff --git a/two_jup/agents/lanes.json b/two_jup/agents/lanes.json
+new file mode 100644
+index 00000000..fe51488
+--- /dev/null
++++ b/two_jup/agents/lanes.json
+@@ -0,0 +1 @@
++[]
+diff --git a/two_jup/agents/render_pipeline.py b/two_jup/agents/render_pipeline.py
+index ebfd4ee..26138cf 100644
+--- a/two_jup/agents/render_pipeline.py
++++ b/two_jup/agents/render_pipeline.py
+@@ -1,17 +1,77 @@
+ #!/usr/bin/env python3
+ """render_pipeline.py -- render the SDD task pipeline + results to a static HTML page for the LAN dashboard.
+ Sources: .superpowers/sdd/*/progress.md (ledgers), docs/superpowers/plans/<plan>.md (task titles),
+ two_jup/SESSION_20260830_AUTONOMOUS.md (result sections), git log, ~/modem-status/sentinel.log.
+ Usage: render_pipeline.py [--root REPO] [--out FILE]   (defaults: repo root of this file, ~/modem-status/pipeline.html)"""
+-import argparse, glob, html, os, re, subprocess, sys, time
++import argparse, glob, html, json, os, re, subprocess, sys, time
+ 
+ def read(p):
+     try: return open(p, encoding='utf-8', errors='replace').read()
+     except OSError: return ''
+ 
++def read_json(p):
++    try:
++        with open(p, encoding='utf-8') as f: return json.load(f)
++    except (OSError, ValueError): return None
++
++def lane_is_active(unit):
++    try:
++        r = subprocess.run(['systemctl', '--user', '-q', 'is-active', unit], capture_output=True, timeout=10)
++        return r.returncode == 0
++    except Exception: return False
++
++def lanes_rows(root, is_active=lane_is_active):
++    """Lane rows from two_jup/agents/lanes.json: (name, unit, active?, log age str, max_age_min)."""
++    lanes = read_json(os.path.join(root, 'two_jup', 'agents', 'lanes.json')) or []
++    rows = []
++    for lane in lanes:
++        name, unit, log, max_age = lane.get('name'), lane.get('unit'), lane.get('log'), lane.get('max_age_min')
++        active = is_active(unit) if unit else False
++        if log and os.path.exists(log):
++            age = f"{(time.time() - os.path.getmtime(log)) / 60.0:.1f} min"
++        else:
++            age = 'no log'
++        rows.append((name or '?', unit or '?', active, age, max_age))
++    return rows
++
++def notify_done_list(notify_dir):
++    try: return sorted(os.path.basename(p) for p in glob.glob(os.path.join(notify_dir, '*.done')))
++    except OSError: return []
++
++def lanes_block(root, stalls_path=os.path.expanduser('~/modem-status/stalls.json'),
++                 notify_dir=os.path.expanduser('~/modem-status/NOTIFY'), is_active=lane_is_active):
++    parts = ["<h2>Lanes / stalls</h2>"]
++    rows = lanes_rows(root, is_active=is_active)
++    if rows:
++        parts.append("<table><tr><th>lane</th><th>unit</th><th>state</th><th>log age</th><th>max age (min)</th></tr>")
++        for name, unit, active, age, max_age in rows:
++            tag = ('#1565c0', 'active') if active else ('#9e9e9e', 'inactive')
++            parts.append(f"<tr><td>{html.escape(name)}</td><td><code>{html.escape(unit)}</code></td>"
++                         f"<td><span class='tag' style='background:{tag[0]}'>{tag[1]}</span></td>"
++                         f"<td>{html.escape(age)}</td><td>{html.escape(str(max_age))}</td></tr>")
++        parts.append("</table>")
++    else:
++        parts.append("<p><small>no lanes registered</small></p>")
++    stalls = read_json(stalls_path)
++    if stalls:
++        parts.append(f"<details open><summary>Stalls ({len(stalls)})</summary><ul>")
++        for s in stalls:
++            key = s.get('key', '?'); age = s.get('age_min', '?')
++            parts.append(f"<li><span class='tag' style='background:#c62828'>{html.escape(str(key))}</span> age={html.escape(str(age))}</li>")
++        parts.append("</ul></details>")
++    else:
++        parts.append("<p><small>stalls.json: none</small></p>")
++    notify = notify_done_list(notify_dir)
++    if notify:
++        parts.append(f"<details><summary>NOTIFY .done ({len(notify)})</summary><ul>" +
++                     "".join(f"<li><code>{html.escape(n)}</code></li>" for n in notify) + "</ul></details>")
++    else:
++        parts.append("<p><small>NOTIFY: none pending</small></p>")
++    return "".join(parts)
++
+ def plan_tasks(plan_path):
+     return [(int(m.group(1)), m.group(2).strip()) for m in re.finditer(r'^### Task (\d+): (.+)$', read(plan_path), re.M)]
+ 
+ def ledger_state(ledger_text):
+     """Per task number: (status, last line). Status precedence by the LAST matching line."""
+     st = {}
+@@ -50,13 +110,15 @@ def gitlog(root, n=12):
+     try: return subprocess.run(['git', '-C', root, 'log', '--oneline', f'-{n}'], capture_output=True, text=True, timeout=10).stdout.splitlines()
+     except Exception: return []
+ 
+ COLOR = {'complete': '#2e7d32', 'running': '#1565c0', 'in review': '#6a1b9a', 'fix round': '#ef6c00',
+          'needs fixes': '#ef6c00', 'parked': '#795548', 'blocked': '#c62828', 'pending': '#9e9e9e'}
+ 
+-def render(root, out, sentinel='/home/tcollins/modem-status/sentinel.log'):
++def render(root, out, sentinel='/home/tcollins/modem-status/sentinel.log',
++           stalls_path=os.path.expanduser('~/modem-status/stalls.json'),
++           notify_dir=os.path.expanduser('~/modem-status/NOTIFY'), is_active=lane_is_active):
+     now = time.strftime('%Y-%m-%d %H:%M:%S %Z')
+     parts = [f"<!doctype html><html><head><meta charset='utf-8'><meta http-equiv='refresh' content='300'>"
+              f"<title>Pipeline — qpsk-jupiter-modem</title><style>body{{font:14px/1.4 system-ui,sans-serif;margin:20px;background:#fafafa;color:#222}}"
+              "table{border-collapse:collapse;margin:8px 0 18px}td,th{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}"
+              "th{background:#eee}.tag{color:#fff;padding:1px 7px;border-radius:9px;font-size:12px}h2{margin-top:26px}code{font-size:12px}"
+              f"small{{color:#666}}</style></head><body><h1>Task pipeline</h1><small>rendered {html.escape(now)} · auto-refresh 5 min · regenerated every 30 min and on task completion</small>"]
+@@ -80,15 +142,18 @@ def render(root, out, sentinel='/home/tcollins/modem-status/sentinel.log'):
+             parts.append(f"<tr><td>{html.escape(tag)}·T{n}</td><td>{html.escape(title)}</td><td><span class='tag' style='background:{col}'>{html.escape(s)}</span></td>"
+                          f"<td><code>{html.escape(last[:220])}</code></td></tr>")
+         parts.append("</table>")
+         rl = rulings(txt)
+         if rl:
+             parts.append("<details><summary>Rulings (" + str(len(rl)) + ")</summary><ul>" + "".join(f"<li>{html.escape(r[:400])}</li>" for r in rl) + "</ul></details>")
++    ns_idx = 1
+     ns = os.path.join(root, 'two_jup', 'NEXT_STEPS.md')
+     if os.path.exists(ns):
+-        parts.insert(1, "<h2>Next steps</h2><pre style='white-space:pre-wrap'>" + html.escape(read(ns)) + "</pre>")
++        parts.insert(ns_idx, "<h2>Next steps</h2><pre style='white-space:pre-wrap'>" + html.escape(read(ns)) + "</pre>")
++        ns_idx += 1
++    parts.insert(ns_idx, lanes_block(root, stalls_path=stalls_path, notify_dir=notify_dir, is_active=is_active))
+     parts.append("<h2>Results (session log sections §76+)</h2><ul>")
+     for s in sections(os.path.join(root, 'two_jup', 'SESSION_20260830_AUTONOMOUS.md')):
+         parts.append(f"<li>{html.escape(s)}</li>")
+     parts.append("</ul><h2>Recent commits</h2><pre>" + html.escape("\n".join(gitlog(root))) + "</pre>")
+     sl = read(sentinel).splitlines()
+     parts.append("<h2>Rig</h2><pre>" + html.escape("\n".join(sl[-3:]) if sl else 'no sentinel log') + "</pre>")
+diff --git a/two_jup/agents/stall-detector.service b/two_jup/agents/stall-detector.service
+new file mode 100644
+index 00000000..7fed4c7
+--- /dev/null
++++ b/two_jup/agents/stall-detector.service
+@@ -0,0 +1,5 @@
++[Unit]
++Description=TXFIX campaign stall detector (lanes + agent heartbeats)
++[Service]
++Type=oneshot
++ExecStart=/usr/bin/python3 /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/agents/stall_detector.py
+diff --git a/two_jup/agents/stall-detector.timer b/two_jup/agents/stall-detector.timer
+new file mode 100644
+index 00000000..89120bd
+--- /dev/null
++++ b/two_jup/agents/stall-detector.timer
+@@ -0,0 +1,8 @@
++[Unit]
++Description=Run the TXFIX stall detector every 5 minutes
++[Timer]
++OnBootSec=2min
++OnUnitActiveSec=5min
++Unit=stall-detector.service
++[Install]
++WantedBy=timers.target
+diff --git a/two_jup/agents/stall_detector.py b/two_jup/agents/stall_detector.py
+new file mode 100644
+index 00000000..511ca2d
+--- /dev/null
++++ b/two_jup/agents/stall_detector.py
+@@ -0,0 +1,271 @@
++#!/usr/bin/env python3
++"""stall_detector.py -- TXFIX campaign stall detector (T4 monitoring).
++
++Two independent checks, run every 5 min by stall-detector.timer:
++
++1. Lane check: two_jup/agents/lanes.json is a list of
++   {"name", "unit", "log", "max_age_min"}. For each lane whose unit is
++   currently active (systemctl --user -q is-active <unit>), if <log>'s mtime
++   is older than max_age_min minutes -> a lane stall.
++
++2. Agent heartbeat check: every ledger under
++   two_jup/sdd_archive/2026-09-03-txfix/ is scanned for `HEARTBEAT <agent>
++   <ISO8601> ...` lines. For each agent, if its latest heartbeat is older
++   than HEARTBEAT_STALE_MIN (25) minutes AND that agent's task (matched by
++   `task<N>` -> `Task N:`) last had a `Task N: dispatched...` or
++   `Task N: running...` status line -> an agent stall.
++
++Findings are written to ~/modem-status/stalls.json (a list, timestamped) and
++new stalls are appended to a ledger as `STALL lane=<name> age=<min>` /
++`STALL agent=<name> age=<min>` lines; a stall that persists across runs is
++NOT re-appended (de-duplicated via stalls.json state); a stall that
++disappears gets a `CLEAR lane=<name>` / `CLEAR agent=<name>` line.
++
++Also reports ~/modem-status/NOTIFY/*.done files (watch_unit.sh drops these
++on unit exit) as pending notifications -- nothing here deletes them, so
++"unacknowledged" == "still present on disk".
++"""
++import argparse
++import glob
++import json
++import os
++import re
++import subprocess
++import sys
++import time
++from datetime import datetime, timezone
++
++HERE = os.path.dirname(os.path.abspath(__file__))
++REPO_ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
++DEFAULT_LANES = os.path.join(HERE, 'lanes.json')
++DEFAULT_SDD_ROOT = os.path.join(REPO_ROOT, 'two_jup', 'sdd_archive', '2026-09-03-txfix')
++DEFAULT_LEDGER = os.path.join(DEFAULT_SDD_ROOT, 'progress.md')
++DEFAULT_STALLS_JSON = os.path.expanduser('~/modem-status/stalls.json')
++DEFAULT_NOTIFY_DIR = os.path.expanduser('~/modem-status/NOTIFY')
++
++HEARTBEAT_STALE_MIN = 25
++
++HEARTBEAT_RE = re.compile(r'^HEARTBEAT\s+(\S+)\s+(\S+)')
++TASK_STATUS_RE = re.compile(r'^Task\s+(\d+):\s*(.*)$')
++
++
++def iso_now():
++    return datetime.now(timezone.utc).astimezone().isoformat(timespec='seconds')
++
++
++def parse_iso(s):
++    try:
++        return datetime.fromisoformat(s)
++    except ValueError:
++        return None
++
++
++def _age_minutes(ts, now):
++    if ts.tzinfo is None:
++        ts = ts.replace(tzinfo=now.tzinfo)
++    return (now - ts).total_seconds() / 60.0
++
++
++def default_is_active(unit):
++    """True if `systemctl --user -q is-active <unit>` succeeds."""
++    try:
++        r = subprocess.run(['systemctl', '--user', '-q', 'is-active', unit],
++                            capture_output=True, timeout=15)
++        return r.returncode == 0
++    except Exception:
++        return False
++
++
++def load_lanes(lanes_path):
++    if not os.path.exists(lanes_path):
++        return []
++    try:
++        with open(lanes_path, encoding='utf-8') as f:
++            data = json.load(f)
++    except (OSError, ValueError):
++        return []
++    return data if isinstance(data, list) else []
++
++
++def check_lanes(lanes, is_active=None, now=None):
++    """Return a dict key -> stall record for lanes whose unit is active and
++    whose log is stale (or missing)."""
++    is_active = is_active or default_is_active
++    now = now or time.time()
++    out = {}
++    for lane in lanes:
++        name = lane.get('name')
++        unit = lane.get('unit')
++        log = lane.get('log')
++        max_age_min = lane.get('max_age_min')
++        if not name or not unit or not log or max_age_min is None:
++            continue
++        if not is_active(unit):
++            continue
++        if os.path.exists(log):
++            age_min = (now - os.path.getmtime(log)) / 60.0
++            missing = False
++        else:
++            age_min = float('inf')
++            missing = True
++        if age_min > max_age_min:
++            key = f'lane:{name}'
++            out[key] = {
++                'key': key, 'type': 'lane', 'name': name, 'unit': unit,
++                'log': log, 'age_min': None if missing else round(age_min, 1),
++                'log_missing': missing, 'max_age_min': max_age_min,
++            }
++    return out
++
++
++def _ledger_files(sdd_root):
++    return sorted(glob.glob(os.path.join(sdd_root, '**', 'progress.md'), recursive=True))
++
++
++def scan_heartbeats(sdd_root, now=None, stale_min=HEARTBEAT_STALE_MIN):
++    """Return dict key -> stall record for agents whose latest heartbeat is
++    stale while their matching Task N: status is dispatched/running."""
++    now = now or datetime.now().astimezone()
++    latest_hb = {}   # agent -> (dt, ledger_path)
++    latest_task = {}  # task_num(str) -> status text (last line wins, per ledger scanned)
++
++    for ledger in _ledger_files(sdd_root):
++        try:
++            text = open(ledger, encoding='utf-8', errors='replace').read()
++        except OSError:
++            continue
++        for line in text.splitlines():
++            hm = HEARTBEAT_RE.match(line.strip())
++            if hm:
++                agent, ts = hm.group(1), hm.group(2)
++                dt = parse_iso(ts)
++                if dt is None:
++                    continue
++                if agent not in latest_hb or dt > latest_hb[agent][0]:
++                    latest_hb[agent] = (dt, ledger)
++                continue
++            tm = TASK_STATUS_RE.match(line.strip())
++            if tm:
++                latest_task[tm.group(1)] = tm.group(2)
++
++    out = {}
++    for agent, (dt, ledger) in latest_hb.items():
++        age_min = _age_minutes(dt, now)
++        if age_min <= stale_min:
++            continue
++        m = re.search(r'(\d+)', agent)
++        if not m:
++            continue
++        status = latest_task.get(m.group(1), '')
++        low = status.lower()
++        if not (low.startswith('dispatched') or low.startswith('running')):
++            continue
++        key = f'agent:{agent}'
++        out[key] = {
++            'key': key, 'type': 'agent', 'name': agent, 'ledger': ledger,
++            'age_min': round(age_min, 1), 'last_status': status,
++        }
++    return out
++
++
++def notify_pending(notify_dir):
++    if not os.path.isdir(notify_dir):
++        return []
++    return sorted(os.path.basename(p) for p in glob.glob(os.path.join(notify_dir, '*.done')))
++
++
++def _append_ledger(ledger, line):
++    os.makedirs(os.path.dirname(ledger) or '.', exist_ok=True)
++    with open(ledger, 'a', encoding='utf-8') as f:
++        f.write(line + '\n')
++
++
++def _load_prev_stalls(stalls_path):
++    if not os.path.exists(stalls_path):
++        return {}
++    try:
++        with open(stalls_path, encoding='utf-8') as f:
++            data = json.load(f)
++    except (OSError, ValueError):
++        return {}
++    if not isinstance(data, list):
++        return {}
++    return {rec['key']: rec for rec in data if 'key' in rec}
++
++
++def run(lanes_path=DEFAULT_LANES, sdd_root=DEFAULT_SDD_ROOT, ledger=DEFAULT_LEDGER,
++        stalls_path=DEFAULT_STALLS_JSON, notify_dir=DEFAULT_NOTIFY_DIR,
++        is_active=None, now_epoch=None, now_dt=None):
++    lanes = load_lanes(lanes_path)
++    lane_stalls = check_lanes(lanes, is_active=is_active, now=now_epoch)
++    agent_stalls = scan_heartbeats(sdd_root, now=now_dt)
++
++    current = {}
++    current.update(lane_stalls)
++    current.update(agent_stalls)
++
++    prev = _load_prev_stalls(stalls_path)
++    ts = iso_now()
++    new_stalls, cleared = [], []
++
++    for key, rec in current.items():
++        if key in prev:
++            rec['first_seen'] = prev[key].get('first_seen', ts)
++        else:
++            rec['first_seen'] = ts
++            new_stalls.append(rec)
++        rec['last_check'] = ts
++
++    for key, rec in prev.items():
++        if key not in current:
++            cleared.append(rec)
++
++    for rec in new_stalls:
++        age = 'unknown' if rec.get('age_min') is None else rec['age_min']
++        if rec['type'] == 'lane':
++            _append_ledger(ledger, f"STALL lane={rec['name']} age={age} at={ts}")
++        else:
++            _append_ledger(ledger, f"STALL agent={rec['name']} age={age} at={ts}")
++
++    for rec in cleared:
++        target_ledger = rec.get('ledger', ledger)
++        if rec['type'] == 'lane':
++            _append_ledger(ledger, f"CLEAR lane={rec['name']} at={ts}")
++        else:
++            _append_ledger(target_ledger, f"CLEAR agent={rec['name']} at={ts}")
++
++    os.makedirs(os.path.dirname(stalls_path) or '.', exist_ok=True)
++    tmp = stalls_path + '.tmp'
++    with open(tmp, 'w', encoding='utf-8') as f:
++        json.dump(list(current.values()), f, indent=2, sort_keys=True)
++    os.replace(tmp, stalls_path)
++
++    return {
++        'stalls': list(current.values()),
++        'new_stalls': new_stalls,
++        'cleared': cleared,
++        'notify_pending': notify_pending(notify_dir),
++    }
++
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument('--lanes', default=DEFAULT_LANES)
++    ap.add_argument('--sdd-root', default=DEFAULT_SDD_ROOT)
++    ap.add_argument('--ledger', default=DEFAULT_LEDGER)
++    ap.add_argument('--stalls-json', default=DEFAULT_STALLS_JSON)
++    ap.add_argument('--notify-dir', default=DEFAULT_NOTIFY_DIR)
++    a = ap.parse_args()
++    result = run(lanes_path=a.lanes, sdd_root=a.sdd_root, ledger=a.ledger,
++                 stalls_path=a.stalls_json, notify_dir=a.notify_dir)
++    print(f"STALL_DETECTOR active={len(result['stalls'])} new={len(result['new_stalls'])} "
++          f"cleared={len(result['cleared'])} notify_pending={len(result['notify_pending'])}")
++    for rec in result['new_stalls']:
++        print(f"  NEW: {rec['key']} age={rec.get('age_min')}")
++    for rec in result['cleared']:
++        print(f"  CLEARED: {rec['key']}")
++    return 0
++
++
++if __name__ == '__main__':
++    sys.exit(main())
+diff --git a/two_jup/agents/watch_unit.sh b/two_jup/agents/watch_unit.sh
+new file mode 100755
+index 00000000..ba51c50
+--- /dev/null
++++ b/two_jup/agents/watch_unit.sh
+@@ -0,0 +1,104 @@
++#!/bin/bash
++# watch_unit.sh -- controller-side watcher for a long-running systemd --user unit.
++# Independent of any agent's own monitoring: this loop lives in its own unit so it
++# survives the ~60 min harness reap and any agent session ending.
++#
++# Usage:
++#   watch_unit.sh <unit> <ledger>            # run the watch loop directly (blocking)
++#   watch_unit.sh --spawn <unit> <ledger>     # launch the loop as its own
++#                                              # systemd-run --user --unit=watch-<unit> unit
++#
++# Direct mode behaviour:
++#   - If <unit> has not appeared (systemd has never heard of it) within 120 s,
++#     append `UNITEXIT <unit> result=missing code=NA at=<ISO8601>` and stop.
++#   - Once it has appeared, poll `systemctl --user -q is-active <unit>` every 30 s.
++#     The first poll that is not "active" is treated as the unit having exited:
++#     append `UNITEXIT <unit> result=<Result> code=<ExecMainStatus> at=<ISO8601>`
++#     to <ledger> and touch ~/modem-status/NOTIFY/<unit>.done (mkdir -p as needed).
++set -u
++
++NOTIFY_DIR="${NOTIFY_DIR:-$HOME/modem-status/NOTIFY}"
++APPEAR_TIMEOUT_S=120
++APPEAR_POLL_S=2
++LOOP_POLL_S=30
++
++iso_now() { date -Is; }
++
++append_ledger() {
++    # $1 = ledger path, $2 = line
++    local ledger="$1" line="$2"
++    mkdir -p "$(dirname "$ledger")" 2>/dev/null
++    printf '%s\n' "$line" >> "$ledger"
++}
++
++touch_done() {
++    # $1 = unit name
++    mkdir -p "$NOTIFY_DIR"
++    touch "$NOTIFY_DIR/$1.done"
++}
++
++unit_exists() {
++    # $1 = unit name; returns 0 if systemd knows about it (any LoadState other than "not-found")
++    local ls
++    ls=$(systemctl --user show "$1" -p LoadState --value 2>/dev/null)
++    [ -n "$ls" ] && [ "$ls" != "not-found" ]
++}
++
++watch_loop() {
++    local unit="$1" ledger="$2"
++    local waited=0
++
++    # Wait for the unit to appear.
++    while ! unit_exists "$unit"; do
++        if [ "$waited" -ge "$APPEAR_TIMEOUT_S" ]; then
++            append_ledger "$ledger" "UNITEXIT $unit result=missing code=NA at=$(iso_now)"
++            touch_done "$unit"
++            return 0
++        fi
++        sleep "$APPEAR_POLL_S"
++        waited=$((waited + APPEAR_POLL_S))
++    done
++
++    # Unit has appeared; poll is-active until it stops being active.
++    while systemctl --user -q is-active "$unit"; do
++        sleep "$LOOP_POLL_S"
++    done
++
++    local result code
++    result=$(systemctl --user show "$unit" -p Result --value 2>/dev/null)
++    code=$(systemctl --user show "$unit" -p ExecMainStatus --value 2>/dev/null)
++    [ -n "$result" ] || result="unknown"
++    [ -n "$code" ] || code="NA"
++
++    append_ledger "$ledger" "UNITEXIT $unit result=$result code=$code at=$(iso_now)"
++    touch_done "$unit"
++    return 0
++}
++
++main() {
++    if [ "${1:-}" = "--spawn" ]; then
++        shift
++        if [ "$#" -lt 2 ]; then
++            echo "usage: watch_unit.sh --spawn <unit> <ledger>" >&2
++            exit 2
++        fi
++        local target_unit="$1" ledger="$2"
++        local abs_script
++        abs_script=$(readlink -f "$0") || { echo "cannot resolve absolute path of $0" >&2; exit 2; }
++        local abs_ledger="$ledger"
++        case "$ledger" in
++            /*) : ;;
++            *) abs_ledger=$(readlink -f "$ledger" 2>/dev/null || echo "$PWD/$ledger") ;;
++        esac
++        exec systemd-run --user --unit="watch-$target_unit" --collect \
++            /bin/bash "$abs_script" "$target_unit" "$abs_ledger"
++    fi
++
++    if [ "$#" -lt 2 ]; then
++        echo "usage: watch_unit.sh <unit> <ledger>  |  watch_unit.sh --spawn <unit> <ledger>" >&2
++        exit 2
++    fi
++    watch_loop "$1" "$2"
++}
++
++main "$@"
+diff --git a/two_jup/tests/test_render_pipeline.py b/two_jup/tests/test_render_pipeline.py
+index cdeda20..8b72a0b 100644
+--- a/two_jup/tests/test_render_pipeline.py
++++ b/two_jup/tests/test_render_pipeline.py
+@@ -1,9 +1,9 @@
+-import os, sys, tempfile
++import json, os, sys, tempfile, time
+ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agents'))
+-from render_pipeline import ledger_state, plan_tasks, render
++from render_pipeline import ledger_state, plan_tasks, render, lanes_block
+ 
+ def test_ledger_state_uses_last_line_per_task():
+     txt = ("# SDD ledger — plan: docs/superpowers/plans/p.md\nTask 1: dispatched implementer\nTask 1: implementer DONE; reviewer dispatched\n"
+            "Task 1: complete (commits a..b, review clean)\nTask 2: dispatched implementer\nTask 3: fix round 1/5 (1 open)\n")
+     s = ledger_state(txt)
+     assert s[1][0] == 'complete' and s[2][0] == 'running' and s[3][0] == 'fix round'
+@@ -11,9 +11,42 @@ def test_ledger_state_uses_last_line_per_task():
+ def test_render_synthetic_tree():
+     with tempfile.TemporaryDirectory() as d:
+         os.makedirs(os.path.join(d, '.superpowers/sdd/x')); os.makedirs(os.path.join(d, 'docs/superpowers/plans')); os.makedirs(os.path.join(d, 'two_jup'))
+         open(os.path.join(d, 'docs/superpowers/plans/p.md'), 'w').write("### Task 1: Build thing\n### Task 2: Test thing\n")
+         open(os.path.join(d, '.superpowers/sdd/x/progress.md'), 'w').write("# SDD ledger — plan: docs/superpowers/plans/p.md\n- Ruling: keep it — why — cost\nTask 1: complete (x..y, review clean)\nTask 2: dispatched implementer\n")
+         open(os.path.join(d, 'two_jup/SESSION_20260830_AUTONOMOUS.md'), 'w').write("## §76 KICK RESULT\n## §77 SCORER\n")
+-        out = render(d, os.path.join(d, 'out', 'pipeline.html'), sentinel=os.path.join(d, 'none.log'))
++        out = render(d, os.path.join(d, 'out', 'pipeline.html'), sentinel=os.path.join(d, 'none.log'),
++                     stalls_path=os.path.join(d, 'nostalls.json'), notify_dir=os.path.join(d, 'nonotify'))
+         h = open(out).read()
+         assert 'Build thing' in h and 'complete' in h and 'running' in h and '§77 SCORER' in h and 'Rulings (1)' in h
++        assert 'Lanes / stalls' in h and 'no lanes registered' in h
++
++def test_lanes_block_shows_lane_state_and_stalls():
++    with tempfile.TemporaryDirectory() as d:
++        agents_dir = os.path.join(d, 'two_jup', 'agents')
++        os.makedirs(agents_dir)
++        log_path = os.path.join(d, 'somelane.log')
++        open(log_path, 'w').write('x')
++        old_ts = time.time() - 3600
++        os.utime(log_path, (old_ts, old_ts))
++        json.dump([{'name': 'simlane', 'unit': 'sim-fake-unit', 'log': log_path, 'max_age_min': 15}],
++                   open(os.path.join(agents_dir, 'lanes.json'), 'w'))
++        stalls_path = os.path.join(d, 'stalls.json')
++        json.dump([{'key': 'lane:simlane', 'type': 'lane', 'name': 'simlane', 'age_min': 60.0}],
++                   open(stalls_path, 'w'))
++        notify_dir = os.path.join(d, 'NOTIFY')
++        os.makedirs(notify_dir)
++        open(os.path.join(notify_dir, 'watch-sim-fake-unit.done'), 'w').close()
++
++        html_out = lanes_block(d, stalls_path=stalls_path, notify_dir=notify_dir, is_active=lambda u: True)
++        assert 'simlane' in html_out and 'sim-fake-unit' in html_out and 'active' in html_out
++        assert 'Stalls (1)' in html_out and 'lane:simlane' in html_out
++        assert 'watch-sim-fake-unit.done' in html_out
++
++def test_lanes_block_no_lanes_no_stalls():
++    with tempfile.TemporaryDirectory() as d:
++        os.makedirs(os.path.join(d, 'two_jup', 'agents'))
++        html_out = lanes_block(d, stalls_path=os.path.join(d, 'missing_stalls.json'),
++                                notify_dir=os.path.join(d, 'missing_notify'), is_active=lambda u: False)
++        assert 'no lanes registered' in html_out
++        assert 'stalls.json: none' in html_out
++        assert 'NOTIFY: none pending' in html_out
+diff --git a/two_jup/tests/test_stall_detector.py b/two_jup/tests/test_stall_detector.py
+new file mode 100644
+index 00000000..69980ab
+--- /dev/null
++++ b/two_jup/tests/test_stall_detector.py
+@@ -0,0 +1,125 @@
++import json
++import os
++import sys
++import tempfile
++import time
++from datetime import datetime, timedelta, timezone
++
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agents'))
++from stall_detector import run, scan_heartbeats  # noqa: E402
++
++
++def _write(path, text):
++    os.makedirs(os.path.dirname(path), exist_ok=True)
++    with open(path, 'w', encoding='utf-8') as f:
++        f.write(text)
++
++
++def test_lane_stall_then_clear():
++    with tempfile.TemporaryDirectory() as d:
++        lanes_path = os.path.join(d, 'lanes.json')
++        log_path = os.path.join(d, 'lane.log')
++        ledger = os.path.join(d, 'sdd', 'progress.md')
++        stalls_json = os.path.join(d, 'stalls.json')
++        notify_dir = os.path.join(d, 'NOTIFY')
++
++        _write(log_path, 'x')
++        old_ts = time.time() - 20 * 60  # 20 min old
++        os.utime(log_path, (old_ts, old_ts))
++        _write(lanes_path, json.dumps([
++            {'name': 'testlane', 'unit': 'fake-unit', 'log': log_path, 'max_age_min': 10}
++        ]))
++        _write(ledger, "# ledger\n")
++
++        always_active = lambda unit: True  # noqa: E731
++
++        # Run 1: should produce exactly one STALL line.
++        result1 = run(lanes_path=lanes_path, sdd_root=os.path.join(d, 'sdd'),
++                       ledger=ledger, stalls_path=stalls_json, notify_dir=notify_dir,
++                       is_active=always_active)
++        text1 = open(ledger).read()
++        stall_lines1 = [l for l in text1.splitlines() if l.startswith('STALL lane=testlane')]
++        assert len(stall_lines1) == 1
++        assert len(result1['new_stalls']) == 1
++
++        # Run 2 (log still stale): no new STALL line appended.
++        result2 = run(lanes_path=lanes_path, sdd_root=os.path.join(d, 'sdd'),
++                       ledger=ledger, stalls_path=stalls_json, notify_dir=notify_dir,
++                       is_active=always_active)
++        text2 = open(ledger).read()
++        stall_lines2 = [l for l in text2.splitlines() if l.startswith('STALL lane=testlane')]
++        assert len(stall_lines2) == 1  # still just the one from run 1
++        assert len(result2['new_stalls']) == 0
++
++        # Touch the log fresh -> stall clears, CLEAR line appended.
++        os.utime(log_path, None)
++        result3 = run(lanes_path=lanes_path, sdd_root=os.path.join(d, 'sdd'),
++                       ledger=ledger, stalls_path=stalls_json, notify_dir=notify_dir,
++                       is_active=always_active)
++        text3 = open(ledger).read()
++        clear_lines = [l for l in text3.splitlines() if l.startswith('CLEAR lane=testlane')]
++        assert len(clear_lines) == 1
++        assert len(result3['cleared']) == 1
++        assert result3['stalls'] == []
++
++
++def test_lane_not_stalled_when_unit_inactive():
++    with tempfile.TemporaryDirectory() as d:
++        lanes_path = os.path.join(d, 'lanes.json')
++        log_path = os.path.join(d, 'lane.log')
++        ledger = os.path.join(d, 'sdd', 'progress.md')
++        stalls_json = os.path.join(d, 'stalls.json')
++        notify_dir = os.path.join(d, 'NOTIFY')
++
++        _write(log_path, 'x')
++        old_ts = time.time() - 999 * 60
++        os.utime(log_path, (old_ts, old_ts))
++        _write(lanes_path, json.dumps([
++            {'name': 'idlelane', 'unit': 'gone-unit', 'log': log_path, 'max_age_min': 10}
++        ]))
++        _write(ledger, "# ledger\n")
++
++        never_active = lambda unit: False  # noqa: E731
++        result = run(lanes_path=lanes_path, sdd_root=os.path.join(d, 'sdd'),
++                     ledger=ledger, stalls_path=stalls_json, notify_dir=notify_dir,
++                     is_active=never_active)
++        assert result['stalls'] == []
++
++
++def test_heartbeat_stall_flagged_when_dispatched_and_stale():
++    with tempfile.TemporaryDirectory() as d:
++        sdd_root = os.path.join(d, 'sdd')
++        ledger = os.path.join(sdd_root, 'progress.md')
++        stale_dt = datetime.now(timezone.utc).astimezone() - timedelta(minutes=40)
++        _write(ledger,
++               "Task 3: dispatched\n"
++               f"HEARTBEAT task3 {stale_dt.isoformat(timespec='seconds')} working\n")
++        now_dt = datetime.now(timezone.utc).astimezone()
++        stalls = scan_heartbeats(sdd_root, now=now_dt)
++        assert 'agent:task3' in stalls
++        assert stalls['agent:task3']['age_min'] > 25
++
++
++def test_heartbeat_not_flagged_when_recent():
++    with tempfile.TemporaryDirectory() as d:
++        sdd_root = os.path.join(d, 'sdd')
++        ledger = os.path.join(sdd_root, 'progress.md')
++        recent_dt = datetime.now(timezone.utc).astimezone() - timedelta(minutes=2)
++        _write(ledger,
++               "Task 3: dispatched\n"
++               f"HEARTBEAT task3 {recent_dt.isoformat(timespec='seconds')} working\n")
++        stalls = scan_heartbeats(sdd_root)
++        assert 'agent:task3' not in stalls
++
++
++def test_heartbeat_not_flagged_when_task_complete():
++    with tempfile.TemporaryDirectory() as d:
++        sdd_root = os.path.join(d, 'sdd')
++        ledger = os.path.join(sdd_root, 'progress.md')
++        stale_dt = datetime.now(timezone.utc).astimezone() - timedelta(minutes=40)
++        _write(ledger,
++               "Task 3: dispatched\n"
++               f"HEARTBEAT task3 {stale_dt.isoformat(timespec='seconds')} working\n"
++               "Task 3: complete (all done)\n")
++        stalls = scan_heartbeats(sdd_root)
++        assert 'agent:task3' not in stalls

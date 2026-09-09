@@ -1,0 +1,20 @@
+live-window: dur=723.2s live_end=718.0s wedged=True
+=== cap  live 718s/723s [WEDGE]  slot axis [41894, 917269] (875376 slots)  validity_frac=1.0000  run_bins={'1': 35342, '2': 16140, '3-4': 632, '5-20': 146, '21-100': 0, '>100': 0} ===
+  [ALL-LOSS] events=71090  null(p95, max over lags 1-128, a sampling floor -- shuffling destroys run structure, so it is NOT a burst-structure null)=0.0039
+    top8 lags: 65:+0.7550, 97:+0.5615, 32:+0.5259, 33:+0.4885, 98:+0.4502, 8:+0.3261, 57:+0.3168, 73:+0.3039
+    top5 with harmonic family (nearest k x 32 vs k x 33, signed slip):
+       65: +0.7550   2x32=64 (slip +1)   2x33=66 (slip -1)
+       97: +0.5615   3x32=96 (slip +1)   3x33=99 (slip -2)
+       32: +0.5259   1x32=32 (slip +0)   1x33=33 (slip -1)
+       33: +0.4885   1x32=32 (slip +1)   1x33=33 (slip +0)
+       98: +0.4502   3x32=96 (slip +2)   3x33=99 (slip -1)
+    lag16=-0.0855  lag32=+0.5259  lag33=+0.4885  lag64=+0.2162
+  [SINGLES-ONLY] events=35342  null(p95, max over lags 1-128, a sampling floor -- shuffling destroys run structure, so it is NOT a burst-structure null)=0.0038
+    top8 lags: 65:+0.6265, 97:+0.3665, 32:+0.3167, 57:+0.2788, 8:+0.2755, 33:+0.2684, 122:+0.2622, 73:+0.2453
+    top5 with harmonic family (nearest k x 32 vs k x 33, signed slip):
+       65: +0.6265   2x32=64 (slip +1)   2x33=66 (slip -1)
+       97: +0.3665   3x32=96 (slip +1)   3x33=99 (slip -2)
+       32: +0.3167   1x32=32 (slip +0)   1x33=33 (slip -1)
+       57: +0.2788   2x32=64 (slip -7)   2x33=66 (slip -9)
+        8: +0.2755   1x32=32 (slip -24)   1x33=33 (slip -25)
+    lag16=-0.0421  lag32=+0.3167  lag33=+0.2684  lag64=-0.0069

@@ -1,0 +1,7 @@
+buffer 1: 32768 words; buffer 2: 32768 words
+  [PASS] 1 LIVENESS     1797 distinct I values, non-monotonic
+  [PASS] 2 SELECTOR     20000/20000 words differ between selectors
+  [PASS] 3 CROSS-CHECK  exact digest match at marker+1 (all 16 symbols)
+  [PASS] 4 MARKERS      modal spacing 12320 (2/2 intervals) -> symbol domain (ref 12337); expected 12337
+
+DDRCAP_PC ALL PASS -- captures may be interpreted

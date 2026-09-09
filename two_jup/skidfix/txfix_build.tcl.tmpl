@@ -1,0 +1,60 @@
+# build_txfix.tcl -- full-flow build for a TXFIX fix-variant image (F1/F2/F3).
+# Copy of jupiter_byte_ddrcap2_build/build_ddrcap.tcl: does NOT re-wire the BD
+# (the injector patches the TxRxCompo_ip_v1_0 netlist sources in place, no BD
+# change), regenerates output products, resets and re-runs synth/impl from
+# scratch, produces BOOT.BIN. JOBS comes from env (build_txfix.sh sets it,
+# default 6) so two variants can run concurrently at JOBS=3 each without
+# oversubscribing hdl-dev-2 (8 cores). Keeps timing_gate.tcl usage, bootgen,
+# and the BYTE_BUILD_DONE md5= marker exactly as build_ddrcap.tcl does, then
+# adds a final TXFIX_BUILD_DONE line carrying the variant and the modem-scoped
+# WNS from timing_gate.tcl's TIMING_GATE_WNS line ($_mwns, in caller scope
+# after `source`).
+#
+# Run with cwd = <build_dir>/hdl_prj_jupiter_composite/vivado_ip_prj, via
+#   vivado -mode batch -notrace -source <build_dir>/build_txfix.tcl
+set _jobs 6
+if {[info exists ::env(JOBS)] && [string is integer -strict $::env(JOBS)]} {
+    set _jobs $::env(JOBS)
+}
+set _variant "UNKNOWN"
+if {[info exists ::env(VARIANT)]} { set _variant $::env(VARIANT) }
+puts "=== TXFIX_BUILD: variant=$_variant jobs=$_jobs ==="
+
+open_project vivado_prj.xpr
+update_ip_catalog -rebuild -scan_changes
+report_ip_status -quiet
+set_property top system_top [current_fileset]
+generate_target all [get_files system.bd]
+update_compile_order -fileset sources_1
+set_param general.maxThreads $_jobs
+catch {reset_run impl_1}; catch {reset_run synth_1}
+foreach r [get_runs -quiet system_*_synth_1] { catch { reset_run $r } }
+puts "=== synth ==="; launch_runs synth_1 -jobs $_jobs; wait_on_run synth_1
+if {[get_property PROGRESS [get_runs synth_1]] ne "100%"} { puts "SYNTH_FAILED [get_property STATUS [get_runs synth_1]]"; exit 1 }
+puts "=== pre-impl timing gate ==="; source [file join [file dirname [info script]] timing_gate.tcl]
+# TXFIX: optional stronger implementation strategy (env IMPL_STRATEGY=explore); default = unchanged flow.
+if {[info exists ::env(IMPL_STRATEGY)] && $::env(IMPL_STRATEGY) eq "explore"} {
+    puts "=== impl strategy: explore (ExtraTimingOpt place, AggressiveExplore route + phys_opt pre/post route) ==="
+    set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE ExtraTimingOpt [get_runs impl_1]
+    set_property STEPS.PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
+    set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
+    set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
+    set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
+    set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
+}
+puts "=== impl+bit ==="; launch_runs impl_1 -to_step write_bitstream -jobs $_jobs; wait_on_run impl_1
+if {[get_property PROGRESS [get_runs impl_1]] ne "100%"} { puts "IMPL_FAILED [get_property STATUS [get_runs impl_1]]"; exit 1 }
+# TXFIX: routed timing is the authoritative gate -- refuse to produce BOOT.BIN from a WNS-failing implementation.
+set _rwns [get_property STATS.WNS [get_runs impl_1]]; set _rtns [get_property STATS.TNS [get_runs impl_1]]
+puts "TXFIX_ROUTED_WNS wns=$_rwns tns=$_rtns"
+if {$_rwns < 0} { puts "TXFIX_ROUTED_TIMING_FAIL wns=$_rwns"; exit 1 }
+set b projects/common/boot/jupiter_sdr; file mkdir boot
+file copy -force [get_property DIRECTORY [get_runs impl_1]]/system_top.bit boot/system_top.bit
+foreach f {u-boot.elf zynq.bif fsbl.elf bl31.elf pmufw.elf regs.init} { file copy -force $b/$f boot/$f }
+cd boot; exec bootgen -arch zynqmp -image zynq.bif -o BOOT.BIN -w
+set _bb_md5 [lindex [exec md5sum BOOT.BIN] 0]
+puts "BYTE_BUILD_DONE md5=$_bb_md5"
+set _wns "UNKNOWN"
+if {[info exists _mwns]} { set _wns $_mwns }
+puts "TXFIX_BUILD_DONE variant=$_variant md5=$_bb_md5 wns=$_wns"
+exit

@@ -1,0 +1,6 @@
+sel=9 name=sel9_leg offset_s=0 dry=0
+capture_exit=4
+bytes=0 (need >= 536870912)
+pre_capTAP= post_capTAP= (need 76C5315B both)
+credited=no
+ts=2026-09-03T19:22:43-04:00

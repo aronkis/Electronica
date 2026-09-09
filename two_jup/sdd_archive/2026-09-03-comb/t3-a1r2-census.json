@@ -1,0 +1,126 @@
+{
+  "path": "comb/runs/20260903_191410_legA_a1r2/cap/frames.bin",
+  "usable": true,
+  "dur": 723.230232156,
+  "live_end": 718.0,
+  "wedged": true,
+  "fail_class_census": {
+    "counts": {
+      "OK": 804287,
+      "MAGIC": 48882,
+      "LEN": 2106,
+      "CRC": 17469,
+      "ZEROTAIL": 0
+    },
+    "n": 872744,
+    "degenerate_all_ok": false
+  },
+  "fail_class_crc_ok_crosstab": {
+    "table": {
+      "crc_ok=0": {
+        "OK": 0,
+        "MAGIC": 48882,
+        "LEN": 2106,
+        "CRC": 17469,
+        "ZEROTAIL": 0
+      },
+      "crc_ok=1": {
+        "OK": 804287,
+        "MAGIC": 0,
+        "LEN": 0,
+        "CRC": 0,
+        "ZEROTAIL": 0
+      }
+    },
+    "crc_ok0_fail_class0": 0,
+    "crc_ok1_fail_class_nonzero": 0
+  },
+  "run_bins": {
+    "1": 35342,
+    "2": 16140,
+    "3-4": 632,
+    "5-20": 146,
+    "21-100": 0,
+    ">100": 0
+  },
+  "validity_frac": 0.9999987566611876,
+  "n_slots": 875376,
+  "slot_lo": 41894,
+  "slot_hi": 917269,
+  "failhdr": {
+    "header": {
+      "magic": "QFAILH01",
+      "rec_bytes": 32,
+      "n_records": 65536,
+      "t_dump_ns": 21118781521195,
+      "total": 73817,
+      "flags": 1,
+      "wrapped": true,
+      "size_on_disk": 2097184,
+      "size_ok": true
+    },
+    "n_raw": 65536,
+    "n_windowed": 61599,
+    "onset_histogram": {
+      "bin_bytes": 64,
+      "n_none": 61599,
+      "n_have": 0,
+      "hist": {}
+    },
+    "class4_split": {
+      "n_class4": 0,
+      "delivery_hole_fzo0": 0,
+      "alignloss_fzo_gt0": 0
+    }
+  },
+  "txlog": {
+    "header": {
+      "magic": "QTXLOG02",
+      "rec_bytes": 32,
+      "n_records": 907508,
+      "t_dump_ns": 15685135122149,
+      "total": 907508,
+      "flags": 0,
+      "wrapped": false,
+      "size_on_disk": 29040288,
+      "size_ok": true
+    }
+  },
+  "join": {
+    "n_lost_rx": 71090,
+    "never_sent": 0,
+    "sent_not_decoded": 71090,
+    "decoded_not_delivered": "UNCLASSIFIED (no delivery-confirmation source given)",
+    "unjoinable_time": 71090,
+    "txlog_t_submit_span_ns": [
+      14956262885152,
+      15685109074504
+    ],
+    "sample_never_sent": [],
+    "sample_sent_not_decoded": [
+      41902,
+      41903,
+      41910,
+      41935,
+      41936,
+      41943,
+      41944,
+      41968,
+      41976,
+      42000
+    ],
+    "sample_unjoinable_time": [
+      41902,
+      41903,
+      41910,
+      41935,
+      41936,
+      41943,
+      41944,
+      41968,
+      41976,
+      42000
+    ],
+    "sample_decoded_not_delivered": []
+  }
+}

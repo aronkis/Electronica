@@ -1,0 +1,1 @@
+INFORMATIVE window_s=600 rate_fps=1245.0 d104=747000 rearms_in_window=0

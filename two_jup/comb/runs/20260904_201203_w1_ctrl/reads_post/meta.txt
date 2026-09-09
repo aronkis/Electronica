@@ -1,0 +1,5 @@
+board=148 n=3 period=10 freeze=1 r4b=1 fixctl_base=0x0 hold=0 dry=0
+addrs=0x214 0x218 0x21C 0x220 0x224 0x228 0x22C 0x230 0x234
+names=witA witB cSS cRH cCFC cCS cPD cPC r4bWit
+aux=0x104 0x124 naux=2 (NOT frozen; sampled aux_lag_s after the freeze instant)
+ts=2026-09-04T20:16:04-04:00

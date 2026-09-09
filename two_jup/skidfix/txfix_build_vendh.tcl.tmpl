@@ -1,0 +1,128 @@
+# txfix_build_vendh.tcl -- full-flow build for a TXFIX fix-variant image on the
+# 146 TMR/vendh lineage (source kit jupiter_byte_tmr146_build).
+#
+# WHY A SEPARATE TEMPLATE (read this before "unifying" it with txfix_build.tcl):
+#
+# 1. The 146 image ec414d2df8bc ("v_endh") has NO RTL of its own.  It was made on
+#    2026-08-25 by `copy_run` off jupiter_byte_tmr146_build's synth_1 -- the SAME
+#    synthesis checkpoint as 4be9286ca111 -- differing from it ONLY in
+#      place_design -directive ExtraNetDelay_high
+#    (evidence: jupiter_byte_tmr146_build/hdl_prj_jupiter_composite/vivado_ip_prj/
+#    vivado_prj.runs/v_endh/system_top.tcl:221, and SINGLES_CAMPAIGN.md
+#    "2026-08-25 -- A4-CHANGED option (c) groundwork").  Injecting the TXFIX RTL
+#    patch invalidates that checkpoint, so the vendh PLACEMENT cannot be
+#    reproduced -- only the DIRECTIVE carries forward.  What this flow builds is
+#    "tmrfresh RTL + TXFIX, re-synthesized, placed ExtraNetDelay_high", not
+#    "vendh + TXFIX".  The byte-plane margins that made v_endh rank 1 in the
+#    placement study were measured on that one placement and do not transfer.
+#
+# 2. IMPL_STRATEGY=explore is DELIBERATELY NOT USED here.  Its first action is
+#    `set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE ExtraTimingOpt`, which would
+#    OVERWRITE the one directive that defines this lineage -- and the campaign's
+#    own wave-1 finding is that ExtraTimingOpt is placement-bit-identical to
+#    Default on this design (timing already met), so it would buy nothing while
+#    discarding vendh.  The hook is kept below for parity with txfix_build.tcl
+#    but it refuses to clobber the place directive; if routed WNS comes back
+#    negative the fallback is stronger PHYS_OPT/ROUTE directives, never a
+#    different place directive.
+#
+# 3. The tmr146 project has nine impl runs parented on synth_1 (v_aslh, v_aslm,
+#    v_ebp, v_endh, v_endl, v_eppo, v_eto, v_expl, v_wldbp).  txfix_build.tcl's
+#    `catch {reset_run synth_1}` would silently swallow a refusal-to-reset caused
+#    by those children, and the failure mode is the worst kind: a build that
+#    completes and passes the WNS gate on a STALE netlist.  They are deleted
+#    first, and the reset is then NOT swallowed -- a failure to reset synth_1 is
+#    fatal here.
+#
+# 4. TXFIX_IPSHARED_VERIFY.  tmr_attr_inject.sh's measured 2026-08-06 lesson is
+#    that the loose .v copies are not what Vivado synthesizes: the BD extracts
+#    the packaged IP zip into vivado_prj.gen/sources_1/bd/system/ipshared/<h>/hdl/
+#    and synthesizes THAT.  `generate_target all` below re-extracts it from the
+#    zip, i.e. AFTER the kit-maker's verification has already passed.  So the
+#    marker is re-checked in the ipshared tree, in-build, after generate_target.
+#    This is the only gate that closes the "kit verified" -> "bitstream fixed" gap.
+#
+# Everything else is txfix_build.tcl verbatim: JOBS from env, timing_gate.tcl,
+# the TXFIX_ROUTED_TIMING_FAIL routed-WNS gate, bootgen, BYTE_BUILD_DONE md5=
+# and the final TXFIX_BUILD_DONE line.
+#
+# Run with cwd = <build_dir>/hdl_prj_jupiter_composite/vivado_ip_prj, via
+#   vivado -mode batch -notrace -source <build_dir>/build_txfix.tcl
+set _jobs 6
+if {[info exists ::env(JOBS)] && [string is integer -strict $::env(JOBS)]} {
+    set _jobs $::env(JOBS)
+}
+set _variant "UNKNOWN"
+if {[info exists ::env(VARIANT)]} { set _variant $::env(VARIANT) }
+set _place_directive "ExtraNetDelay_high"
+puts "=== TXFIX_BUILD: variant=$_variant jobs=$_jobs lineage=vendh place_directive=$_place_directive ==="
+
+open_project vivado_prj.xpr
+
+# --- (3) drop the placement-variant impl runs, then reset synth_1 for real ----
+foreach r [get_runs -quiet v_*] {
+    puts "TXFIX_VENDH deleting placement-variant run: $r"
+    if {[catch {delete_run $r} _e]} { puts "TXFIX_VENDH_DELETE_RUN_FAILED $r: $_e"; exit 1 }
+}
+set _leftover [get_runs -quiet v_*]
+if {[llength $_leftover] > 0} { puts "TXFIX_VENDH_RUNS_REMAIN $_leftover"; exit 1 }
+
+update_ip_catalog -rebuild -scan_changes
+report_ip_status -quiet
+set_property top system_top [current_fileset]
+generate_target all [get_files system.bd]
+update_compile_order -fileset sources_1
+
+# --- (4) TXFIX_IPSHARED_VERIFY: the extracted copy is what synthesis reads -----
+array set _want {
+    F1 {TxRxCompo_ip_src_Data_Bits_FIFO.v TXFIX_F1}
+    F2 {TxRxCompo_ip_src_Data_Bits_FIFO.v TXFIX_F1 TxRxCompo_ip_src_RAM_Frame_Status_Indicator.v TXFIX_F2}
+    F3 {TxRxCompo_ip_src_Data_Bits_FIFO.v TXFIX_F1 TxRxCompo_ip_src_RAM_Frame_Status_Indicator.v TXFIX_F2 TxRxCompo_ip_src_Bit_Packetizer.v TXFIX_F3 TxRxCompo_ip_src_MATLAB_Function1.v TXFIX_F3}
+}
+if {![info exists _want($_variant)]} { puts "TXFIX_IPSHARED_VERIFY_FAIL unknown variant $_variant"; exit 1 }
+set _nchecked 0
+foreach {_f _m} $_want($_variant) {
+    set _hits [glob -nocomplain "vivado_prj.gen/sources_1/bd/system/ipshared/*/hdl/$_f"]
+    if {[llength $_hits] == 0} { puts "TXFIX_IPSHARED_VERIFY_FAIL no extracted copy of $_f under vivado_prj.gen"; exit 1 }
+    foreach _h $_hits {
+        set _fh [open $_h r]; set _txt [read $_fh]; close $_fh
+        if {[string first $_m $_txt] < 0} {
+            puts "TXFIX_IPSHARED_VERIFY_FAIL $_h lacks $_m -- the zip re-extraction lost the fix"; exit 1
+        }
+        incr _nchecked
+    }
+}
+puts "TXFIX_IPSHARED_VERIFY_OK variant=$_variant files_checked=$_nchecked"
+
+set_param general.maxThreads $_jobs
+catch {reset_run impl_1}
+if {[catch {reset_run synth_1} _e]} { puts "TXFIX_VENDH_RESET_SYNTH_FAILED $_e"; exit 1 }
+foreach r [get_runs -quiet system_*_synth_1] { catch { reset_run $r } }
+puts "=== synth ==="; launch_runs synth_1 -jobs $_jobs; wait_on_run synth_1
+if {[get_property PROGRESS [get_runs synth_1]] ne "100%"} { puts "SYNTH_FAILED [get_property STATUS [get_runs synth_1]]"; exit 1 }
+puts "=== pre-impl timing gate ==="; source [file join [file dirname [info script]] timing_gate.tcl]
+
+# --- (1)(2) the vendh directive, set unconditionally --------------------------
+set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE $_place_directive [get_runs impl_1]
+puts "TXFIX_VENDH_PLACE_DIRECTIVE [get_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE [get_runs impl_1]]"
+if {[info exists ::env(IMPL_STRATEGY)] && $::env(IMPL_STRATEGY) eq "explore"} {
+    puts "TXFIX_VENDH_IMPL_STRATEGY_REFUSED explore would set PLACE_DESIGN=ExtraTimingOpt and discard the vendh directive"
+    exit 1
+}
+
+puts "=== impl+bit ==="; launch_runs impl_1 -to_step write_bitstream -jobs $_jobs; wait_on_run impl_1
+if {[get_property PROGRESS [get_runs impl_1]] ne "100%"} { puts "IMPL_FAILED [get_property STATUS [get_runs impl_1]]"; exit 1 }
+# TXFIX: routed timing is the authoritative gate -- refuse to produce BOOT.BIN from a WNS-failing implementation.
+set _rwns [get_property STATS.WNS [get_runs impl_1]]; set _rtns [get_property STATS.TNS [get_runs impl_1]]
+puts "TXFIX_ROUTED_WNS wns=$_rwns tns=$_rtns"
+if {$_rwns < 0} { puts "TXFIX_ROUTED_TIMING_FAIL wns=$_rwns"; exit 1 }
+set b projects/common/boot/jupiter_sdr; file mkdir boot
+file copy -force [get_property DIRECTORY [get_runs impl_1]]/system_top.bit boot/system_top.bit
+foreach f {u-boot.elf zynq.bif fsbl.elf bl31.elf pmufw.elf regs.init} { file copy -force $b/$f boot/$f }
+cd boot; exec bootgen -arch zynqmp -image zynq.bif -o BOOT.BIN -w
+set _bb_md5 [lindex [exec md5sum BOOT.BIN] 0]
+puts "BYTE_BUILD_DONE md5=$_bb_md5"
+set _wns "UNKNOWN"
+if {[info exists _mwns]} { set _wns $_mwns }
+puts "TXFIX_BUILD_DONE variant=$_variant md5=$_bb_md5 wns=$_wns place_directive=$_place_directive"
+exit

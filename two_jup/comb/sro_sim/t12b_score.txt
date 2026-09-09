@@ -1,0 +1,596 @@
+=== t12b scoring 2026-09-04T19:05:35-04:00 ===
+
+########## G16 wrapper provenance (every leg) ##########
+-- t12b_bm10c.log
+   SRO_RX b_m10c packets=424 nrxw=80984 pushes=5303237 pops=5303237 anom=12343 rhPE=278 rhPF=0 pdPof=0 pdPE=0
+-- t12b_bp000c.log
+-- t12b_bp10.log
+   SRO_RX b_p10 packets=427 nrxw=81557 pushes=5303369 pops=5303337 anom=12569 rhPE=178 rhPF=21 pdPof=0 pdPE=0
+-- t12b_genc.log
+-- t12b_gen.log
+-- t12b_lol.log
+   WRAP4B_FILE wrap_byte_sro4b.v t12b
+   WRAP4B_DEFINE RXFIX_R4B
+   SRO_RX r4b_lol packets=414 nrxw=79074 pushes=5154843 pops=5154834 anom=11037 rhPE=0 rhPF=0 pdPof=0 pdPE=0
+-- t12b_m10c.log
+   WRAP4B_FILE wrap_byte_sro4b.v t12b
+   WRAP4B_DEFINE RXFIX_R4B
+   SRO_RX r4b_m10c packets=425 nrxw=81175 pushes=5303237 pops=5303228 anom=12343 rhPE=227 rhPF=0 pdPof=0 pdPE=0
+-- t12b_m10.log
+   WRAP4B_FILE wrap_byte_sro4b.v t12b
+   WRAP4B_DEFINE RXFIX_R4B
+   SRO_RX r4b_m10 packets=426 nrxw=81256 pushes=5303460 pops=5303451 anom=11805 rhPE=34 rhPF=17 pdPof=0 pdPE=0
+-- t12b_m40.log
+   WRAP4B_FILE wrap_byte_sro4b.v t12b
+   WRAP4B_DEFINE RXFIX_R4B
+   SRO_RX r4b_m40 packets=425 nrxw=81093 pushes=5303244 pops=5303235 anom=14490 rhPE=70 rhPF=0 pdPof=0 pdPE=0
+-- t12b_p000.log
+   WRAP4B_FILE wrap_byte_sro4b.v t12b
+   WRAP4B_DEFINE RXFIX_R4B
+   SRO_RX r4b_p000 packets=424 nrxw=80984 pushes=5303482 pops=5303473 anom=325835 rhPE=34 rhPF=0 pdPof=0 pdPE=0
+-- t12b_p10.log
+   WRAP4B_FILE wrap_byte_sro4b.v t12b
+   WRAP4B_DEFINE RXFIX_R4B
+   SRO_RX r4b_p10 packets=427 nrxw=81557 pushes=5303362 pops=5303330 anom=12567 rhPE=178 rhPF=28 pdPof=0 pdPE=0
+-- t12b_smoke.log
+   WRAP4B_FILE wrap_byte_sro4b.v t12b
+   WRAP4B_DEFINE RXFIX_R4B
+   SRO_RX sk4b_p000 packets=21 nrxw=4011 pushes=333283 pops=333274 anom=17307 rhPE=34 rhPF=0 pdPof=0 pdPE=0
+-- t12b_tm10.log
+   WRAP4B_FILE wrap_byte_sro4b.v t12b
+   WRAP4B_DEFINE RXFIX_R4B
+   SRO_RX r4b_tm10 packets=164 nrxw=31324 pushes=2059921 pops=2059912 anom=4707 rhPE=0 rhPF=0 pdPof=0 pdPE=0
+
+########## unit exit status ##########
+     t12b_bp000c.service loaded active running /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/obj_byte_sro/Vwrap_byte_sro rx n_p000c.iq 5919840 8400 b_p000c 2 0
+
+########## G1 content identity (n_p000 ONLY -- this is the gate row) ##########
+r4b_p000: 424 delivered frames, 423 with magic
+b_p000: 424 delivered frames, 423 with magic
+  common seq: 423   only in r4b_p000: []   only in b_p000: []
+  frames without magic: r4b_p000 1 at sidx [296025]; b_p000 1 at sidx [296025]
+  CONTENT (nwords,hash,user) equal on 423/423 common seq; mismatching seq: []
+  sidx delta (r4b_p000 - b_p000) over 423 common seq: min=0 max=32 mode=32 (406/423 frames)
+    distribution: 0:10 4:1 8:1 12:1 16:1 20:1 24:1 28:1 32:406
+  PRE-FILL LATENCY: NOT constant input samples (8 symbols at 4 sps)
+T12_IDENT PASS content_equal=True same_seq_set=True
+
+########## DIAGNOSTIC ONLY, NOT A GATE ROW: t12_ident on the SRO legs ##########
+## The baseline LOSES frames on these legs by design (b_m10 loses 46), so
+## 'same_seq_set=False' and 'T12_IDENT FAIL' are EXPECTED here and must not be
+## carried into the gate table.  G1 is n_p000 only.
+---- DIAGNOSTIC r4b_m10 vs b_m10
+r4b_m10: 425 delivered frames, 423 with magic
+b_m10: 425 delivered frames, 386 with magic
+  common seq: 386   only in r4b_m10: [255, 257, 263, 265, 266, 271, 273, 296, 304, 306, 312, 314, 320, 322, 328, 330, 336, 337, 338, 344, 345, 346, 352, 354, 377, 379, 385, 387, 393, 395, 401, 403, 409, 411, 417, 419, 420]   only in b_m10: []
+  frames without magic: r4b_m10 2 at sidx [197361, 246817]; b_m10 39 at sidx [197361, 246817, 12826605, 12925145, 13221265, 13319805]
+  CONTENT (nwords,hash,user) equal on 379/386 common seq; mismatching seq: [279, 281, 287, 289, 360, 362, 370]
+    seq 279: r4b_m10 191,4c90b0aa,1  b_m10 191,069ad14c,1
+    seq 281: r4b_m10 191,8e9806f3,1  b_m10 191,898348fb,1
+    seq 287: r4b_m10 191,cd8d7d5a,1  b_m10 191,d1be7604,1
+    seq 289: r4b_m10 191,954d0e01,1  b_m10 191,1a661623,1
+    seq 360: r4b_m10 191,5920c949,1  b_m10 191,3e6e4cfc,1
+  sidx delta (r4b_m10 - b_m10) over 386 common seq: min=-96 max=36 mode=0 (188/386 frames)
+    distribution: -96:18 -92:4 0:188 4:8 8:8 12:8 16:9 20:8 24:8 28:8 32:76 36:43
+  PRE-FILL LATENCY: NOT constant input samples (0 symbols at 4 sps)
+T12_IDENT FAIL content_equal=False same_seq_set=False
+---- DIAGNOSTIC r4b_m40 vs b_m40
+r4b_m40: 424 delivered frames, 407 with magic
+b_m40: 424 delivered frames, 122 with magic
+  common seq: 121   only in r4b_m40: [17, 18, 20, 22, 24, 26, 28, 30, 32, 33, 34, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 50, 52, 53, 54, 56, 58, 60, 61, 62, 64, 66, 68, 70, 71, 72, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 97, 98, 99, 100, 101, 103, 105, 107, 109, 111, 113, 114, 115, 117, 118, 119, 120, 121, 122, 123, 124, 125, 127, 129, 131, 132, 133, 137, 138, 139, 141, 143, 145, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 172, 174, 176, 178, 180, 182, 184, 186, 188, 190, 192, 194, 196, 198, 200, 202, 204, 206, 208, 210, 212, 213, 214, 216, 218, 220, 221, 222, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 247, 248, 249, 251, 252, 253, 255, 257, 259, 261, 263, 265, 267, 269, 271, 272, 273, 275, 277, 279, 281, 283, 285, 287, 289, 291, 292, 293, 295, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 320, 322, 324, 326, 327, 328, 330, 332, 333, 334, 336, 338, 340, 342, 344, 346, 348, 350, 352, 353, 354, 356, 358, 360, 361, 362, 364, 366, 368, 370, 372, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 397, 399, 401, 403, 405, 407, 409, 411, 413, 415, 417, 419, 420, 421, 423, 424]   only in b_m40: [4271]
+  frames without magic: r4b_m40 17 at sidx [197365, 296161, 345365, 394829, 444033, 493497]; b_m40 302 at sidx [197365, 296161, 345365, 394829, 444033, 493497]
+  CONTENT (nwords,hash,user) equal on 94/121 common seq; mismatching seq: [19, 21, 23, 25, 27, 29, 96, 102, 104, 171, 173, 175, 177, 179, 246, 250, 254, 319, 321, 323] ...
+    seq 19: r4b_m40 191,1a46842c,1  b_m40 191,1ee8032d,1
+    seq 21: r4b_m40 191,aa4ef66d,1  b_m40 191,b62533f1,1
+    seq 23: r4b_m40 191,49839fc0,1  b_m40 191,1667c97a,1
+    seq 25: r4b_m40 191,d9159e99,1  b_m40 191,746c417b,1
+    seq 27: r4b_m40 191,e5d46ef4,1  b_m40 191,4040f1a2,1
+  sidx delta (r4b_m40 - b_m40) over 121 common seq: min=-124 max=36 mode=32 (78/121 frames)
+    distribution: -124:1 -120:1 -116:1 -112:1 -108:1 -104:1 -100:1 -96:32 0:1 28:1 32:78 36:2
+  PRE-FILL LATENCY: NOT constant input samples (8 symbols at 4 sps)
+T12_IDENT FAIL content_equal=False same_seq_set=False
+---- DIAGNOSTIC r4b_m10c vs b_m10c
+r4b_m10c: 425 delivered frames, 422 with magic
+b_m10c: 424 delivered frames, 322 with magic
+  common seq: 322   only in r4b_m10c: [12, 13, 14, 15, 20, 22, 28, 30, 36, 38, 44, 45, 46, 47, 52, 54, 63, 77, 79, 85, 87, 93, 95, 101, 102, 103, 109, 110, 111, 112, 117, 119, 125, 127, 142, 150, 152, 158, 160, 166, 168, 174, 176, 182, 184, 190, 192, 198, 200, 206, 208, 223, 231, 233, 234, 239, 241, 247, 248, 249, 255, 257, 263, 264, 265, 266, 271, 273, 281, 296, 304, 306, 312, 314, 320, 322, 328, 330, 336, 338, 344, 345, 346, 352, 354, 369, 377, 379, 385, 387, 393, 395, 396, 401, 403, 409, 411, 417, 419, 420]   only in b_m10c: []
+  frames without magic: r4b_m10c 3 at sidx [246693, 444149, 542689]; b_m10c 102 at sidx [246693, 444149, 542689, 838809, 888145, 937349]
+  CONTENT (nwords,hash,user) equal on 304/322 common seq; mismatching seq: [60, 62, 68, 70, 133, 135, 141, 143, 214, 216, 279, 287, 289, 295, 360, 362, 368, 370]
+    seq 60: r4b_m10c 191,597f4e05,1  b_m10c 191,c62c843c,1
+    seq 62: r4b_m10c 191,82b22a68,1  b_m10c 191,3eb641fe,1
+    seq 68: r4b_m10c 191,20a7a28e,1  b_m10c 191,0212c7b2,1
+    seq 70: r4b_m10c 191,b1b486c3,1  b_m10c 191,8ad13519,1
+    seq 133: r4b_m10c 191,26737df1,1  b_m10c 191,fd5dcd88,1
+  sidx delta (r4b_m10c - b_m10c) over 322 common seq: min=-49428 max=36 mode=32 (158/322 frames)
+    distribution: -49428:1 -96:40 -92:9 0:9 4:1 8:1 24:1 28:1 32:158 36:101
+  PRE-FILL LATENCY: NOT constant input samples (8 symbols at 4 sps)
+T12_IDENT FAIL content_equal=False same_seq_set=False
+---- DIAGNOSTIC r4b_p10 vs b_p10
+r4b_p10: 427 delivered frames, 400 with magic
+b_p10: 427 delivered frames, 405 with magic
+  common seq: 400   only in r4b_p10: []   only in b_p10: [200, 233, 234, 241, 249]
+  frames without magic: r4b_p10 27 at sidx [197741, 246817, 296021, 10113113, 11741053, 11790385]; b_p10 22 at sidx [197741, 246817, 296021, 12925009, 13319661, 13714313]
+  CONTENT (nwords,hash,user) equal on 398/400 common seq; mismatching seq: [208, 216]
+    seq 208: r4b_p10 191,b4a320aa,1  b_p10 191,d27ec60e,1
+    seq 216: r4b_p10 191,461e3337,1  b_p10 191,f4fd9c6a,1
+  sidx delta (r4b_p10 - b_p10) over 400 common seq: min=0 max=28 mode=28 (184/400 frames)
+    distribution: 0:165 4:8 8:7 12:10 16:9 20:9 24:8 28:184
+  PRE-FILL LATENCY: NOT constant input samples (7 symbols at 4 sps)
+T12_IDENT FAIL content_equal=False same_seq_set=False
+
+########## G4 PRE-ARM STRUCTURAL IDENTITY (every paired leg) ##########
+## Before the first skip R4B's pop IS the baseline expression, so every frame
+## delivered before it must match the baseline INCLUDING sidx.
+
+=== r4b_p000 vs b_p000 : PRE-ARM STRUCTURAL IDENTITY ===
+  first skip: air frame 13
+  common seq delivered before the first skip: 6
+    identical content (nwords,hash,user): 6/6
+    identical INCLUDING sidx            : 6/6
+  PRE-ARM IDENTITY HOLDS on all 6 frames, sidx included
+
+=== r4b_m10 vs b_m10 : PRE-ARM STRUCTURAL IDENTITY ===
+  first skip: air frame 191
+  common seq delivered before the first skip: 184
+    identical content (nwords,hash,user): 184/184
+    identical INCLUDING sidx            : 184/184
+  PRE-ARM IDENTITY HOLDS on all 184 frames, sidx included
+
+=== r4b_m40 vs b_m40 : PRE-ARM STRUCTURAL IDENTITY ===
+  first skip: air frame 19
+  common seq delivered before the first skip: 1
+    identical content (nwords,hash,user): 1/1
+    identical INCLUDING sidx            : 1/1
+  PRE-ARM IDENTITY HOLDS on all 1 frames, sidx included
+
+=== r4b_m10c vs b_m10c : PRE-ARM STRUCTURAL IDENTITY ===
+  first skip: air frame 13
+  common seq delivered before the first skip: 5
+    identical content (nwords,hash,user): 5/5
+    identical INCLUDING sidx            : 5/5
+  PRE-ARM IDENTITY HOLDS on all 5 frames, sidx included
+
+=== r4b_p10 vs b_p10 : PRE-ARM STRUCTURAL IDENTITY ===
+  first skip: air frame 13
+  common seq delivered before the first skip: 6
+    identical content (nwords,hash,user): 6/6
+    identical INCLUDING sidx            : 6/6
+  PRE-ARM IDENTITY HOLDS on all 6 frames, sidx included
+
+########## LOSS on the seq-scored (non-repeating) legs ##########
+r4b_p000: seq 5..424 expect=420 OK=420 CORRUPT=0 MISSING=0 nomagic_frames=1 LOSS=0.00%
+  ep kinds: {0: 34, 1: 424, 2: 424, 4: 8, 5: 1}
+  rhPopEmpty events: 34 at frames 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ...
+  R3 steered: skips=8 extras=1; tref at event (top): 12322:7 12323:2
+  packets=424 biterr=23120 capout=a037d28a rstcs=0 nrxw=80984
+  r3_skips=8 r3_extras=2779054082
+  t7_ok=423 t7_bad=0 t7_nomagic=1 t7_fill=1516
+  rh_pop_on_empty=34 rh_push_on_full=0 pd_push_on_full=0 pd_pop_on_empty=0 occTrue_end=9 pdOcc_end=12333
+r4b_m10: seq 4..424 expect=421 OK=419 CORRUPT=1 MISSING=1 nomagic_frames=2 LOSS=0.48%
+  lost seq: 133,134
+  lost-seq spacings (value:count): 1:1
+  ep kinds: {0: 34, 1: 426, 2: 426, 4: 30, 5: 1}
+  rhPopEmpty events: 34 at frames 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ...
+  R3 steered: skips=30 extras=1; tref at event (top): 21:31
+  packets=426 biterr=23227 capout=a037d28a rstcs=0 nrxw=81256
+  r3_skips=30 r3_extras=2779054082
+  t7_ok=422 t7_bad=1 t7_nomagic=2 t7_fill=1516
+  rh_pop_on_empty=34 rh_push_on_full=17 pd_push_on_full=0 pd_pop_on_empty=0 occTrue_end=9 pdOcc_end=12333
+r4b_m40: seq 19..15729165 expect=15729147 OK=403 CORRUPT=2 MISSING=15728742 nomagic_frames=17 LOSS=100.00%
+  lost seq: 133,134,135,425,426,427,428,429,430,431,432,433,434,435,436,437,438,439,440,441,442,443,444,445,446,447,448,449,450,451,452,453,454,455,456,457,458,459,460,461,462,463,464,465,466,467,468,469,470,471,472,473,474,475,476,477,478,479,480,481 ...
+  lost-seq spacings (value:count): 1:15728742 290:1
+  ep kinds: {0: 70, 1: 425, 2: 425, 4: 210, 5: 1}
+  rhPopEmpty events: 70 at frames 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ...
+  R3 steered: skips=210 extras=1; tref at event (top): 12296:193 12295:18
+  packets=425 biterr=23252 capout=a037d28a rstcs=0 nrxw=81093
+  r3_skips=210 r3_extras=2779054082
+  t7_ok=405 t7_bad=2 t7_nomagic=17 t7_fill=1516
+  rh_pop_on_empty=70 rh_push_on_full=0 pd_push_on_full=0 pd_pop_on_empty=0 occTrue_end=9 pdOcc_end=12333
+r4b_m10c: seq 5..424 expect=420 OK=419 CORRUPT=0 MISSING=1 nomagic_frames=3 LOSS=0.24%
+  lost seq: 6
+  ep kinds: {0: 227, 1: 425, 2: 425, 4: 60, 5: 1}
+  rhPopEmpty events: 227 at frames 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ...
+  R3 steered: skips=60 extras=1; tref at event (top): 12131:51 12130:9 12133:1
+  packets=425 biterr=23157 capout=a037d28a rstcs=0 nrxw=81175
+  r3_skips=60 r3_extras=2779054082
+  t7_ok=422 t7_bad=0 t7_nomagic=3 t7_fill=1516
+  rh_pop_on_empty=227 rh_push_on_full=0 pd_push_on_full=0 pd_pop_on_empty=0 occTrue_end=9 pdOcc_end=12333
+b_m10c: seq 5..424 expect=420 OK=301 CORRUPT=18 MISSING=101 nomagic_frames=102 LOSS=28.33%
+  lost seq: 6,12,13,14,15,20,22,28,30,36,38,44,45,46,47,52,54,60,62,63,68,70,77,79,85,87,93,95,101,102,103,109,110,111,112,117,119,125,127,133,135,141,142,143,150,152,158,160,166,168,174,176,182,184,190,192,198,200,206,208 ...
+  lost-seq spacings (value:count): 2:40 6:38 1:27 5:7 7:4 8:2
+  ep kinds: {0: 278, 1: 424, 2: 424}
+  rhPopEmpty events: 278 at frames 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ...
+  packets=424 biterr=23494 capout=a037d28a rstcs=0 nrxw=80984
+  r3_skips=0 r3_extras=0
+  t7_ok=304 t7_bad=18 t7_nomagic=102 t7_fill=1516
+  rh_pop_on_empty=278 rh_push_on_full=0 pd_push_on_full=0 pd_pop_on_empty=0 occTrue_end=0 pdOcc_end=12333
+r4b_p10: seq 5..425 expect=421 OK=393 CORRUPT=4 MISSING=24 nomagic_frames=27 LOSS=6.65%
+  lost seq: 200,208,216,233,234,241,249,257,265,273,281,289,306,314,322,323,330,338,346,354,362,379,380,387,395,403,411,419
+  lost-seq spacings (value:count): 8:18 17:3 1:3 7:3
+  ep kinds: {0: 178, 1: 427, 2: 427, 4: 7, 5: 1}
+  rhPopEmpty events: 178 at frames 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ...
+  R3 steered: skips=7 extras=1; tref at event (top): 12177:6 12178:2
+  packets=427 biterr=23291 capout=a037d28a rstcs=0 nrxw=81557
+  r3_skips=7 r3_extras=2779054082
+  t7_ok=396 t7_bad=4 t7_nomagic=27 t7_fill=1516
+  rh_pop_on_empty=178 rh_push_on_full=28 pd_push_on_full=0 pd_pop_on_empty=0 occTrue_end=32 pdOcc_end=12333
+b_p10: seq 5..425 expect=421 OK=400 CORRUPT=2 MISSING=19 nomagic_frames=22 LOSS=4.99%
+  lost seq: 257,265,273,281,289,306,314,322,323,330,338,346,354,362,379,380,387,395,403,411,419
+  lost-seq spacings (value:count): 8:14 17:2 1:2 7:2
+  ep kinds: {0: 178, 1: 427, 2: 427}
+  rhPopEmpty events: 178 at frames 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ...
+  packets=427 biterr=23307 capout=a037d28a rstcs=0 nrxw=81557
+  r3_skips=0 r3_extras=0
+  t7_ok=403 t7_bad=2 t7_nomagic=22 t7_fill=1516
+  rh_pop_on_empty=178 rh_push_on_full=21 pd_push_on_full=0 pd_pop_on_empty=0 occTrue_end=32 pdOcc_end=12333
+
+########## the tiled control (G11) and the loss-of-lock leg (G15) ##########
+golden (nwords,hash) = (191, '35774ce5')
+
+== tb_p000: slots=163 scored=159 OK=159 CORRUPT=0 MISSING=0 loss=0.00%
+   lost idx: []
+   valid-chain per mark (nominal 12333): ss=12333/12333..12333  cfc=12333/12333..12333  cs=12333/12333..12333  pd=12333/12333..12333  corr=12333/12333..12333  con=12320/12320..12320  dem=24640/24640..24640
+   valid-chain census in LOCAL time (per 49332-sample frame, nominal 12333):
+     ss: local deficit=0 surplus=0 net=0 (balanced)
+     cfc: local deficit=0 surplus=0 net=0 (balanced)
+     cs: local deficit=0 surplus=0 net=0 (balanced)
+     pd: local deficit=0 surplus=0 net=0 (balanced)
+     corr: local deficit=0 surplus=0 net=0 (balanced)
+     [push=interpolator strobe] deficit=0 surplus=0 net=0
+   (event-indexed tref census dtref==0 0 ==2 0 -- self-referential by construction, tref advances on every Correlator.validOut; kept only as a check)
+   [legacy pointer metric, CANNOT tell 0 from 32] occ 5 -> 5, 0 steps; frames at a pointer edge (0 or 31): 0
+   excess pushes (legacy, push.sum - 12333*n) = 0
+   exc = pushes - pops over window = 0   (predicted 12333*s*159 entries of net drift)
+   strobe anomalies/frame: mean=777.7
+   TRUE ring occupancy (0..32): 5 -> 5, per-frame min/max envelope 5..6
+   TAP SELF-CHECK  (occTE-occTS == pushes-pops, +/-1 boundary beat): PASS (max dev 0)
+   ring edges: EMPTY(0) never | FULL(32) never
+   PD FIFO occupancy envelope 12333..12333 (full mark 12333): EMPTY(0) never | FULL(12333) first at f=3, 159 frames
+     pop_on_empty: total=0 frames_with_event=0
+     push_on_full: total=0 frames_with_event=0
+     pdPof: total=0 frames_with_event=0
+     pd_pop_on_empty: total=0 frames_with_event=0
+   phase-lock: no lost frames
+
+== tb_m10: slots=163 scored=159 OK=124 CORRUPT=35 MISSING=0 loss=22.01%
+   lost idx: [38, 39, 40, 46, 48, 54, 56, 62, 64, 70, 79, 81, 82, 87, 89, 95, 97, 98, 103, 105, 111, 113, 119, 121, 127, 129, 135, 137, 138, 143] ...
+   loss spacings: [1, 1, 6, 2, 6, 2, 6, 2, 6, 9, 2, 1, 5, 2, 6, 2, 1, 5, 2, 6, 2, 6, 2, 6, 2, 6, 2, 1, 5, 2]
+   loss autocorr top6: 8:+0.607, 16:+0.491, 24:+0.281, 49:+0.260, 41:+0.242, 2:+0.235
+   permutation null p95 = +0.228   |  lag32=+0.137 lag64=+0.000 lag8=+0.607
+   valid-chain per mark (nominal 12333): ss=12333/12302..12365  cfc=12333/12302..12365  cs=12333/12302..12365  pd=12333/12301..12365  corr=12333/12302..12365  con=12320/12301..12320  dem=24640/24602..24640
+     ss: deletions=512 insertions=512 over 160 marks  -> 1 per 160.00 frames
+     cfc: deletions=512 insertions=512 over 160 marks  -> 1 per 160.00 frames
+     cs: deletions=512 insertions=512 over 160 marks  -> 1 per 160.00 frames
+     pd: deletions=512 insertions=512 over 160 marks  -> 1 per 160.00 frames
+     corr: deletions=512 insertions=512 over 160 marks  -> 1 per 160.00 frames
+   valid-chain census in LOCAL time (per 49332-sample frame, nominal 12333):
+     ss: local deficit=15 surplus=0 net=15 -> 1 per 10.60 frames = -7.649 ppm
+     cfc: local deficit=15 surplus=0 net=15 -> 1 per 10.60 frames = -7.649 ppm
+     cs: local deficit=15 surplus=0 net=15 -> 1 per 10.60 frames = -7.649 ppm
+     pd: local deficit=15 surplus=0 net=15 -> 1 per 10.60 frames = -7.649 ppm
+     corr: local deficit=15 surplus=0 net=15 -> 1 per 10.60 frames = -7.649 ppm
+     [push=interpolator strobe] deficit=20 surplus=0 net=20
+   (event-indexed tref census dtref==0 0 ==2 0 -- self-referential by construction, tref advances on every Correlator.validOut; kept only as a check)
+   [legacy pointer metric, CANNOT tell 0 from 32] occ 4 -> 0, 34 steps, mean spacing 4.42; frames at a pointer edge (0 or 31): 98, first at f=34
+   excess pushes (legacy, push.sum - 12333*n) = -20
+   exc = pushes - pops over window = -5   (predicted 12333*s*159 entries of net drift)
+   strobe anomalies/frame: mean=28.4
+   TRUE ring occupancy (0..32): 5 -> 0, per-frame min/max envelope 0..5
+   TAP SELF-CHECK  (occTE-occTS == pushes-pops, +/-1 boundary beat): PASS (max dev 1)
+   ring edges: EMPTY(0) first at f=34, 113 frames | FULL(32) never
+   PD FIFO occupancy envelope 12332..12333 (full mark 12333): EMPTY(0) never | FULL(12333) first at f=3, 159 frames
+     pop_on_empty: total=15 frames_with_event=15 first f=40 at frames [40, 48, 56, 64, 72, 81, 89, 97, 105, 113, 121, 129]
+     push_on_full: total=0 frames_with_event=0
+     pdPof: total=0 frames_with_event=0
+     pd_pop_on_empty: total=0 frames_with_event=0
+   phase lock (35 lost/corrupt frames, gate = >=80% within +/-1 frame):
+     pop_on_empty: within +/-1 = 54.3% (19/35)   nearest-offset median=0 mode=2 (42.9% of losses)  offsets=[2, 1, 0, 2, 0, 2, 0, 2, 0, 2, 2, 0, -1, 2, 0, 2, 0, -1, 2, 0]
+        reciprocal (events with a loss within +/-1): 93.3% (14/15 events)
+        [diagnostic] best constant alignment offset -1: 85.7% of losses within +/-1
+     push_on_full: NO EVENTS -> 0.0% within +/-1
+     pdPof: NO EVENTS -> 0.0% within +/-1
+     pd_pop_on_empty: NO EVENTS -> 0.0% within +/-1
+
+== r4b_tm10: slots=163 scored=159 OK=159 CORRUPT=0 MISSING=0 loss=0.00%
+   lost idx: []
+   valid-chain per mark (nominal 12333): ss=12333/12332..12334  cfc=12333/12332..12334  cs=12333/12332..12334  pd=12333/12333..12333  corr=12333/12332..12334  con=12320/12320..12320  dem=24640/24640..24640
+     ss: deletions=20 insertions=20 over 160 marks  -> 1 per 160.00 frames
+     cfc: deletions=20 insertions=20 over 160 marks  -> 1 per 160.00 frames
+     cs: deletions=20 insertions=20 over 160 marks  -> 1 per 160.00 frames
+     corr: deletions=20 insertions=20 over 160 marks  -> 1 per 160.00 frames
+   valid-chain census in LOCAL time (per 49332-sample frame, nominal 12333):
+     ss: local deficit=24 surplus=0 net=24 -> 1 per 6.62 frames = -12.239 ppm
+     cfc: local deficit=24 surplus=0 net=24 -> 1 per 6.62 frames = -12.239 ppm
+     cs: local deficit=24 surplus=0 net=24 -> 1 per 6.62 frames = -12.239 ppm
+     pd: local deficit=24 surplus=0 net=24 -> 1 per 6.62 frames = -12.239 ppm
+     corr: local deficit=24 surplus=0 net=24 -> 1 per 6.62 frames = -12.239 ppm
+     [push=interpolator strobe] deficit=20 surplus=0 net=20
+   (event-indexed tref census dtref==0 0 ==2 0 -- self-referential by construction, tref advances on every Correlator.validOut; kept only as a check)
+   [legacy pointer metric, CANNOT tell 0 from 32] occ 4 -> 9, 41 steps, mean spacing 3.70; frames at a pointer edge (0 or 31): 0
+   excess pushes (legacy, push.sum - 12333*n) = -20
+   exc = pushes - pops over window = 4   (predicted 12333*s*159 entries of net drift)
+   strobe anomalies/frame: mean=28.4
+   TRUE ring occupancy (0..32): 5 -> 9, per-frame min/max envelope 4..10
+   TAP SELF-CHECK  (occTE-occTS == pushes-pops, +/-1 boundary beat): PASS (max dev 1)
+   ring edges: EMPTY(0) never | FULL(32) never
+   PD FIFO occupancy envelope 12332..12333 (full mark 12333): EMPTY(0) never | FULL(12333) first at f=3, 158 frames
+     pop_on_empty: total=0 frames_with_event=0
+     push_on_full: total=0 frames_with_event=0
+     pdPof: total=0 frames_with_event=0
+     pd_pop_on_empty: total=0 frames_with_event=0
+   phase-lock: no lost frames
+
+---- lol: R4B against task 6's banked baseline t_lol
+golden (nwords,hash) = (191, '35774ce5')
+
+== tb_p000: slots=163 scored=159 OK=159 CORRUPT=0 MISSING=0 loss=0.00%
+   lost idx: []
+   valid-chain per mark (nominal 12333): ss=12333/12333..12333  cfc=12333/12333..12333  cs=12333/12333..12333  pd=12333/12333..12333  corr=12333/12333..12333  con=12320/12320..12320  dem=24640/24640..24640
+   valid-chain census in LOCAL time (per 49332-sample frame, nominal 12333):
+     ss: local deficit=0 surplus=0 net=0 (balanced)
+     cfc: local deficit=0 surplus=0 net=0 (balanced)
+     cs: local deficit=0 surplus=0 net=0 (balanced)
+     pd: local deficit=0 surplus=0 net=0 (balanced)
+     corr: local deficit=0 surplus=0 net=0 (balanced)
+     [push=interpolator strobe] deficit=0 surplus=0 net=0
+   (event-indexed tref census dtref==0 0 ==2 0 -- self-referential by construction, tref advances on every Correlator.validOut; kept only as a check)
+   [legacy pointer metric, CANNOT tell 0 from 32] occ 5 -> 5, 0 steps; frames at a pointer edge (0 or 31): 0
+   excess pushes (legacy, push.sum - 12333*n) = 0
+   exc = pushes - pops over window = 0   (predicted 12333*s*159 entries of net drift)
+   strobe anomalies/frame: mean=777.7
+   TRUE ring occupancy (0..32): 5 -> 5, per-frame min/max envelope 5..6
+   TAP SELF-CHECK  (occTE-occTS == pushes-pops, +/-1 boundary beat): PASS (max dev 0)
+   ring edges: EMPTY(0) never | FULL(32) never
+   PD FIFO occupancy envelope 12333..12333 (full mark 12333): EMPTY(0) never | FULL(12333) first at f=3, 159 frames
+     pop_on_empty: total=0 frames_with_event=0
+     push_on_full: total=0 frames_with_event=0
+     pdPof: total=0 frames_with_event=0
+     pd_pop_on_empty: total=0 frames_with_event=0
+   phase-lock: no lost frames
+
+== t_lol: slots=414 scored=410 OK=392 CORRUPT=17 MISSING=1 loss=4.39%
+   lost idx: [154, 186, 194, 199, 214, 222, 247, 255, 279, 287, 312, 320, 344, 352, 377, 385, 386, 409]
+   loss spacings: [32, 8, 5, 15, 8, 25, 8, 24, 8, 25, 8, 24, 8, 25, 8, 1, 23]
+   loss autocorr top6: 65:+0.483, 8:+0.362, 32:+0.307, 33:+0.307, 57:+0.248, 73:+0.194
+   permutation null p95 = +0.195   |  lag32=+0.307 lag64=-0.040 lag8=+0.362
+   valid-chain per mark (nominal 12333): ss=12333/12302..23998  cfc=12333/12302..23998  cs=12333/12302..23998  pd=12333/12301..23998  corr=12333/12302..23998  con=12320/12301..12320  dem=24640/24602..24640
+     ss: deletions=256 insertions=11953 over 410 marks  -> 1 per 0.04 frames
+     cfc: deletions=256 insertions=11953 over 410 marks  -> 1 per 0.04 frames
+     cs: deletions=256 insertions=11953 over 410 marks  -> 1 per 0.04 frames
+     pd: deletions=256 insertions=11953 over 410 marks  -> 1 per 0.04 frames
+     corr: deletions=256 insertions=11953 over 410 marks  -> 1 per 0.04 frames
+   valid-chain census in LOCAL time (per 49332-sample frame, nominal 12333):
+     ss: local deficit=8 surplus=0 net=8 -> 1 per 51.25 frames = -1.582 ppm
+     cfc: local deficit=8 surplus=0 net=8 -> 1 per 51.25 frames = -1.582 ppm
+     cs: local deficit=8 surplus=0 net=8 -> 1 per 51.25 frames = -1.582 ppm
+     pd: local deficit=8 surplus=0 net=8 -> 1 per 51.25 frames = -1.582 ppm
+     corr: local deficit=8 surplus=0 net=8 -> 1 per 51.25 frames = -1.582 ppm
+     [push=interpolator strobe] deficit=13 surplus=0 net=13
+   (event-indexed tref census dtref==0 0 ==2 0 -- self-referential by construction, tref advances on every Correlator.validOut; kept only as a check)
+   [legacy pointer metric, CANNOT tell 0 from 32] occ 5 -> 0, 21 steps, mean spacing 19.25; frames at a pointer edge (0 or 31): 211, first at f=137
+   excess pushes (legacy, push.sum - 12333*n) = -13
+   exc = pushes - pops over window = -5   (predicted 12333*s*410 entries of net drift)
+   strobe anomalies/frame: mean=26.8
+   TRUE ring occupancy (0..32): 5 -> 0, per-frame min/max envelope 0..5
+   TAP SELF-CHECK  (occTE-occTS == pushes-pops, +/-1 boundary beat): PASS (max dev 1)
+   ring edges: EMPTY(0) first at f=137, 220 frames | FULL(32) never
+   PD FIFO occupancy envelope 12332..12333 (full mark 12333): EMPTY(0) never | FULL(12333) first at f=3, 410 frames
+     pop_on_empty: total=8 frames_with_event=8 first f=161 at frames [161, 194, 222, 255, 287, 320, 352, 384]
+     push_on_full: total=0 frames_with_event=0
+     pdPof: total=0 frames_with_event=0
+     pd_pop_on_empty: total=0 frames_with_event=0
+   phase lock (18 lost/corrupt frames, gate = >=80% within +/-1 frame):
+     pop_on_empty: within +/-1 = 38.9% (7/18)   nearest-offset median=0 mode=0 (33.3% of losses)  offsets=[7, 8, 0, -5, 8, 0, 8, 0, 8, 0, 8, 0, 8, 0, 7, -1, -2, -25]
+        reciprocal (events with a loss within +/-1): 87.5% (7/8 events)
+        [diagnostic] best constant alignment offset +1: 44.4% of losses within +/-1
+     push_on_full: NO EVENTS -> 0.0% within +/-1
+     pdPof: NO EVENTS -> 0.0% within +/-1
+     pd_pop_on_empty: NO EVENTS -> 0.0% within +/-1
+
+== r4b_lol: slots=414 scored=410 OK=409 CORRUPT=0 MISSING=1 loss=0.24%
+   lost idx: [199]
+   loss autocorr top6: 1:-0.002, 2:-0.002, 3:-0.002, 4:-0.002, 5:-0.002, 6:-0.002
+   permutation null p95 = -0.000   |  lag32=-0.003 lag64=-0.003 lag8=-0.002
+   valid-chain per mark (nominal 12333): ss=12333/12332..23998  cfc=12333/12332..23998  cs=12333/12332..23998  pd=12333/12333..23998  corr=12333/12332..23998  con=12320/12320..12320  dem=24640/24640..24640
+     ss: deletions=15 insertions=11680 over 410 marks  -> 1 per 0.04 frames
+     cfc: deletions=15 insertions=11680 over 410 marks  -> 1 per 0.04 frames
+     cs: deletions=15 insertions=11680 over 410 marks  -> 1 per 0.04 frames
+     pd: deletions=0 insertions=11665 over 410 marks  -> 1 per 0.04 frames
+     corr: deletions=15 insertions=11680 over 410 marks  -> 1 per 0.04 frames
+   valid-chain census in LOCAL time (per 49332-sample frame, nominal 12333):
+     ss: local deficit=17 surplus=0 net=17 -> 1 per 24.12 frames = -3.362 ppm
+     cfc: local deficit=17 surplus=0 net=17 -> 1 per 24.12 frames = -3.362 ppm
+     cs: local deficit=17 surplus=0 net=17 -> 1 per 24.12 frames = -3.362 ppm
+     pd: local deficit=17 surplus=0 net=17 -> 1 per 24.12 frames = -3.362 ppm
+     corr: local deficit=17 surplus=0 net=17 -> 1 per 24.12 frames = -3.362 ppm
+     [push=interpolator strobe] deficit=13 surplus=0 net=13
+   (event-indexed tref census dtref==0 0 ==2 0 -- self-referential by construction, tref advances on every Correlator.validOut; kept only as a check)
+   [legacy pointer metric, CANNOT tell 0 from 32] occ 5 -> 9, 30 steps, mean spacing 13.55; frames at a pointer edge (0 or 31): 0
+   excess pushes (legacy, push.sum - 12333*n) = -13
+   exc = pushes - pops over window = 4   (predicted 12333*s*410 entries of net drift)
+   strobe anomalies/frame: mean=26.8
+   TRUE ring occupancy (0..32): 5 -> 9, per-frame min/max envelope 4..10
+   TAP SELF-CHECK  (occTE-occTS == pushes-pops, +/-1 boundary beat): PASS (max dev 1)
+   ring edges: EMPTY(0) never | FULL(32) never
+   PD FIFO occupancy envelope 12332..12333 (full mark 12333): EMPTY(0) never | FULL(12333) first at f=3, 409 frames
+     pop_on_empty: total=0 frames_with_event=0
+     push_on_full: total=0 frames_with_event=0
+     pdPof: total=0 frames_with_event=0
+     pd_pop_on_empty: total=0 frames_with_event=0
+   phase lock (1 lost/corrupt frames, gate = >=80% within +/-1 frame):
+     pop_on_empty: NO EVENTS -> 0.0% within +/-1
+     push_on_full: NO EVENTS -> 0.0% within +/-1
+     pdPof: NO EVENTS -> 0.0% within +/-1
+     pd_pop_on_empty: NO EVENTS -> 0.0% within +/-1
+
+
+########## G8/G10/G12 skip-position histograms ##########
+
+=== r4b_p000 ===
+  skips in the trace: 8
+  <p>_res.txt r3_skips = 8  OK
+  <p>_res.txt r3_extras = 0xA5A50002 (LOCKED)
+  <p>_ep.txt kind-4 (skip) records = 8  OK
+  <p>_ep.txt kind-5 (LOCK) at air frame 13 (1 record(s) -- lock is sticky, so 1 is expected)
+  slot_rtl     histogram: 1:8
+  slot_harness histogram: 1:8
+  dt_enb       histogram: 3:8
+  occupancy at the skip : 1:1 3:2 5:1 6:2 7:1 8:1
+  air frames  : first 13, last 20, span 7
+  window_opens at last skip: 15
+  tref histogram          : 12322:7 12323:1
+  |tref - epoch boundary| : 10:1 11:7   (tolerance 60 symbols)
+  AIR-FRAME WINDOW OK: every skip is within 60 symbols of the epoch boundary, so none of them is mid-payload of a TRUE air frame
+  RTL vs INDEPENDENT recount: 8/8 identical
+  dt_enb == 4*slot-1 (fixed pop phase): 8/8
+  WINDOW OK: every one of 8 skips is inside slots [1,13] on BOTH counters
+
+=== r4b_m10 ===
+  skips in the trace: 30
+  <p>_res.txt r3_skips = 30  OK
+  <p>_res.txt r3_extras = 0xA5A50002 (LOCKED)
+  <p>_ep.txt kind-4 (skip) records = 30  OK
+  <p>_ep.txt kind-5 (LOCK) at air frame 11 (1 record(s) -- lock is sticky, so 1 is expected)
+  slot_rtl     histogram: 1:30
+  slot_harness histogram: 1:30
+  dt_enb       histogram: 3:30
+  occupancy at the skip : 9:30
+  air frames  : first 191, last 426, span 235
+  window_opens at last skip: 422
+  tref histogram          : 21:30
+  |tref - epoch boundary| : 21:30   (tolerance 60 symbols)
+  AIR-FRAME WINDOW OK: every skip is within 60 symbols of the epoch boundary, so none of them is mid-payload of a TRUE air frame
+  RTL vs INDEPENDENT recount: 30/30 identical
+  dt_enb == 4*slot-1 (fixed pop phase): 30/30
+  WINDOW OK: every one of 30 skips is inside slots [1,13] on BOTH counters
+
+=== r4b_m40 ===
+  skips in the trace: 210
+  <p>_res.txt r3_skips = 210  OK
+  <p>_res.txt r3_extras = 0xA5A50002 (LOCKED)
+  <p>_ep.txt kind-4 (skip) records = 210  OK
+  <p>_ep.txt kind-5 (LOCK) at air frame 19 (1 record(s) -- lock is sticky, so 1 is expected)
+  slot_rtl     histogram: 1:210
+  slot_harness histogram: 1:210
+  dt_enb       histogram: 3:210
+  occupancy at the skip : 1:2 2:2 3:2 4:2 5:2 6:2 7:2 8:3 9:193
+  air frames  : first 19, last 427, span 408
+  window_opens at last skip: 414
+  tref histogram          : 12295:17 12296:193
+  |tref - epoch boundary| : 37:193 38:17   (tolerance 60 symbols)
+  AIR-FRAME WINDOW OK: every skip is within 60 symbols of the epoch boundary, so none of them is mid-payload of a TRUE air frame
+  RTL vs INDEPENDENT recount: 210/210 identical
+  dt_enb == 4*slot-1 (fixed pop phase): 210/210
+  WINDOW OK: every one of 210 skips is inside slots [1,13] on BOTH counters
+
+=== r4b_tm10 ===
+  skips in the trace: 24
+  <p>_res.txt r3_skips = 24  OK
+  <p>_res.txt r3_extras = 0xA5A50002 (LOCKED)
+  <p>_ep.txt kind-4 (skip) records = 24  OK
+  <p>_ep.txt kind-5 (LOCK) at air frame 10 (1 record(s) -- lock is sticky, so 1 is expected)
+  slot_rtl     histogram: 1:24
+  slot_harness histogram: 1:24
+  dt_enb       histogram: 3:24
+  occupancy at the skip : 4:1 5:1 6:1 7:1 8:1 9:19
+  air frames  : first 10, last 159, span 149
+  window_opens at last skip: 157
+  tref histogram          : 27:5 28:19
+  |tref - epoch boundary| : 27:5 28:19   (tolerance 60 symbols)
+  AIR-FRAME WINDOW OK: every skip is within 60 symbols of the epoch boundary, so none of them is mid-payload of a TRUE air frame
+  RTL vs INDEPENDENT recount: 24/24 identical
+  dt_enb == 4*slot-1 (fixed pop phase): 24/24
+  WINDOW OK: every one of 24 skips is inside slots [1,13] on BOTH counters
+
+=== r4b_m10c ===
+  skips in the trace: 60
+  <p>_res.txt r3_skips = 60  OK
+  <p>_res.txt r3_extras = 0xA5A50002 (LOCKED)
+  <p>_ep.txt kind-4 (skip) records = 60  OK
+  <p>_ep.txt kind-5 (LOCK) at air frame 13 (1 record(s) -- lock is sticky, so 1 is expected)
+  slot_rtl     histogram: 1:59 3:1
+  slot_harness histogram: 1:59 3:1
+  dt_enb       histogram: 3:59 11:1
+  occupancy at the skip : 1:1 2:1 3:1 4:2 5:1 6:1 7:1 8:1 9:51
+  air frames  : first 13, last 426, span 413
+  window_opens at last skip: 421
+  tref histogram          : 12130:9 12131:50 12133:1
+  |tref - epoch boundary| : 200:1 202:50 203:9   (tolerance 60 symbols)
+  *** MID-PAYLOAD SKIPS: 60 skip(s) more than 60 symbols from the epoch boundary -- a pcEnd was MOVED (false sync?) and the window counter cannot see it
+      n=0 frame=13 slot_rtl=1 tref=12131 dist=202 occ=1
+      n=1 frame=14 slot_rtl=1 tref=12130 dist=203 occ=2
+      n=2 frame=15 slot_rtl=1 tref=12130 dist=203 occ=3
+      n=3 frame=16 slot_rtl=1 tref=12130 dist=203 occ=4
+      n=4 frame=17 slot_rtl=1 tref=12130 dist=203 occ=4
+      n=5 frame=18 slot_rtl=1 tref=12130 dist=203 occ=5
+      n=6 frame=19 slot_rtl=1 tref=12130 dist=203 occ=6
+      n=7 frame=20 slot_rtl=1 tref=12130 dist=203 occ=7
+      n=8 frame=21 slot_rtl=1 tref=12130 dist=203 occ=8
+      n=9 frame=22 slot_rtl=1 tref=12130 dist=203 occ=9
+  RTL vs INDEPENDENT recount: 60/60 identical
+  dt_enb == 4*slot-1 (fixed pop phase): 60/60
+  WINDOW OK: every one of 60 skips is inside slots [1,13] on BOTH counters
+
+=== r4b_p10 ===
+  skips in the trace: 7
+  <p>_res.txt r3_skips = 7  OK
+  <p>_res.txt r3_extras = 0xA5A50002 (LOCKED)
+  <p>_ep.txt kind-4 (skip) records = 7  OK
+  <p>_ep.txt kind-5 (LOCK) at air frame 13 (1 record(s) -- lock is sticky, so 1 is expected)
+  slot_rtl     histogram: 1:7
+  slot_harness histogram: 1:7
+  dt_enb       histogram: 3:7
+  occupancy at the skip : 2:1 3:1 4:1 5:1 7:1 8:1 9:1
+  air frames  : first 13, last 19, span 6
+  window_opens at last skip: 14
+  tref histogram          : 12177:6 12178:1
+  |tref - epoch boundary| : 155:1 156:6   (tolerance 60 symbols)
+  *** MID-PAYLOAD SKIPS: 7 skip(s) more than 60 symbols from the epoch boundary -- a pcEnd was MOVED (false sync?) and the window counter cannot see it
+      n=0 frame=13 slot_rtl=1 tref=12178 dist=155 occ=2
+      n=1 frame=14 slot_rtl=1 tref=12177 dist=156 occ=3
+      n=2 frame=15 slot_rtl=1 tref=12177 dist=156 occ=4
+      n=3 frame=16 slot_rtl=1 tref=12177 dist=156 occ=5
+      n=4 frame=17 slot_rtl=1 tref=12177 dist=156 occ=7
+      n=5 frame=18 slot_rtl=1 tref=12177 dist=156 occ=8
+      n=6 frame=19 slot_rtl=1 tref=12177 dist=156 occ=9
+  RTL vs INDEPENDENT recount: 7/7 identical
+  dt_enb == 4*slot-1 (fixed pop phase): 7/7
+  WINDOW OK: every one of 7 skips is inside slots [1,13] on BOTH counters
+
+=== r4b_lol ===
+  skips in the trace: 17
+  <p>_res.txt r3_skips = 17  OK
+  <p>_res.txt r3_extras = 0xA5A50002 (LOCKED)
+  <p>_ep.txt kind-4 (skip) records = 17  OK
+  <p>_ep.txt kind-5 (LOCK) at air frame 10 (1 record(s) -- lock is sticky, so 1 is expected)
+  slot_rtl     histogram: 1:17
+  slot_harness histogram: 1:17
+  dt_enb       histogram: 3:17
+  occupancy at the skip : 5:1 6:1 7:1 8:1 9:13
+  air frames  : first 10, last 401, span 391
+  window_opens at last skip: 399
+  tref histogram          : 27:3 28:7 11693:7
+  |tref - epoch boundary| : 27:3 28:7 640:7   (tolerance 60 symbols)
+  *** MID-PAYLOAD SKIPS: 7 skip(s) more than 60 symbols from the epoch boundary -- a pcEnd was MOVED (false sync?) and the window counter cannot see it
+      n=10 frame=206 slot_rtl=1 tref=11693 dist=640 occ=9
+      n=11 frame=239 slot_rtl=1 tref=11693 dist=640 occ=9
+      n=12 frame=271 slot_rtl=1 tref=11693 dist=640 occ=9
+      n=13 frame=303 slot_rtl=1 tref=11693 dist=640 occ=9
+      n=14 frame=336 slot_rtl=1 tref=11693 dist=640 occ=9
+      n=15 frame=368 slot_rtl=1 tref=11693 dist=640 occ=9
+      n=16 frame=401 slot_rtl=1 tref=11693 dist=640 occ=9
+  RTL vs INDEPENDENT recount: 17/17 identical
+  dt_enb == 4*slot-1 (fixed pop phase): 17/17
+  WINDOW OK: every one of 17 skips is inside slots [1,13] on BOTH counters
+
+########## G15 loss-of-lock RE-ACQUISITION window (frames 195-220) ##########
+## The outage deletes 4.05 air frames at frame 200.  A false sync is most likely
+## during re-acquisition, and a mid-payload skip THERE would be the most
+## silicon-relevant finding in the gate -- so the skips are listed with their tref.
+
+=== r4b_lol skips in air frames [195,220]: 1
+   frame=206 slot_rtl=1 tref=11693 dist=640 occ=9 *** MID-PAYLOAD
+
+=== r4b_lol skips in air frames [198,206]: 1
+   frame=206 slot_rtl=1 tref=11693 dist=640 occ=9 *** MID-PAYLOAD
+
+########## hole / skip / loss alignment (falsifier 2) ##########

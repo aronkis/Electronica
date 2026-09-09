@@ -1,0 +1,11 @@
+  phy=/sys/bus/iio/devices/iio:device2
+  ATTR_PRE_GAIN t1 gain='34.000000 dB' mode='automatic' rssi='27.548 dB'
+  ATTR_PRE_GAIN t2 gain='34.000000 dB' mode='automatic' rssi='27.546 dB'
+  ATTR_PRE_GAIN t3 gain='34.000000 dB' mode='automatic' rssi='27.429 dB'
+  ATTR_PRE_GAIN t4 gain='34.000000 dB' mode='automatic' rssi='27.425 dB'
+  ATTR_PRE_GAIN t5 gain='34.000000 dB' mode='automatic' rssi='27.419 dB'
+  ATTR_POKE in_voltage0_gain_control_mode before='automatic' want='spi' write=ok after='spi'
+  ATTR_POKE in_voltage0_hardwaregain before='34.000000 dB' want='34.000000' write=ok after='34.000000 dB'
+  ATTR_POST_GAIN t1 gain='34.000000 dB' mode='spi' rssi='27.408 dB'
+  ATTR_POST_GAIN t2 gain='34.000000 dB' mode='spi' rssi='27.369 dB'
+  ATTR_POST_GAIN t3 gain='34.000000 dB' mode='spi' rssi='27.387 dB'

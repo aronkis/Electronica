@@ -1,0 +1,50 @@
+{
+  "path": "two_jup/r3cap/ballpark_rev2_20260903_143523/frames.bin",
+  "usable": true,
+  "dur": 744.912465402,
+  "live_end": 719.0,
+  "wedged": true,
+  "fail_class_census": {
+    "counts": {
+      "OK": 875044,
+      "MAGIC": 0,
+      "LEN": 0,
+      "CRC": 0,
+      "ZEROTAIL": 0
+    },
+    "n": 875044,
+    "degenerate_all_ok": true
+  },
+  "fail_class_crc_ok_crosstab": {
+    "table": {
+      "crc_ok=0": {
+        "OK": 32201,
+        "MAGIC": 0,
+        "LEN": 0,
+        "CRC": 0,
+        "ZEROTAIL": 0
+      },
+      "crc_ok=1": {
+        "OK": 842843,
+        "MAGIC": 0,
+        "LEN": 0,
+        "CRC": 0,
+        "ZEROTAIL": 0
+      }
+    },
+    "crc_ok0_fail_class0": 32201,
+    "crc_ok1_fail_class_nonzero": 0
+  },
+  "run_bins": {
+    "1": 21136,
+    "2": 5960,
+    "3-4": 39,
+    "5-20": 58,
+    "21-100": 3,
+    ">100": 0
+  },
+  "validity_frac": 0.9999976270760119,
+  "n_slots": 876795,
+  "slot_lo": 43751,
+  "slot_hi": 920545
+}

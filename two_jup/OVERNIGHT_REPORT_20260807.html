@@ -1,0 +1,466 @@
+<title>QPSK Modem — Overnight Report, 7 Aug 2026</title>
+<style>
+  :root{
+    --bg:#F6F8F7; --panel:#FFFFFF; --ink:#141A19; --muted:#5F6E6A; --line:#DCE3E0;
+    --accent:#12665A; --accent-soft:#E3F0ED;
+    --good:#2B7A3E; --warn:#9C5A15; --bad:#A32C2C; --null:#5A6470;
+    --grid:#EAEFED;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0D1211; --panel:#141B1A; --ink:#E2E9E6; --muted:#93A29D; --line:#243130;
+      --accent:#4FBFAB; --accent-soft:#12312C;
+      --good:#5DBE74; --warn:#D9963F; --bad:#E36B6B; --null:#8894A0;
+      --grid:#1B2423;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D1211; --panel:#141B1A; --ink:#E2E9E6; --muted:#93A29D; --line:#243130;
+    --accent:#4FBFAB; --accent-soft:#12312C;
+    --good:#5DBE74; --warn:#D9963F; --bad:#E36B6B; --null:#8894A0; --grid:#1B2423;
+  }
+  :root[data-theme="light"]{
+    --bg:#F6F8F7; --panel:#FFFFFF; --ink:#141A19; --muted:#5F6E6A; --line:#DCE3E0;
+    --accent:#12665A; --accent-soft:#E3F0ED;
+    --good:#2B7A3E; --warn:#9C5A15; --bad:#A32C2C; --null:#5A6470; --grid:#EAEFED;
+  }
+
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    font-size:15px; line-height:1.62;
+    margin:0; padding:0;
+  }
+  .wrap{max-width:74ch; margin:0 auto; padding:3rem 1.5rem 6rem;}
+
+  header{border-bottom:2px solid var(--ink); padding-bottom:1.1rem; margin-bottom:2.2rem;}
+  .eyebrow{
+    font-size:.72rem; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--accent); font-weight:700; margin:0 0 .5rem;
+  }
+  h1{font-size:1.5rem; line-height:1.25; margin:0 0 .6rem; font-weight:700; text-wrap:balance; letter-spacing:-.01em;}
+  .sub{color:var(--muted); font-size:.86rem; margin:0;}
+
+  h2{
+    font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; font-weight:700;
+    color:var(--muted); margin:3rem 0 1rem; padding-bottom:.4rem; border-bottom:1px solid var(--line);
+  }
+  h3{font-size:1rem; margin:0 0 .5rem; font-weight:700; line-height:1.35; text-wrap:balance;}
+  p{margin:0 0 .9rem;}
+
+  .bluf{background:var(--accent-soft); border-left:3px solid var(--accent); padding:1.1rem 1.2rem; margin-bottom:1rem;}
+  .bluf p{margin:0 0 .7rem;} .bluf p:last-child{margin:0;}
+
+  .card{background:var(--panel); border:1px solid var(--line); padding:1.15rem 1.2rem; margin-bottom:1rem;}
+  .card > p:last-child{margin-bottom:0;}
+
+  .chip{
+    display:inline-block; font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+    font-weight:700; padding:.2rem .5rem; border:1px solid currentColor; margin-bottom:.6rem;
+  }
+  .c-good{color:var(--good);} .c-bad{color:var(--bad);} .c-warn{color:var(--warn);}
+  .c-null{color:var(--null);} .c-acc{color:var(--accent);}
+
+  table{border-collapse:collapse; width:100%; font-size:.82rem; font-variant-numeric:tabular-nums;}
+  .scroll{overflow-x:auto; margin:.8rem 0 .2rem; border:1px solid var(--line);}
+  th,td{text-align:left; padding:.42rem .7rem; border-bottom:1px solid var(--grid); white-space:nowrap;}
+  th{background:var(--grid); font-weight:700; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);}
+  tbody tr:last-child td{border-bottom:none;}
+  td.num{text-align:right;}
+  .hi{color:var(--bad); font-weight:700;}
+  .ok{color:var(--good); font-weight:700;}
+
+  code{background:var(--grid); padding:.08em .35em; font-size:.88em;}
+  ul{margin:0 0 .9rem; padding-left:1.1rem;} li{margin-bottom:.4rem;}
+  .foot{margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.78rem;}
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">Overnight autonomous session · 146 / 148 · R3 f1536</p>
+  <h1>The modem is fine. Our measurements were not — and an ARQ was never switched on.</h1>
+  <p class="sub">7 Aug 2026, 00:10–06:25 EDT · board 146 only · 148 untouched</p>
+</header>
+
+<div class="bluf">
+  <p><strong>The night's main result is a stop, not a fix.</strong> Timing-loop Bn&nbsp;×2 — on the
+  dashboard as a confirmed 8× win and heading toward being landed as a constant — is
+  catastrophic under real traffic. Delivered PER 92.4% versus 1.50% control.</p>
+  <p><strong>ARQ-off PER is ~1.5% tonight and fails the gate</strong>, but that is the channel,
+  not a code regression: the exact image the 0.283% gate was taken on measures the same ~1.4%
+  right now.</p>
+  <p><strong>The one real win: an ARQ that was never switched on.</strong> With it enabled the
+  <em>typical</em> run measures 0.03–0.10% — twenty to sixty times better than any ARQ-off run.
+  But roughly one run in three fails to engage and lands at ~2%, so a 3-run gate passes or
+  fails on which runs it draws: two identical sets 25 minutes apart gave 0.661% (pass) and
+  1.018% (fail). <strong>The gate is not reproducibly met</strong> — but I then caught the
+  failure in the act: the bad runs are the runs where <strong>the peer receives zero NAKs</strong>,
+  so nothing is ever retransmitted. That's a delivery/startup bug, not a tuning problem, and
+  it's the highest-value target left.</p>
+  <p><strong>No fabric change was made.</strong> 146 is back on the combined T9.0 image, link up,
+  bring-up at its committed defaults.</p>
+</div>
+
+<h2>Findings</h2>
+
+<div class="card">
+  <span class="chip c-bad">Closed · negative</span>
+  <h3>Timing-loop Bn ×2 is harmful, not helpful</h3>
+  <p>Interleaved control/Bn&nbsp;×2 capture pairs, delivered PER from <code>host_seq</code> gaps —
+  the same analysis path as every campaign gate.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Arm</th><th class="num">Run 1</th><th class="num">Run 2</th><th class="num">Run 3</th><th class="num">Pooled</th><th class="num">CP95 UB</th></tr></thead>
+    <tbody>
+      <tr><td>control</td><td class="num">1.372%</td><td class="num">1.541%</td><td class="num">1.577%</td><td class="num ok">1.497%</td><td class="num">1.556%</td></tr>
+      <tr><td>Bn ×2</td><td class="num">93.16%</td><td class="num">92.99%</td><td class="num">90.87%</td><td class="num hi">92.44%</td><td class="num">92.58%</td></tr>
+    </tbody>
+  </table></div>
+  <p>Under saturating traffic the control holds a flat 1241 f/s at 94% CRC-OK for 60 s;
+  Bn&nbsp;×2 drops it to 414 f/s at 19%, with 24–34 loss bursts of &gt;100 consecutive frames
+  per run against zero for control.</p>
+  <p>The earlier "8× good-frames/s" was real arithmetic on a broken comparison: every control
+  sample sat at ~500 f/s because those sweeps ran on an <em>idle</em> link that had already
+  collapsed. Bn&nbsp;×2 partially rescues that idle collapse. It wrecks a working one.</p>
+</div>
+
+<div class="card">
+  <span class="chip c-warn">Withdrawn</span>
+  <h3>Two measurement defects, both of which had reached reported numbers</h3>
+  <p><strong>Reset-truncated windows.</strong> <code>0x104</code> is reset by rstCS and by the
+  watchdog's <code>0x000</code> re-arm. Our rate primitive guards only against <em>negative</em>
+  deltas, so a reset inside the window yields a positive-but-far-too-small value. Resets every
+  ~15 s over a 30 s window read 622 f/s on a link actually running 1244.</p>
+  <p><strong>Shared register latch.</strong> <code>stallpoll</code> and <code>lock_watchdog</code>
+  both used the one <code>direct_reg_access</code> address latch, so reads returned foreign
+  registers — <code>0xC010180</code> (which is <code>adc_forensic 0x15C</code>) appeared 68 times
+  in the soak CSVs' packet-count column. Rare at 0.09% of rows, but one such value inflates a
+  run delta by 2×10⁸.</p>
+  <p>Withdrawn as a result: the "link spends 58% / 70% / 85% of its time degraded" figures I
+  derived earlier tonight. All three came through the contaminated path, and their spread under
+  different filtering was itself the tell. New primitive <code>rate_probe.sh</code> samples
+  across the dwell and reports rate, resets/s and valid-% as independent columns.</p>
+</div>
+
+<div class="card">
+  <span class="chip c-good">Closed · known class</span>
+  <h3>The idle collapse is the documented host-wedge, already handled</h3>
+  <p>On an idle link the rate runs at nominal for 5–20 s after every arm, then steps to ~40%
+  and stays — with <em>zero</em> counter resets across 120 s, so this is not the artifact above.</p>
+  <ul>
+    <li><strong>One direction only.</strong> Across all 30 gate probes tonight, 148 RX was full
+    rate 30/30 (median 1241); 146 RX 11/30 (median 882).</li>
+    <li><strong>Not carrier sync.</strong> An <code>0x110</code> rstCS pulse does nothing; an
+    <code>0x000</code> soft re-arm restores full rate for ~20 s, then it steps again.</li>
+    <li><strong>Timing loop implicated.</strong> <code>0x184 strobe_forensic</code> — the Symbol
+    Synchronizer's max inter-strobe gap — latches 5→6 exactly at the step. The T8.5 P-path and
+    integrator upset counters read 0 throughout, so this is not the Delay14 class the TMR fix
+    addresses.</li>
+  </ul>
+  <p><strong>It is a named, already-handled failure class.</strong> Thirty minutes of the
+  watchdog's own samples on an idle 146: 118 LOCKED windows, 83 NOT-LOCKED, 41 full re-arms —
+  about one every 44 s. All 83 NOT-LOCKED windows are <code>HOST-WEDGE</code> detections, and
+  their packet counts sit in a tight band (min 2325, median 2509, max 2595 per 5 s ≈ 500 f/s) —
+  exactly the step-down rate. During the step-down the fabric still syncs ~500 frames/s while
+  the host decodes <em>nothing</em>: <code>idle_rx + dma_rx_ok</code> frozen. That is precisely
+  the sync-but-CRC-fail wedge <code>lock_watchdog</code> was written to catch.</p>
+  <p>That closes the mechanism too. <code>rstCS</code> has no effect while an <code>0x000</code>
+  soft re-arm restores full rate for ~20 s — which <em>is</em> the watchdog's recovery for this
+  class. My traces ran with the watchdog killed, so the wedge persisted 110–160 s once entered;
+  with it running it clears every ~44 s. Same phenomenon, different persistence.</p>
+  <p><strong>So this needs no new work</strong>: known class, already detected and recovered in
+  normal operation, and it does not happen under traffic (1241 f/s flat at 94% CRC-OK for 60 s).
+  Worth noting only that an idle link churns through a re-arm every ~44 s for no benefit.</p>
+  <p style="font-size:.82rem;color:var(--muted)">I briefly wrote the opposite — that the
+  step-down might be an artifact of my having killed the watchdog — on the strength of 11
+  windows reading full rate. That was a lucky stretch; across 118 windows the wedge state
+  occupies ~32%. Withdrawn. I over-corrected on n=11 immediately after spending the night
+  warning myself about single-sample conclusions.</p>
+</div>
+
+<div class="card">
+  <span class="chip c-null">Null result</span>
+  <h3>The arm lottery is not visible in the driver's register set</h3>
+  <p>16 arms with working instrumentation: FULL 6 (38%), 0.71× 1, 0.42× 9 (56%) — matching the
+  historical 37/5/53, so the lottery is stable across images and days. No logged field separates
+  the outcome classes; SSI delays are constant on 15 of 16 arms and <code>strobeAlignError</code>
+  appears on FULL and 0.42× arms alike.</p>
+  <p>Caveat that weakens even the negative: <code>dataError=1</code> on <em>every</em> arm including
+  full-rate ones means the status register was read outside test mode, where its contents have no
+  defined meaning. RX status reads empty entirely.</p>
+  <p>Per the design note's own decision rule this is the "no correlation" branch — classification
+  cannot eliminate the retry lottery. One actionable side-finding:
+  <code>apply_146_ssi_fix.sh</code> pins tx0 only and explicitly <em>preserves</em> rx0 from the
+  live read, so the receive end re-runs auto-tune on every arm. An <code>RXPIN</code> override is
+  now available; default behaviour unchanged.</p>
+</div>
+
+<div class="card">
+  <span class="chip c-good">Cleared</span>
+  <h3>The PER regression is the channel, not the combined image</h3>
+  <p>Flashed <code>ee453c76</code> — the exact image the 0.283% gate was measured on — and ran the
+  identical acceptance under tonight's channel.</p>
+  <p>Run as a full A/B/A over ~1 h so the time confound is controlled, not just an A/B.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Leg</th><th>Image</th><th>Runs</th><th class="num">Pooled</th></tr></thead>
+    <tbody>
+      <tr><td>A</td><td>T9.0 <code>433fd8da</code></td><td>1.24 / 1.37 / 1.54 / 1.55 / 1.58%</td><td class="num">~1.50%</td></tr>
+      <tr><td>B</td><td>T8.8 <code>ee453c76</code></td><td>1.39 / 1.43 / 7.95%<sup>*</sup></td><td class="num">~1.43%</td></tr>
+      <tr><td>A′</td><td>T9.0 <code>433fd8da</code></td><td>1.39 / 1.30 / 1.46%</td><td class="num ok">1.38%</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:.8rem;color:var(--muted)"><sup>*</sup>one outlier run, the only control arm
+  tonight with &gt;100-frame loss bursts.</p>
+  <p>Indistinguishable across all three legs, with A′ the tightest spread of the night
+  (1.30–1.46%, CP95 UB 1.44%). <strong>The combined image is exonerated</strong> — tonight's link
+  is simply ~5× worse than when 0.283% was taken. The corollary belongs in the campaign record:
+  <strong>0.283% is not reproducible on demand</strong>, and the &lt;1% gate is currently met under
+  favourable conditions rather than structurally.</p>
+</div>
+
+<div class="card">
+  <span class="chip c-good">Confirmed · act on this</span>
+  <h3>The cross-link ARQ has never been switched on</h3>
+  <p>In two-radio <code>-G</code> mode <code>qpsk_tun</code> sets <code>arq_on = 0</code> by
+  design — the board that detects a loss is not the board that sent the frame — and
+  <code>bringup_r2r3.sh</code> has never passed <code>-A</code>, the flag that enables the
+  <em>cross-link NAK ARQ</em> written for exactly this topology. On the rig before the change:
+  <code>retx=0 dups=0 recovered=0 naks_tx=0</code> across 93,936 received frames, with
+  <code>seq_gap=662</code>. Gaps were being detected and nothing was ever retransmitted.</p>
+  <p>That is also why the loss budget below closes with <em>zero</em> net ARQ recovery.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Set</th><th class="num">ARQ off</th><th class="num">ARQ on</th><th class="num">Paired Δ</th></tr></thead>
+    <tbody>
+      <tr><td>22:29</td><td class="num">1.602%</td><td class="num">1.620%</td><td class="num hi">−0.02</td></tr>
+      <tr><td>22:29</td><td class="num">1.511%</td><td class="num">0.284%</td><td class="num ok">+1.23</td></tr>
+      <tr><td>22:29</td><td class="num">1.585%</td><td class="num">1.278%</td><td class="num ok">+0.31</td></tr>
+      <tr><td>03:45</td><td class="num">1.501%</td><td class="num">0.345%</td><td class="num ok">+1.16</td></tr>
+      <tr><td>03:45</td><td class="num">1.796%</td><td class="num">0.364%</td><td class="num ok">+1.43</td></tr>
+      <tr><td>03:45</td><td class="num">2.325%</td><td class="num">0.020%</td><td class="num ok">+2.31</td></tr>
+    </tbody>
+  </table></div>
+  <p>Six complete interleaved pairs, analysed at the <strong>run</strong> level: mean paired
+  improvement <strong>+1.07 points</strong>, median +1.19, 5 of 6 pairs favour ARQ, paired
+  <em>t</em> = +3.15 on 5 df. Drop the largest pair and the mean is still +0.82 — the result
+  does not hinge on one run. <strong>4 of 6 ARQ-on runs are under 1%; 0 of 6 ARQ-off runs
+  are.</strong> Wedge drops were symmetric (one per arm), so attrition isn't biasing the
+  survivors.</p>
+  <p>The two sets differ by more than noise comfortably explains — the off arm went 1.566% →
+  1.874% while the on arm went 1.061% → 0.243%, a recovery fraction of 32% then 87%. I had
+  written this up as "worse channel, more to recover," but that is backwards: more loss
+  predicts a bigger <em>delta</em>, not a better <em>absolute</em> on-arm value, and the
+  counter analysis predicts the opposite anyway, since a hole-table-limited ARQ should recover
+  a <em>smaller</em> fraction under heavier load. Two things changed between the sets — the
+  channel and the daemon binary (the ARQ constants became runtime variables). The banner
+  confirms the parameter values, not that the change left the per-frame hole scan untouched
+  under <code>-O2</code>. The pooled direction is what's supported; the per-set mechanism is
+  not established.</p>
+  <p><strong>On attrition:</strong> equal drop counts are not unbiased attrition. Pair 4's
+  dropped ARQ-on run measured 1.754% — the worst ARQ-on run of the night — excluded only
+  because its partner wedged. Impute it and the mean softens from +1.07 to ≈+0.92, sign test
+  5/7. The conclusion survives; the number moves.</p>
+  <p style="font-size:.82rem;color:var(--muted)">I first reported this from the initial three
+  pairs as "real, non-overlapping CP95 intervals on ~170k frames per arm." That argument was
+  wrong — Clopper-Pearson on pooled frames assumes independent trials and these losses are
+  bursty, so the effective n was 3, not 170,000. The direction survived, but the fix was
+  collecting more pairs, not better statistics on the same three.</p>
+  <p><strong>Why it under-delivers</strong>, from the counters: <code>recovered=464</code>
+  against <code>naks_tx=388</code> and <code>arq_lost=3631</code>. Only ~11% of holes are ever
+  recovered, and every NAK control frame consumes a real <code>tx_seq</code> that is never
+  delivered — so the two nearly cancel. Mistuned, not broken. Tuning targets are
+  <code>AXR_NAK_TRIES</code>, <code>AXR_RENAK</code>, <code>AXR_HOLE_SZ</code>, and making NAK
+  frames not consume a delivered seq. <strong>This is the highest-value PER work I can
+  identify from tonight.</strong></p>
+  <p style="font-size:.82rem;color:var(--muted)">An earlier non-interleaved set measured
+  pooled 0.675% and a gate pass; interleaving showed much of that was the channel improving
+  over those 18 minutes. That claim is superseded.</p>
+  <p><strong>I tried the tuning and it was inconclusive.</strong> The four parameters are now
+  runtime-settable (<code>QPSK_ARQ_HOLES/TRIES/RENAK/CLAMP</code>, verified on hardware as
+  default-identical when unset). An aggressive first step — 4× table, 8 NAK tries — gave
+  0.034%, 8.712%, 8.155% against a stock arm where two of three captures wedged outright. The
+  link deteriorated across those 35 minutes, so the arms aren't comparable. Do not read the
+  0.034% as a win; the same arm produced 8.7% half an hour later. If anything the two 8% runs
+  are a caution that 8 tries per hole buys a lot of NAK air time. Re-test on a stable channel
+  with a smaller step.</p>
+</div>
+
+<div class="card">
+  <span class="chip c-warn">Bimodal · gate not reproducible</span>
+  <h3>ARQ makes the typical run superb, and fails ~1 run in 3</h3>
+  <p>The first gate set passed at 0.661%. I ran a second identical set 25 minutes later
+  specifically because the first rested on three runs with one poor outlier — and it failed at
+  1.018%. Same config, same procedure.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Set</th><th class="num">r1</th><th class="num">r2</th><th class="num">r3</th><th class="num">Pooled</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="num">1.873%</td><td class="num ok">0.030%</td><td class="num ok">0.061%</td><td class="num">0.661%</td><td class="ok">PASS</td></tr>
+      <tr><td>2</td><td class="num">2.088%</td><td class="num ok">0.098%</td><td class="num ok">0.032%</td><td class="num">1.018%</td><td class="hi">FAIL</td></tr>
+    </tbody>
+  </table></div>
+  <p>All six ARQ-on runs, sorted: <strong>0.030 · 0.032 · 0.061 · 0.098 │ 1.873 · 2.088</strong>.
+  Median 0.080%. Four runs at or below 0.10%, two at or above 1.8%, <em>nothing in between</em> —
+  strongly bimodal. Whether a 3-run gate passes is decided by how many bad runs it happens to
+  draw; both sets drew one, and the arithmetic tipped either side of 1% on essentially a coin
+  flip.</p>
+  <p>Pooling all six gives 0.808%, but that should not be quoted as a gate result — pooling
+  across sets is the same error I withdrew earlier tonight, and with a bimodal distribution the
+  pooled mean describes no run that actually happened.</p>
+  <p><strong>So the deliverable is not "ARQ meets the gate."</strong> It is that ARQ makes the
+  typical run beat the gate by ~50×, and the remaining work is the ~1-in-3 engagement failure —
+  which I then caught in the act. See below.</p>
+</div>
+
+<div class="card">
+  <span class="chip c-good">Root cause found</span>
+  <h3>The bad runs are the runs where NAKs never reach the peer</h3>
+  <p>Four ARQ-on captures with the ARQ counters snapshotted on <em>both</em> ends after each
+  run, lined up against that run's PER. The chain is
+  <code>146.seq_gap → 146.naks_tx → 148.naks_rx → 148.retx → 146.recovered</code>.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Run</th><th class="num">PER</th><th class="num">146 naks_tx</th><th class="num">148 naks_rx</th><th class="num">148 retx</th><th class="num">146 recovered</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="num hi">1.701%</td><td class="num">1462</td><td class="num hi">0</td><td class="num hi">0</td><td class="num hi">0</td></tr>
+      <tr><td>2</td><td class="num">0.894%</td><td class="num">1414</td><td class="num">439</td><td class="num">1078</td><td class="num">785</td></tr>
+      <tr><td>3</td><td class="num ok">0.022%</td><td class="num">559</td><td class="num">337</td><td class="num">916</td><td class="num">701</td></tr>
+      <tr><td>4</td><td class="num">unusable</td><td class="num">308</td><td class="num">175</td><td class="num">706</td><td class="num">455</td></tr>
+    </tbody>
+  </table></div>
+  <p>The bad run is exactly the run where the chain is severed, at one identifiable link: 146
+  sent 1462 NAKs and 148 received <strong>zero</strong> — not few, zero — so nothing was
+  retransmitted and nothing recovered. Every run where 148 saw NAKs recovered hundreds of
+  frames and landed at 0.02–0.89%.</p>
+  <p>All of 148's counters read zero that run, including <code>seq_gap</code>, so the likely
+  reading is that its ARQ layer wasn't processing the reverse stream at all — a late daemon
+  start relative to 146, or frames not reaching the ARQ layer — rather than NAKs being lost on
+  air, which would give a small <code>naks_rx</code> rather than 0.</p>
+  <p><strong>This is a NAK-delivery/startup failure, not a tuning problem</strong> — a better
+  place to be than the hole-table tuning I was chasing at 03:00. The hole-table numbers look
+  similar on good and bad runs, so they are not what separates them, and tuning
+  <code>AXR_*</code> would not have fixed this. Next step is one counter on the
+  <code>AXR_MAGIC</code> check on 148, which separates "no NAK frames arrived" from "arrived but
+  not parsed" in a single run, plus a look at daemon start ordering in bring-up.</p>
+</div>
+
+<div class="card">
+  <span class="chip c-acc">Loss budget</span>
+  <h3>Where the 1.4% actually comes from</h3>
+  <p>Steady-state (t≥15 s) raw CRC failure is <strong>0.95–1.09%</strong>, and it is almost
+  entirely isolated single frames — 334 of 397 bursts are one frame long, and bursts over 20
+  frames carry only 5–6% of the losses.</p>
+  <p>The full-window figure looks like 5.9%, but 85% of that sits in exactly three ~1.0 s
+  bursts per run at <em>identical</em> absolute times across independent runs (7.9 / 9.8 /
+  11.6 s, spaced 1.83 s). That is the one-time RF-enable warmup cluster, and
+  <code>acceptance_rxq.sh</code> already excludes it. It contaminates no gate number.</p>
+  <p>Delivered PER exceeded steady-state CRC failure, which is impossible if ARQ only ever
+  helps — that gap is what led to the ARQ finding above. The remainder is frames
+  <strong>never detected at all</strong>: a framesync miss produces no host record and no
+  <code>0x104</code> advance, so it is invisible to <code>crc_ok</code> but shows as a missing
+  <code>host_seq</code>. It is measurable as the shortfall against nominal geometry, and the
+  budget then closes per run to within 0.02 points:</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Run</th><th class="num">Framesync rate</th><th class="num">Never detected</th><th class="num">CRC-fail</th><th class="num">Predicted</th><th class="num">Measured PER</th></tr></thead>
+    <tbody>
+      <tr><td>r1</td><td class="num">1240.18 f/s</td><td class="num">0.42%</td><td class="num">0.96%</td><td class="num">1.38%</td><td class="num">1.39%</td></tr>
+      <tr><td>r2</td><td class="num">1241.13 f/s</td><td class="num">0.35%</td><td class="num">0.95%</td><td class="num">1.29%</td><td class="num">1.30%</td></tr>
+      <tr><td>r3</td><td class="num">1240.97 f/s</td><td class="num">0.36%</td><td class="num">1.09%</td><td class="num">1.44%</td><td class="num">1.46%</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:.82rem;color:var(--muted)">Nominal geometry 1245.44 f/s = 15.36 Msym/s ÷
+  12333 sym/frame. Assumes the TX emits exactly nominal, which is set by the same fabric
+  geometry but was not independently measured.</p>
+  <p>So ~0.38% of frames sit on the <strong>packet detector</strong> rather than the channel —
+  the same block the stall work already implicates — and ~0.96% are CRC failures among
+  detected frames.</p>
+</div>
+
+<h2>Corrections to my own earlier claims</h2>
+<div class="card">
+  <p>Three times tonight a result inverted when I changed the <em>measurement</em> rather than the
+  treatment: degraded-arm confound → reset artifact → idle-vs-traffic. The common failure was
+  validating a treatment against a control I had not verified was in the intended regime.</p>
+  <p>The metric that survived every challenge is the per-frame log under real saturating traffic.
+  Fabric register deltas on an idle link is the one that kept lying. Also withdrawn: an 8-arm
+  claim that <code>strobeAlignError</code> never coincides with a full-rate arm — arms 11 and 12
+  broke it. I flagged it as weak and waited for full n, which was the right call.</p>
+  <p>And one retracted inside the hour: I derived "host-missed frames 10–12%" from
+  <code>reg_packets</code> jumps, then found it fails its own sanity check — net fabric advance
+  56,477 against 56,473 host records, a difference of <em>four</em> frames rather than 5,852.
+  The host logs in DMA batches and samples a free-running counter at log time. Host-missed
+  frames are ~0; the metric is unusable.</p>
+  <p>One tooling bug worth knowing: <code>acceptance_rxq.sh</code>'s <em>inline</em> analyzer
+  reported two runs as <code>bins={'21-100': 208, '&gt;100': 84}</code> while counting 3 and 5
+  total misses — internally impossible. <code>accept_analyze.py</code> gives sane bins on the
+  same captures and the PER figures agree, so only the inline histogram is wrong. That same
+  inline analyzer also threw <code>cp_upper</code> math-domain and <code>IndexError</code>
+  crashes on near-zero-miss runs tonight. Don't quote its bins; it needs a pass.</p>
+  <p>The last correction is the sharpest, because I had already learned the lesson: I refused to read
+  a single 0.034% run as a win in the ARQ tuning test, then two hours earlier had let a single
+  0.284% run carry the ARQ effect size — laundered through frame-pooling instead of through a
+  monotonic sequence, so it didn't look like the same mistake. Pooling frames across runs
+  hides run-level variance; when losses are bursty, the run is the unit.</p>
+</div>
+
+<h2>Rig state at handover</h2>
+<div class="card">
+  <ul>
+    <li>146 on combined T9.0 <code>433fd8da</code> (TMR + loop-tune); 148 untouched all night.</li>
+    <li>Link up, arm gate passed, daemon and watchdog running on both ends. Under traffic:
+    1039 f/s, 97% valid samples.</li>
+    <li>Loop-tune registers at compiled defaults — no Bn ×2 anywhere. ARQ off (committed
+    default).</li>
+    <li>Final acceptance at these defaults: 1.531% / wedged / 1.959%, pooled 1.745%.</li>
+    <li>Rollbacks staged and md5-verified: <code>.preimgab</code>, <code>.pret88b</code>,
+    <code>.preab</code>, <code>.pret90</code>, <code>.pret89</code>.</li>
+  </ul>
+  <p><strong>Source changed tonight</strong> — all committed and pushed, all default-identical
+  when unset, and <em>no fabric or bitstream change was made or attempted</em>:
+  <code>qpsk_tun.c</code> (ARQ runtime knobs), <code>bringup_r2r3.sh</code>
+  (<code>DAEMON_ENV</code> pass-through), <code>apply_146_ssi_fix.sh</code> (optional
+  <code>RXPIN</code>).</p>
+  <p><strong>The channel degraded monotonically across the night</strong>, which is the
+  cleanest one-line explanation for why nothing met the gate: ~1.4–1.5% around 01:30–02:30,
+  1.57% at 02:50, 1.75% at 03:25, with wedge events appearing only after ~03:00. Block
+  comparisons across that span are not valid; everything I concluded came from interleaved
+  runs.</p>
+</div>
+
+<h2>What I'd do next</h2>
+<div class="card">
+  <ul>
+    <li><strong>Set <code>FWD_GATE=1</code> as the default in <code>capture_r3.sh</code>.</strong>
+    <code>FH=100</code> is hardcoded and <code>fwd_health</code> only runs when the flag is set,
+    so every "fwd 100%" line in every capture log tonight is a placeholder, not a measurement —
+    only the reverse direction was ever gated. With the flag on I directly observed a capture
+    starting at <code>rev 98% fwd 0%</code>; the gate caught it and retried to 94%. Measuring
+    forward health instead of asserting it is right on its own merits. Whether it also explains
+    the ARQ bimodality is a strong, cheap hypothesis I could not test — the channel degraded too
+    far by 06:20 (one run hit 25% PER at 49% CRC drop) for those runs to be comparable.</li>
+    <li><strong>Close the NAK-delivery failure.</strong> Highest-value item left, and now
+    localized: add a counter on 148's <code>AXR_MAGIC</code> check to separate "no NAK frames
+    arrived" from "arrived but not parsed" — one run settles it — then check daemon start
+    ordering between the boards, since a late-starting peer produces exactly the observed
+    all-zero signature. The good runs prove link and ARQ are jointly capable of 0.022%, roughly
+    50× margin against the gate, so closing this meets the gate structurally instead of by
+    luck.</li>
+    <li><strong>Turn <code>-A</code> on by default anyway.</strong> On this evidence it is
+    strictly non-inferior: the typical run is dramatically better and the bad run is no worse
+    than ARQ-off. One flag, no rebuild, reversible. I did not make the change unattended
+    because it alters standing bring-up behaviour for both boards.</li>
+    <li><strong>Then tune it.</strong> Its failure modes are legible: stop NAK frames consuming a
+    delivered sequence number, then work <code>AXR_NAK_TRIES</code> / <code>AXR_RENAK</code> /
+    <code>AXR_HOLE_SZ</code> against the ~11% hole-recovery rate. The knobs are already runtime
+    settable. Use a small step — my 4× jump was inconclusive and possibly harmful.</li>
+    <li><strong>Then the packet detector</strong>, which owns the ~0.38% never-detected share and
+    is independently implicated by the stall work.</li>
+    <li><strong>Restate the gate with channel conditions attached.</strong> ~1.5% is tonight's
+    honest number on both images, and 0.283% is not reproducible on demand.</li>
+    <li><strong>Pin rx0 explicitly</strong> and re-run 16 arms — cheap, no rebuild. It won't kill
+    the lottery but it removes a known uncontrolled variable.</li>
+    <li><strong>Don't</strong> add a watchdog rate-class check unless the idle collapse turns out
+    to matter operationally. It does not affect traffic-carrying links.</li>
+  </ul>
+</div>
+
+<p class="foot">All numbers from <code>two_jup/</code> artifacts committed on
+<code>per-under-1pct-2026-07</code>. Full reasoning, including the discarded paths, is in
+<code>.superpowers/sdd/progress.md</code>.</p>
+</div>

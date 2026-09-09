@@ -1,0 +1,6 @@
+LOOPCHK_A_daemon_mm2s_loopback 60s: frames=75797 (1263/s) crc_ok=71896 crc_fail=10 magic_bad=3890 short=0 orphan=0 0x104d=75796  magic_bad/frames=5.132%  crc_fail/frames=0.013%
+LOOPCHK_B_tgen_fabric_tx_loopback 60s: frames=0 (0/s) crc_ok=0 crc_fail=0 magic_bad=0 short=0 orphan=0 0x104d=75726
+LOOPCHK_A_daemon_mm2s_loopback 60s: frames=75805 (1263/s) crc_ok=71904 crc_fail=10 magic_bad=3892 short=0 orphan=0 0x104d=75805  magic_bad/frames=5.134%  crc_fail/frames=0.013%
+LOOPCHK_B_tgen_fabric_tx_loopback 60s: frames=0 (0/s) crc_ok=0 crc_fail=0 magic_bad=0 short=0 orphan=0 0x104d=0
+LOOPCHK_B_tgen_tx_loopback_gap200000 0s: frames=34131 (34131000000000/s) crc_ok=0 crc_fail=10723 magic_bad=23408 short=0 orphan=0 0x104d=68264 0x108d=3575611  magic_bad/frames=68.583%  headers-ok(crc_ok+crc_fail)/frames=31.417%
+LOOPCHK_B_tgen_tx_loopback_gap100000 0s: frames=34157 (34157000000000/s) crc_ok=0 crc_fail=18255 magic_bad=15906 short=0 orphan=0 0x104d=68318 0x108d=3614328  magic_bad/frames=46.567%  headers-ok(crc_ok+crc_fail)/frames=53.444%

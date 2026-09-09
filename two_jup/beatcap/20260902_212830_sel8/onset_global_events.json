@@ -1,0 +1,145 @@
+{
+ "P-TX": {
+  "file": "beatcap/20260902_212830_sel8/onset.bin",
+  "n_records": 67108864,
+  "n_mark_fec": 1363,
+  "n_mark_demod": 1371,
+  "modal_gap_tref_units": 12333,
+  "n_regular": 1362,
+  "n_extra": 0,
+  "n_excessive_tref_steps": 0,
+  "excessive_tref_steps_sample": [],
+  "verdict": "UNINFORMATIVE",
+  "reason": "no extra mark_fec pulse with known symbol-time located"
+ },
+ "P-TX'": {
+  "file": "beatcap/20260902_212830_sel8/onset.bin",
+  "n_slot1_samples": 16777216,
+  "controls": {
+   "negative_control_pass": true,
+   "negative_control_n_events_frame0": 0,
+   "positive_control_pass": true,
+   "positive_control_event": {
+    "start_record": 11125,
+    "end_record": 30575,
+    "start_symtime": 6000,
+    "end_symtime": 12175,
+    "n_samples_captured": 4863,
+    "symtime_span_symbols": 6176,
+    "start_frame": 0,
+    "start_offset_tref": 6000,
+    "end_frame": 0,
+    "end_offset_tref": 12175,
+    "reaches_first_frame_end": false,
+    "L_first_frame_stall": 6176,
+    "n_whole_stalled_frames_after": 0,
+    "run_value_IQ": [
+     -3740,
+     -5558
+    ],
+    "interruptions": []
+   },
+   "positive_control_injected_len": 4863,
+   "positive_control_true_first_offset": 6000,
+   "positive_control_true_span": 6176,
+   "pass": true
+  },
+  "n_events": 2,
+  "events": [
+   {
+    "start_record": 6252125,
+    "end_record": 6345065,
+    "start_symtime": 2127288,
+    "end_symtime": 2158200,
+    "n_samples_captured": 23236,
+    "symtime_span_symbols": 30913,
+    "start_frame": 172,
+    "start_offset_tref": 6012,
+    "end_frame": 174,
+    "end_offset_tref": 12258,
+    "reaches_first_frame_end": true,
+    "L_first_frame_stall": 6321,
+    "n_whole_stalled_frames_after": 1,
+    "run_value_IQ": [
+     5736,
+     5736
+    ],
+    "interruptions": [
+     {
+      "between_symtime": [
+       2145867,
+       2145894
+      ],
+      "gap_symbols": 27,
+      "interrupting_value_IQ": [
+       5557,
+       5557
+      ],
+      "interrupting_n_samples": 26
+     }
+    ],
+    "rung_geometry": {
+     "L": 6321,
+     "complement_12320_minus_L": 5999,
+     "hits": [],
+     "any_fit": false
+    },
+    "constellation": {
+     "I": 5736,
+     "Q": 5736,
+     "magnitude": 8111.9,
+     "phase_deg": 45.0,
+     "quadrant_measured": "I+,Q+ (~45 deg)"
+    },
+    "next_frame_boundary": 175,
+    "marker_on_cadence_after_stall": true,
+    "extra_mark_fec_near_event": false
+   },
+   {
+    "start_record": 44480307,
+    "end_record": 44535806,
+    "start_symtime": 15027899,
+    "end_symtime": 15046079,
+    "n_samples_captured": 13876,
+    "symtime_span_symbols": 18181,
+    "start_frame": 1218,
+    "start_offset_tref": 6305,
+    "end_frame": 1219,
+    "end_offset_tref": 12152,
+    "reaches_first_frame_end": true,
+    "L_first_frame_stall": 6028,
+    "n_whole_stalled_frames_after": 0,
+    "run_value_IQ": [
+     -5737,
+     -5737
+    ],
+    "interruptions": [],
+    "rung_geometry": {
+     "L": 6028,
+     "complement_12320_minus_L": 6292,
+     "hits": [
+      {
+       "source": "RUNGS",
+       "compared": "12320-L",
+       "value": 6299,
+       "delta": -7
+      }
+     ],
+     "any_fit": true
+    },
+    "constellation": {
+     "I": -5737,
+     "Q": -5737,
+     "magnitude": 8113.3,
+     "phase_deg": 225.0,
+     "quadrant_measured": "I-,Q- (~225 deg)"
+    },
+    "next_frame_boundary": 1220,
+    "marker_on_cadence_after_stall": false,
+    "extra_mark_fec_near_event": false
+   }
+  ],
+  "verdict": "P-TX' PARTIAL",
+  "verdict_reason": "geometry_ok=False reaches_frame_end_ok=True marker_on_cadence_ok=False"
+ }
+}

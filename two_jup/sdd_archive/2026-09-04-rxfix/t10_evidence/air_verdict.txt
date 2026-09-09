@@ -1,0 +1,231 @@
+=== W1 verdict: mode=air label=fwd air leg run=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260904_165420_w1_air/reads ===
+
+-- structural / decode checks (independent of any prediction) --
+   readings usable: 48/48
+   witA[31:16] == 0 on every reading (decode check PASS)
+   occTrue <= 32 on every reading (decode check PASS)
+
+-- per-reading deltas --
+             occ         d_poe         d_pof      d_frames         d_cSS         d_cRH        d_cCFC         d_cCS         d_cPD         d_cPC
+               1           401             0         12682     156770613     156770612     156770612     156770613     156770613     156228150
+               1           402             0         12707     157002372     157002372     157002372     157002371     157002372     156508911
+               1           400             0         12635     156178520     156178520     156178520     156178520     156178521     155636689
+               0           361             0         11433     141249173     141249174     141249174     141249174     141249173     140830244
+               1           400             0         12631     156049597     156049596     156049596     156049596     156049595     155406354
+               0           401             0         12670     156830801     156830802     156830802     156830802     156830802     156240563
+               0           401             0         12647     156339697     156339697     156339697     156339697     156339697     155768557
+               0           400             0         12643     156226316     156226316     156226316     156226316     156226316     155720597
+               0           362             0         11409     141008672     141008672     141008672     141008672     141008672     140529743
+               1           400             0         12626     156015027     156015026     156015026     156015026     156015027     155538828
+               1           401             0         12614     156048411     156048411     156048411     156048412     156048411     155414292
+               0           400             0         12614     156074322     156074323     156074323     156074322     156074322     155347808
+               1           400             0         12597     155987960     155987959     155987959     155987960     155987960     155247694
+               0           401             0         12639     156245879     156245880     156245880     156245879     156245880     155598877
+               0           400             0         12622     155903718     155903718     155903718     155903718     155903718     155537769
+               1           363             0         11422     141224422     141224421     141224421     141224421     141224421     140722229
+               1           401             0         12627     156087046     156087046     156087046     156087046     156087046     155450810
+               0           401             0         12649     156441312     156441313     156441313     156441313     156441313     155814568
+               1           403             0         12697     156866924     156866923     156866923     156866923     156866923     156358190
+               1           403             0         12689     156789302     156789302     156789302     156789302     156789302     156308395
+               1           362             0         11403     140915667     140915667     140915667     140915668     140915667     140501531
+               1           401             0         12649     156419993     156419993     156419993     156419993     156419993     155764772
+               1           402             0         12652     156427724     156427724     156427724     156427723     156427724     155947194
+               1           400             0         12614     155958362     155958362     155958362     155958362     155958362     155379913
+               1           400             0         12628     156118769     156118769     156118769     156118770     156118769     155566282
+               0           400             0         12617     156054800     156054801     156054801     156054800     156054801     155351563
+               1           362             0         11388     140877648     140877647     140877647     140877647     140877647     140321199
+               0           399             0         12597     155809048     155809049     155809049     155809049     155809049     155135210
+               1           400             0         12621     155987070     155987069     155987069     155987070     155987069     155460965
+               1           401             0         12630     156206774     156206774     156206774     156206773     156206774     155587933
+               0           400             0         12618     156251334     156251335     156251335     156251335     156251335     155470705
+               1           400             0         12590     155720768     155720767     155720767     155720767     155720767     155056261
+               0           362             0         11426     141393089     141393090     141393090     141393090     141393090     140682735
+               0           399             0         12571     155538244     155538244     155538244     155538244     155538243     154938656
+               0           402             0         12686     156831017     156831017     156831017     156831017     156831018     156240746
+               1           403             0         12699     156905475     156905474     156905474     156905475     156905474     156284446
+               1           400             0         12645     156261721     156261721     156261721     156261720     156261721     155742966
+               1           361             0         11391     140933552     140933552     140933552     140933552     140933552     140471004
+               0           400             0         12657     156162554     156162555     156162555     156162555     156162555     155687068
+               1           401             0         12644     156219232     156219231     156219231     156219231     156219231     155698924
+               0           401             0         12641     156566120     156566121     156566121     156566121     156566121     155970753
+               1           401             0         12636     156277988     156277987     156277987     156277987     156277986     155620140
+               1           401             0         12671     156729871     156729871     156729871     156729872     156729872     156184305
+               0           361             0         11418     141079317     141079318     141079318     141079317     141079318     140591080
+               1           400             0         12638     156165640     156165639     156165639     156165639     156165639     155680844
+               0           399             0         12622     156095166     156095167     156095167     156095167     156095167     155513490
+               1           400             0         12626     156164829     156164828     156164828     156164828     156164828     155542111
+
+-- census control --
+   Brief: "each delta over 10 s equals the emitted-frame count x 12,333 within
+   +-1 frame (frames from the checker / 0x104), all six equal to each other."
+   The +-1 FRAME HALF OF THAT IS NOT ACHIEVABLE against 0x104, and not because
+   of noise: 0x104 is not behind the W1 freeze (only the eight W1 words are), so
+   it is sampled aux_lag_s AFTER the frozen census.  The achievable bound is
+   computed per reading below as rate x aux_lag_s.  Split into two tests:
+
+   (a) STRONG, EXACT (one coherent frozen snapshot, no pairing error):
+       the five pre-discard census deltas equal each other.
+       Equality is judged within EQ_TOL=+-4, measured (not assumed) from the
+       Step-2 loopback control: the stages sit at fixed pipeline offsets that cancel
+       in a delta, except cCS which jitters one beat -- so +-1 occurs with ZERO loss.
+       P2-alt's predicted shortfall is ~395 per 10 s, ~100x this band.
+       max |stage delta - cSS delta| over the window = 2
+       RESULT: EQUAL within +-4 on all 47 readings.
+
+   (b) cPC is EXPECTED TO BE SHORT BY 13 PER FRAME -- by design, not a deletion.
+       sample_discard_controller drops the 13-slot inter-frame guard, so
+       cPC delta = 12,320 x frames while every stage above it is 12,333 x frames
+       (W1_REGMAP sec 3).  Pre-registered separately BEFORE the leg so a designed
+       guard-drop is not read as evidence for P2-alt.
+       2026-09-04T16:56:49-04:00  frames(from cSS)= 12711.47  cPC exp=   156605364 got=   156228150  diff=   -377214
+       2026-09-04T16:56:59-04:00  frames(from cSS)= 12730.27  cPC exp=   156836879 got=   156508911  diff=   -327968
+       2026-09-04T16:57:09-04:00  frames(from cSS)= 12663.47  cPC exp=   156013895 got=   155636689  diff=   -377206
+       2026-09-04T16:57:19-04:00  frames(from cSS)= 11452.95  cPC exp=   141100285 got=   140830244  diff=   -270041
+       2026-09-04T16:57:29-04:00  frames(from cSS)= 12653.01  cPC exp=   155885108 got=   155406354  diff=   -478754
+       2026-09-04T16:57:39-04:00  frames(from cSS)= 12716.35  cPC exp=   156665488 got=   156240563  diff=   -424925
+       2026-09-04T16:57:49-04:00  frames(from cSS)= 12676.53  cPC exp=   156174902 got=   155768557  diff=   -406345
+       2026-09-04T16:57:59-04:00  frames(from cSS)= 12667.34  cPC exp=   156061641 got=   155720597  diff=   -341044
+       2026-09-04T16:58:09-04:00  frames(from cSS)= 11433.44  cPC exp=   140860037 got=   140529743  diff=   -330294
+       2026-09-04T16:58:19-04:00  frames(from cSS)= 12650.21  cPC exp=   155850574 got=   155538828  diff=   -311746
+       2026-09-04T16:58:29-04:00  frames(from cSS)= 12652.92  cPC exp=   155883923 got=   155414292  diff=   -469631
+       2026-09-04T16:58:39-04:00  frames(from cSS)= 12655.02  cPC exp=   155909807 got=   155347808  diff=   -561999
+       2026-09-04T16:58:49-04:00  frames(from cSS)= 12648.01  cPC exp=   155823536 got=   155247694  diff=   -575842
+       2026-09-04T16:58:59-04:00  frames(from cSS)= 12668.93  cPC exp=   156081183 got=   155598877  diff=   -482306
+       2026-09-04T16:59:09-04:00  frames(from cSS)= 12641.18  cPC exp=   155739383 got=   155537769  diff=   -201614
+       2026-09-04T16:59:19-04:00  frames(from cSS)= 11450.94  cPC exp=   141075560 got=   140722229  diff=   -353331
+       2026-09-04T16:59:29-04:00  frames(from cSS)= 12656.05  cPC exp=   155922517 got=   155450810  diff=   -471707
+       2026-09-04T16:59:39-04:00  frames(from cSS)= 12684.77  cPC exp=   156276410 got=   155814568  diff=   -461842
+       2026-09-04T16:59:49-04:00  frames(from cSS)= 12719.28  cPC exp=   156701573 got=   156358190  diff=   -343383
+       2026-09-04T16:59:59-04:00  frames(from cSS)= 12712.99  cPC exp=   156624033 got=   156308395  diff=   -315638
+       2026-09-04T17:00:09-04:00  frames(from cSS)= 11425.90  cPC exp=   140767130 got=   140501531  diff=   -265599
+       2026-09-04T17:00:19-04:00  frames(from cSS)= 12683.04  cPC exp=   156255113 got=   155764772  diff=   -490341
+       2026-09-04T17:00:29-04:00  frames(from cSS)= 12683.67  cPC exp=   156262836 got=   155947194  diff=   -315642
+       2026-09-04T17:00:39-04:00  frames(from cSS)= 12645.61  cPC exp=   155793969 got=   155379913  diff=   -414056
+       2026-09-04T17:00:49-04:00  frames(from cSS)= 12658.62  cPC exp=   155954207 got=   155566282  diff=   -387925
+       2026-09-04T17:00:59-04:00  frames(from cSS)= 12653.43  cPC exp=   155890305 got=   155351563  diff=   -538742
+       2026-09-04T17:01:09-04:00  frames(from cSS)= 11422.82  cPC exp=   140729151 got=   140321199  diff=   -407952
+       2026-09-04T17:01:19-04:00  frames(from cSS)= 12633.51  cPC exp=   155644812 got=   155135210  diff=   -509602
+       2026-09-04T17:01:29-04:00  frames(from cSS)= 12647.94  cPC exp=   155822647 got=   155460965  diff=   -361682
+       2026-09-04T17:01:39-04:00  frames(from cSS)= 12665.76  cPC exp=   156042119 got=   155587933  diff=   -454186
+       2026-09-04T17:01:49-04:00  frames(from cSS)= 12669.37  cPC exp=   156086632 got=   155470705  diff=   -615927
+       2026-09-04T17:01:59-04:00  frames(from cSS)= 12626.35  cPC exp=   155556625 got=   155056261  diff=   -500364
+       2026-09-04T17:02:09-04:00  frames(from cSS)= 11464.61  cPC exp=   141244049 got=   140682735  diff=   -561314
+       2026-09-04T17:02:19-04:00  frames(from cSS)= 12611.55  cPC exp=   155374294 got=   154938656  diff=   -435638
+       2026-09-04T17:02:29-04:00  frames(from cSS)= 12716.37  cPC exp=   156665704 got=   156240746  diff=   -424958
+       2026-09-04T17:02:39-04:00  frames(from cSS)= 12722.41  cPC exp=   156740084 got=   156284446  diff=   -455638
+       2026-09-04T17:02:49-04:00  frames(from cSS)= 12670.21  cPC exp=   156097008 got=   155742966  diff=   -354042
+       2026-09-04T17:02:59-04:00  frames(from cSS)= 11427.35  cPC exp=   140784996 got=   140471004  diff=   -313992
+       2026-09-04T17:03:09-04:00  frames(from cSS)= 12662.17  cPC exp=   155997946 got=   155687068  diff=   -310878
+       2026-09-04T17:03:19-04:00  frames(from cSS)= 12666.77  cPC exp=   156054564 got=   155698924  diff=   -355640
+       2026-09-04T17:03:29-04:00  frames(from cSS)= 12694.89  cPC exp=   156401086 got=   155970753  diff=   -430333
+       2026-09-04T17:03:39-04:00  frames(from cSS)= 12671.53  cPC exp=   156113258 got=   155620140  diff=   -493118
+       2026-09-04T17:03:49-04:00  frames(from cSS)= 12708.17  cPC exp=   156564665 got=   156184305  diff=   -380360
+       2026-09-04T17:03:59-04:00  frames(from cSS)= 11439.17  cPC exp=   140930608 got=   140591080  diff=   -339528
+       2026-09-04T17:04:09-04:00  frames(from cSS)= 12662.42  cPC exp=   156001029 got=   155680844  diff=   -320185
+       2026-09-04T17:04:19-04:00  frames(from cSS)= 12656.71  cPC exp=   155930629 got=   155513490  diff=   -417139
+       2026-09-04T17:04:29-04:00  frames(from cSS)= 12662.36  cPC exp=   156000218 got=   155542111  diff=   -458107
+
+   (c) WEAK, bounded (frames from the un-frozen 0x104):
+       2026-09-04T16:56:49-04:00  0x104 delta=   12682  cSS/12333= 12711.47  diff=  +29.47 frames  pairing bound=+-64.7 frames (aux_lag=0.051s)
+       2026-09-04T16:56:59-04:00  0x104 delta=   12707  cSS/12333= 12730.27  diff=  +23.27 frames  pairing bound=+-67.3 frames (aux_lag=0.053s)
+       2026-09-04T16:57:09-04:00  0x104 delta=   12635  cSS/12333= 12663.47  diff=  +28.47 frames  pairing bound=+-69.5 frames (aux_lag=0.055s)
+       2026-09-04T16:57:19-04:00  0x104 delta=   11433  cSS/12333= 11452.95  diff=  +19.95 frames  pairing bound=+-60.6 frames (aux_lag=0.053s)
+       2026-09-04T16:57:29-04:00  0x104 delta=   12631  cSS/12333= 12653.01  diff=  +22.01 frames  pairing bound=+-78.3 frames (aux_lag=0.062s)
+       2026-09-04T16:57:39-04:00  0x104 delta=   12670  cSS/12333= 12716.35  diff=  +46.35 frames  pairing bound=+-67.2 frames (aux_lag=0.053s)
+       2026-09-04T16:57:49-04:00  0x104 delta=   12647  cSS/12333= 12676.53  diff=  +29.53 frames  pairing bound=+-64.5 frames (aux_lag=0.051s)
+       2026-09-04T16:57:59-04:00  0x104 delta=   12643  cSS/12333= 12667.34  diff=  +24.34 frames  pairing bound=+-67.0 frames (aux_lag=0.053s)
+       2026-09-04T16:58:09-04:00  0x104 delta=   11409  cSS/12333= 11433.44  diff=  +24.44 frames  pairing bound=+-60.5 frames (aux_lag=0.053s)
+       2026-09-04T16:58:19-04:00  0x104 delta=   12626  cSS/12333= 12650.21  diff=  +24.21 frames  pairing bound=+-69.4 frames (aux_lag=0.055s)
+       2026-09-04T16:58:29-04:00  0x104 delta=   12614  cSS/12333= 12652.92  diff=  +38.92 frames  pairing bound=+-66.9 frames (aux_lag=0.053s)
+       2026-09-04T16:58:39-04:00  0x104 delta=   12614  cSS/12333= 12655.02  diff=  +41.02 frames  pairing bound=+-71.9 frames (aux_lag=0.057s)
+       2026-09-04T16:58:49-04:00  0x104 delta=   12597  cSS/12333= 12648.01  diff=  +51.01 frames  pairing bound=+-64.2 frames (aux_lag=0.051s)
+       2026-09-04T16:58:59-04:00  0x104 delta=   12639  cSS/12333= 12668.93  diff=  +29.93 frames  pairing bound=+-68.3 frames (aux_lag=0.054s)
+       2026-09-04T16:59:09-04:00  0x104 delta=   12622  cSS/12333= 12641.18  diff=  +19.18 frames  pairing bound=+-64.4 frames (aux_lag=0.051s)
+       2026-09-04T16:59:19-04:00  0x104 delta=   11422  cSS/12333= 11450.94  diff=  +28.94 frames  pairing bound=+-58.3 frames (aux_lag=0.051s)
+       2026-09-04T16:59:29-04:00  0x104 delta=   12627  cSS/12333= 12656.05  diff=  +29.05 frames  pairing bound=+-64.4 frames (aux_lag=0.051s)
+       2026-09-04T16:59:39-04:00  0x104 delta=   12649  cSS/12333= 12684.77  diff=  +35.77 frames  pairing bound=+-65.8 frames (aux_lag=0.052s)
+       2026-09-04T16:59:49-04:00  0x104 delta=   12697  cSS/12333= 12719.28  diff=  +22.28 frames  pairing bound=+-68.6 frames (aux_lag=0.054s)
+       2026-09-04T16:59:59-04:00  0x104 delta=   12689  cSS/12333= 12712.99  diff=  +23.99 frames  pairing bound=+-72.3 frames (aux_lag=0.057s)
+       2026-09-04T17:00:09-04:00  0x104 delta=   11403  cSS/12333= 11425.90  diff=  +22.90 frames  pairing bound=+-62.7 frames (aux_lag=0.055s)
+       2026-09-04T17:00:19-04:00  0x104 delta=   12649  cSS/12333= 12683.04  diff=  +34.04 frames  pairing bound=+-74.6 frames (aux_lag=0.059s)
+       2026-09-04T17:00:29-04:00  0x104 delta=   12652  cSS/12333= 12683.67  diff=  +31.67 frames  pairing bound=+-67.1 frames (aux_lag=0.053s)
+       2026-09-04T17:00:39-04:00  0x104 delta=   12614  cSS/12333= 12645.61  diff=  +31.61 frames  pairing bound=+-66.9 frames (aux_lag=0.053s)
+       2026-09-04T17:00:49-04:00  0x104 delta=   12628  cSS/12333= 12658.62  diff=  +30.62 frames  pairing bound=+-63.1 frames (aux_lag=0.05s)
+       2026-09-04T17:00:59-04:00  0x104 delta=   12617  cSS/12333= 12653.43  diff=  +36.43 frames  pairing bound=+-65.6 frames (aux_lag=0.052s)
+       2026-09-04T17:01:09-04:00  0x104 delta=   11388  cSS/12333= 11422.82  diff=  +34.82 frames  pairing bound=+-56.9 frames (aux_lag=0.05s)
+       2026-09-04T17:01:19-04:00  0x104 delta=   12597  cSS/12333= 12633.51  diff=  +36.51 frames  pairing bound=+-65.5 frames (aux_lag=0.052s)
+       2026-09-04T17:01:29-04:00  0x104 delta=   12621  cSS/12333= 12647.94  diff=  +26.94 frames  pairing bound=+-64.4 frames (aux_lag=0.051s)
+       2026-09-04T17:01:39-04:00  0x104 delta=   12630  cSS/12333= 12665.76  diff=  +35.76 frames  pairing bound=+-64.4 frames (aux_lag=0.051s)
+       2026-09-04T17:01:49-04:00  0x104 delta=   12618  cSS/12333= 12669.37  diff=  +51.37 frames  pairing bound=+-63.1 frames (aux_lag=0.05s)
+       2026-09-04T17:01:59-04:00  0x104 delta=   12590  cSS/12333= 12626.35  diff=  +36.35 frames  pairing bound=+-66.7 frames (aux_lag=0.053s)
+       2026-09-04T17:02:09-04:00  0x104 delta=   11426  cSS/12333= 11464.61  diff=  +38.61 frames  pairing bound=+-65.1 frames (aux_lag=0.057s)
+       2026-09-04T17:02:19-04:00  0x104 delta=   12571  cSS/12333= 12611.55  diff=  +40.55 frames  pairing bound=+-65.4 frames (aux_lag=0.052s)
+       2026-09-04T17:02:29-04:00  0x104 delta=   12686  cSS/12333= 12716.37  diff=  +30.37 frames  pairing bound=+-67.2 frames (aux_lag=0.053s)
+       2026-09-04T17:02:39-04:00  0x104 delta=   12699  cSS/12333= 12722.41  diff=  +23.41 frames  pairing bound=+-77.5 frames (aux_lag=0.061s)
+       2026-09-04T17:02:49-04:00  0x104 delta=   12645  cSS/12333= 12670.21  diff=  +25.21 frames  pairing bound=+-78.4 frames (aux_lag=0.062s)
+       2026-09-04T17:02:59-04:00  0x104 delta=   11391  cSS/12333= 11427.35  diff=  +36.35 frames  pairing bound=+-55.8 frames (aux_lag=0.049s)
+       2026-09-04T17:03:09-04:00  0x104 delta=   12657  cSS/12333= 12662.17  diff=   +5.17 frames  pairing bound=+-77.2 frames (aux_lag=0.061s)
+       2026-09-04T17:03:19-04:00  0x104 delta=   12644  cSS/12333= 12666.77  diff=  +22.77 frames  pairing bound=+-83.5 frames (aux_lag=0.066s)
+       2026-09-04T17:03:29-04:00  0x104 delta=   12641  cSS/12333= 12694.89  diff=  +53.89 frames  pairing bound=+-64.5 frames (aux_lag=0.051s)
+       2026-09-04T17:03:39-04:00  0x104 delta=   12636  cSS/12333= 12671.53  diff=  +35.53 frames  pairing bound=+-67.0 frames (aux_lag=0.053s)
+       2026-09-04T17:03:49-04:00  0x104 delta=   12671  cSS/12333= 12708.17  diff=  +37.17 frames  pairing bound=+-60.8 frames (aux_lag=0.048s)
+       2026-09-04T17:03:59-04:00  0x104 delta=   11418  cSS/12333= 11439.17  diff=  +21.17 frames  pairing bound=+-59.4 frames (aux_lag=0.052s)
+       2026-09-04T17:04:09-04:00  0x104 delta=   12638  cSS/12333= 12662.42  diff=  +24.42 frames  pairing bound=+-65.7 frames (aux_lag=0.052s)
+       2026-09-04T17:04:19-04:00  0x104 delta=   12622  cSS/12333= 12656.71  diff=  +34.71 frames  pairing bound=+-64.4 frames (aux_lag=0.051s)
+       2026-09-04T17:04:29-04:00  0x104 delta=   12626  cSS/12333= 12662.36  diff=  +36.36 frames  pairing bound=+-61.9 frames (aux_lag=0.049s)
+
+-- counter wrap accounting (coordinator item 2) --
+   read spacing: min 10.0s max 10.0s over 47 intervals
+   census wrap horizon 279s -> no interval reaches it (all deltas unambiguous)
+   edge   wrap horizon 1659s -> no interval reaches it (all deltas unambiguous)
+   wraps traversed over the whole window (sum of per-interval deltas / modulus):
+     cSS   total  7,223,411,856  =   1.68 x 2^32
+     cRH   total  7,223,411,855  =   1.68 x 2^32
+     cCFC  total  7,223,411,855  =   1.68 x 2^32
+     cCS   total  7,223,411,855  =   1.68 x 2^32
+     cPD   total  7,223,411,856  =   1.68 x 2^32
+     cPC   total  7,196,602,064  =   1.68 x 2^32
+     pop_on_empty total   18,519  =  0.28 x 2^16
+     push_on_full total        0  =  0.00 x 2^16
+   (every figure above is accumulated from consecutive reads, never leg-end
+    minus leg-start -- a raw end-minus-start subtraction would alias.)
+
+-- edge counters --
+   pop_on_empty: total delta over the window = 18519, per reading [401, 402, 400, 361, 400, 401, 401, 400, 362, 400, 401, 400, 400, 401, 400, 363, 401, 401, 403, 403, 362, 401, 402, 400, 400, 400, 362, 399, 400, 401, 400, 400, 362, 399, 402, 403, 400, 361, 400, 401, 401, 401, 401, 361, 400, 399, 400]
+   push_on_full: total delta over the window = 0, per reading [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+   witA occupancy values seen: [0, 1]
+   cumulative pop_on_empty (last reading) = 21439, push_on_full = 0
+
+-- Step 3 pre-registered verdicts (air leg) --
+   P1: "witA occupancy pinned at the EMPTY edge (0-1) on every in-window read;
+       pop_on_empty delta ~ 395 +- 60 per 10 s; push_on_full delta 0."
+       -> HOLDS: occ=[0, 1], mean pop_on_empty delta=394.0/10s, push_on_full total=0
+
+   P2: "per 10 s, symbol-sync strobe delta = Rate_Handle-out delta EXACTLY,
+       every downstream stage delta equal to it ... I.e. the sim's prediction is
+       that NO stage is short in valid count while pop_on_empty runs at ~395 per 10 s."
+       -> cSS == cRH on all readings: True; all five pre-discard stages equal: True
+       -> HOLDS
+
+   P2-alt: "some stage's delta is short by the pop_on_empty delta."
+       -> DOES NOT HOLD (0 stage-readings short by exactly the pop_on_empty delta)
+
+-- falsifiers --
+   F1: "pop_on_empty delta ~ 0 while occupancy is NOT pinned at 0 and frames still
+       die at the comb rate -> the hole is not at the ring." -> does not fire
+   F2: "occupancy pinned at 0 AND pop_on_empty delta ~ 395 AND every census delta
+       equal -> the suppressed pop removes nothing from the valid stream ... the death
+       is a TIME-domain effect ... not a symbol deletion."
+       -> FIRES (this is the sim-EXPECTED outcome, P2)
+   F3: "all census deltas exact and pop_on_empty ~ 0 with frames dying at the comb ->
+       the entire symbol-rate path is exonerated on silicon."
+       -> does not fire
+
+   THIRD BRANCH, pre-registered before the window (not in the brief's P/F set):
+   if occupancy is pinned near 32 with push_on_full incrementing, that is NOT
+   'the FULL-edge counter finally worked' -- on a forward leg it is a SIGN ERROR
+   in the campaign model (RXFIX_STATE sec 2 item (a) already flags the sign as
+   not fitting), and it is a larger finding than P1/F1/F2/F3.
+       -> does not fire
+
+W1_SCORE AIR_SCORED csv=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260904_165420_w1_air/reads/w1_reads.csv

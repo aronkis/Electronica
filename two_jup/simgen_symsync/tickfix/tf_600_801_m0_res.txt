@@ -1,0 +1,4 @@
+iq=tf_600_801.iq nsamp=10359720 vphase=0 cadence=4 rstcs_end=8400 skip=0 mode=0
+super_w=6144 pairoff_w=1536 start_w=700 eatw=3 hitp_milli=700 seed=0xb7000258
+nhits_sched=0 nhits_gated=0 nsw=0 nstale=0 nrepair=0 noverflow=0 mingap=1024
+packets=209 outFrames=209 nrxw=39919 cfc_est=-263

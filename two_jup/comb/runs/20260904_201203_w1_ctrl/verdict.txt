@@ -1,0 +1,51 @@
+=== W1 Step-2 control table (run /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260904_201203_w1_ctrl) ===
+reads: pre=3 freeze-hold=1 post=3
+
+  [pre 1] cSS=170490661 cRH=170490661 cCFC=170490661 cCS=170490661 cPD=170490661 cPC=170310949  d0x104=13824  occ=9 push=4 pop=27  poe=44 pof=0
+  [pre 2] cSS=170462181 cRH=170462181 cCFC=170462181 cCS=170462181 cPD=170462181 cPC=170282508  d0x104=13822  occ=9 push=9 pop=0  poe=44 pof=0
+  [post 1] cSS=170626904 cRH=170626904 cCFC=170626904 cCS=170626904 cPD=170626903 cPC=170447049  d0x104=13835  occ=9 push=9 pop=0  poe=44 pof=0
+  [post 2] cSS=170924122 cRH=170924123 cCFC=170924123 cCS=170924123 cPD=170924123 cPC=170743956  d0x104=13859  occ=8 push=3 pop=27  poe=44 pof=0
+
+=== CONTROL TABLE ===
+tap                          verdict                                control / evidence
+----------------------------------------------------------------------------------------------------------------------
+freeze path (0x208 bit 4)    PASS                                   freeze held 10 s -> every one of the 8 word deltas exactly 0
+                                                                    freeze_effective=True on the 10 s HOLD read (two frozen sweeps 10 s apart compared word for word)
+cSS                          PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [170490661, 170462181, 170626904, 170924122]
+cRH                          PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [170490661, 170462181, 170626904, 170924123]
+cCFC                         PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [170490661, 170462181, 170626904, 170924123]
+cCS                          PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [170490661, 170462181, 170626904, 170924123]
+cPD                          PASS                                   advances, and == the other pre-discard stages (within +-4; fixed pipeline offsets cancel, cCS jitters one beat)
+                                                                    deltas [170490661, 170462181, 170626903, 170924123]
+cPC                          PASS                                   advances (12,320/frame, not 12,333)
+                                                                    deltas [170310949, 170282508, 170447049, 170743956]  (expected SHORT by 13/frame: sample_discard_controller guard drop)
+witA occupancy               PASS                                   nonzero and/or changing across the arm; constant after
+                                                                    occ values [8, 9]
+witA pointers                PASS                                   advance mod 32 between reads
+                                                                    5 distinct (push,pop) pairs: [(3, 27), (4, 27), (9, 0), (17, 8), (31, 22)]
+pop_on_empty (witB[15:0])    FAIL (DEAD -- air leg cannot use it)   ARM TRANSIENT: cumulative jumps >= 1 across the re-arm (or restarts from nonzero if it clears on reset)
+                                                                    pre-re-arm cumulative=44, post-re-arm cumulative=44, mod-2^16 jump=0, counter_cleared_on_reset=False
+push_on_full (witB[31:16])   NOT EXERCISED                          arm transient >= 1 IF acquisition overshoots (sim: 17). A zero here is NOT a failure -- unexercised in sim (task-9 concern 2)
+                                                                    pre=0, post=0, jump=0
+edge counters NULL           PASS                                   steady loopback (one clock, drift 0): poe and pof deltas both 0
+                                                                    per-interval (d_poe,d_pof) = [(0, 0), (0, 0), (0, 0), (0, 0)]
+r4b_locked / r4b_armed (0x234[31]) PASS                                   1 after lock (eight pcEnd pulses since reset); armed == locked
+                                                                    values [1, 1, 1, 1, 1, 1]
+r4b_window_opens (0x234[14:0]) PASS                                   THE LIVENESS CONTROL under R4B: advances at the FRAME rate. A static value means no pcEnd, so no skip could ever fire -- which is what distinguishes 'steering idle because the ring is healthy' from 'steering dead'. 15-bit: wraps in ~26 s at ~1,250 f/s
+                                                                    per-interval deltas [13824, 13821, 13835, 13859]
+r4b_skips (0x234[30:15])     PASS (flat after the startup burst)    advances over the first ~10 frames after lock, then FLAT (the ring self-centres at 9/10 and the occ<=8 predicate goes false)
+                                                                    cumulative [8, 8, 8, 8, 8, 8]; per-interval deltas [0, 0, 0, 0]
+witA occupancy after lock (R4B) PASS                                   8-10 once the steering has self-centred the ring (was 0-1 on W1)
+                                                                    occ values [8, 9]
+0x234 outside the freeze shadow PASS                                   the ninth word ADVANCES between the two frozen sweeps -- it is one word, coherent on a single AXI read, and deliberately not shadowed
+                                                                    moved on 6/6 readings
+stuck-at sweep (9 words)     PASS                                   witA/witB, each census slot and (on a W1+R4B image) 0x234 differ between at least two reads
+                                                                    6 readings compared over 9 words
+
+TAPS FAILING THEIR CONTROL: ['pop_on_empty (witB[15:0])']
+Per the brief, any counter that failed its Step-2 control is EXCLUDED from
+P/F evaluation and the air leg is labelled PARTIAL.

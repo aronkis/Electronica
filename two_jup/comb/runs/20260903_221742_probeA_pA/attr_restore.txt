@@ -1,0 +1,2 @@
+  ATTR_RESTORE in_voltage0_hardwaregain want='34.000000' write=ok after='34.000000 dB'
+  ATTR_RESTORE in_voltage0_gain_control_mode want='automatic' write=ok after='automatic'

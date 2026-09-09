@@ -1,0 +1,5 @@
+target=A dir=fwd rx=10.0.0.148 peer=10.0.0.146 rung=r3 profile=lvds_61p44_fdd_jupiter
+ksym=15360 sps=4 fs=61440000 spf=49332 dur=600 nsamp=4000000 payload=1400 traffic=qpsk_perf_15Mbit
+wedge_verdict=MID_CAPTURE_WEDGE after 12s (delivery flatlined 12s) -- NOT usable data
+image_md5=f6a8c3ea119cd55459a9b30c576e5d91
+ts=2026-09-03T23:07:32-04:00

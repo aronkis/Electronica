@@ -1,0 +1,3 @@
+CAP_START t=1788477176.218277320 pkts=0xAF4C biterr=0x265996 rstcs=0x50C cfc=0xFFFFBE43
+CAP_END   t=1788477176.345430528 pkts=0xAF83 biterr=0x2665ED rstcs=0x52E cfc=0xFFFF1B97
+-rw-r--r-- 1 root root 16000000 Sep  3 19:12 /dev/shm/pair.iq

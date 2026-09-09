@@ -1,0 +1,6 @@
+[Unit]
+Description=Render RXFIX task pipeline page for the LAN dashboard (5-min)
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/onetb/scratch/qpsk-jupiter-modem
+ExecStart=/usr/bin/python3 /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/agents/render_pipeline.py

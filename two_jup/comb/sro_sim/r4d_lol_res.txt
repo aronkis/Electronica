@@ -1,0 +1,6 @@
+iq=s_m2p5_lol.iq nsamp=20519440 cadence=2 rstcs_end=8400
+packets=414 biterr=51 capout=04922282 rstcs=0 nrxw=79074
+pushes=5154843 pops=5154834 strobe_anomalies=11037 air_frames=415
+r3_skips=17 r3_extras=0
+t7_ok=0 t7_bad=0 t7_nomagic=414 t7_fill=1516
+rh_pop_on_empty=0 rh_push_on_full=0 pd_push_on_full=0 pd_pop_on_empty=0 occTrue_end=9 pdOcc_end=12333

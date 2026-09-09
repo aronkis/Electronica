@@ -1,0 +1,13 @@
+leg=A dir=fwd rx=10.0.0.148 peer=10.0.0.146 dur=600 dry=0
+rxm_148= rxm_146= drain_148= drain_146=
+resolved: DAEMON_ENV_A=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1 DAEMON_ENV_B=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1
+capture_r3_exit=0
+wedge_verdict=wedge_verdict=healthy crc=100% rate=1038f/s
+deliver_rate_pre=1038 deliver_rate_post=1038 deliver_rate_gate_pass=1 (need >=900 f/s both AND zero watchdog relaunches)
+watchdog_relaunch_rx=0 watchdog_relaunch_peer=0
+ts=2026-09-04T20:32:41-04:00
+mode=air board=148 image=9f13705d9fb0 fixctl_base=0x0 r4b=1
+read_window_s=480 period=10 aux=0x104 0x124
+reader=sequential (w1_read.sh then seqbist_read.py, never concurrent -- shared DRA address-select)
+leg_exit=0
+ts=2026-09-04T20:32:41-04:00

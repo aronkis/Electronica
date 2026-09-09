@@ -1,0 +1,65 @@
+# jupiter_byte_txfix@VARIANT@_build
+
+TXFIX fix-variant Vivado build kit for the 120.2 s transmit-stall fix
+(session §87-§90; plan `/home/tcollins/.claude/plans/happy-bubbling-owl.md`).
+Gitignored build tree (like every `jupiter_byte_*_build/` dir) -- this file,
+and the tracked templates it was generated from, are the only parts of the
+kit meant to live in git.
+
+## What this is
+
+A copy of `jupiter_byte_ddrcap2_build` (the DDRCAP-v2 instrument, sel6
+witness included, is carried unchanged) with variant `@VARIANT@`'s RTL fix
+patched into `hdl_prj_jupiter_composite/ipcore/TxRxCompo_ip_v1_0/` -- both
+the loose `.v` files and the two `TxRxCompo_ip_v1_0.zip` members -- by
+`two_jup/skidfix/txfix_inject.py`. Made by `jupiter_byte_txfix_kit.sh
+@VARIANT@` at the repo root.
+
+- `TXFIX_VARIANT` -- two lines: the variant tag, then the git commit of
+  `txfix_inject.py` that produced this kit. Presence of this file is the
+  "already injected" marker; `jupiter_byte_txfix_kit.sh` refuses to run again
+  on a kit dir that has one.
+- `build_txfix.sh` / `build_txfix.tcl` -- this repo's generic TXFIX build
+  scripts (see `two_jup/skidfix/txfix_build.{sh,tcl}.tmpl`), installed here
+  in place of the ddrcap2 kit's `build_ddrcap.sh`/`.tcl`. `REMOTE_DIR` is
+  derived from this kit's own directory name, so F1/F2/F3 build in
+  independent remote dirs on hdl-dev-2 and never collide.
+- `timing_gate.tcl` -- unmodified from the ddrcap2 kit (modem-scoped
+  pre-implementation WNS gate, floor -1.0 ns).
+
+## Fix content (variant @VARIANT@)
+
+See the plan's "Fix variants -- exact patches" section for the exact diffs.
+Variants are cumulative: F2 = F1 + saturating `frameCount`; F3 = F2 +
+fullRAM runaway fix. Only ONE variant's patches are applied to this kit
+(the one named in `TXFIX_VARIANT`) -- do not hand-patch a second variant's
+changes into an existing kit; make a fresh kit with `jupiter_byte_txfix_kit.sh
+<other-variant>` instead.
+
+## Build
+
+```
+JOBS=6 ./build_txfix.sh          # launches the real Vivado build on hdl-dev-2
+JOBS=6 ./build_txfix.sh --dry    # preflight + sync only, prints the launch command
+```
+
+Preflights hdl-dev-2 free disk (>= 25 GB) and refuses to launch alongside
+another active `txfix-build-*`/`ddrcap-build-*` unit unless
+`ALLOW_CONCURRENT=1`. Never deletes anything remote. Remote log:
+`~/qpsk-builds/<this-kit-name>/build_txfix_vivado.log`; on success it ends
+with `BYTE_BUILD_DONE md5=...` then `TXFIX_BUILD_DONE variant=@VARIANT@
+md5=... wns=...`.
+
+## Fetch + bank
+
+`jupiter_byte_txfix_fetch.sh <this-kit-name>` (run from the repo root, after
+the remote build finishes) scp's the BOOT.BIN, md5-bank it under
+`boot_known_good/BOOT.BIN.148.txfix@VARIANT@.<md5-12>`, and appends the
+README/MD5SUMS rows there, stamped "BUILT, NOT flashed, sim gate pending".
+
+## Rails
+
+No board contact from anything in this kit or its build/fetch scripts
+(10.0.0.148/146 are never touched here). Flashing is a separate, later,
+sim-gated step owned by the silicon lane (T3/Task 8), never launched by
+`build_txfix.sh` or `jupiter_byte_txfix_fetch.sh`.

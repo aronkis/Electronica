@@ -1,0 +1,1555 @@
+# Task 1 (T0a daemon instrumentation) review package: 220cc62
+commit 220cc62781d86cc5723b1eed26997bf11ac86601
+Author: Travis Collins <travis.collins@analog.com>
+Date:   Thu Sep 3 16:57:24 2026 -0400
+
+    COMB T0a: host-app fail-class, failed-header ring, per-frame TX log
+    
+    Task 1 of the residual dropped-packet campaign (plan happy-bubbling-owl).
+    Desk-only, no board contact.
+    
+    - qpsk_join.h (new): single-source-of-truth on-disk ABI shared by the daemon,
+      the host tests and the offline tools -- frame_rec (48 B, moved here),
+      failhdr_rec (32 B), txlog_rec (32 B), qpsk_log_hdr (32 B), the pure
+      qpsk_fail_class()/qpsk_first_magic_off() parsers and qpsk_join_classify().
+    - qpsk_tun.c: fail_class (0 ok / 1 magic / 2 len / 3 crc / 4 zero-tail
+      ALIGNLOSS) written into frame_rec's ex-`reserved` word at all six failure
+      sites; QPSK_FAILHDR ring (64k x 32 B) with the raw 12-byte header, zero-tail
+      onset and first-magic offset, dumped on SIGUSR1 and atexit; QPSK_TXLOG
+      extended with seq / t_submit_ns / t_complete_ns / gap_ns, one record per
+      transmitted frame, ring raised to 1 M records (32 MiB, pre-faulted),
+      completion stamped in tx_reap(). Both rings dump in bulk writes; the TX log
+
+commit 220cc62781d86cc5723b1eed26997bf11ac86601
+Author: Travis Collins <travis.collins@analog.com>
+Date:   Thu Sep 3 16:57:24 2026 -0400
+
+    COMB T0a: host-app fail-class, failed-header ring, per-frame TX log
+    
+    Task 1 of the residual dropped-packet campaign (plan happy-bubbling-owl).
+    Desk-only, no board contact.
+    
+    - qpsk_join.h (new): single-source-of-truth on-disk ABI shared by the daemon,
+      the host tests and the offline tools -- frame_rec (48 B, moved here),
+      failhdr_rec (32 B), txlog_rec (32 B), qpsk_log_hdr (32 B), the pure
+      qpsk_fail_class()/qpsk_first_magic_off() parsers and qpsk_join_classify().
+    - qpsk_tun.c: fail_class (0 ok / 1 magic / 2 len / 3 crc / 4 zero-tail
+      ALIGNLOSS) written into frame_rec's ex-`reserved` word at all six failure
+      sites; QPSK_FAILHDR ring (64k x 32 B) with the raw 12-byte header, zero-tail
+      onset and first-magic offset, dumped on SIGUSR1 and atexit; QPSK_TXLOG
+      extended with seq / t_submit_ns / t_complete_ns / gap_ns, one record per
+      transmitted frame, ring raised to 1 M records (32 MiB, pre-faulted),
+      completion stamped in tx_reap(). Both rings dump in bulk writes; the TX log
+      stays atexit-only unless QPSK_TXLOG_USR1 is set, so a 10 s stats poll cannot
+      starve the modulator it is measuring. qpsk_frame.c untouched.
+    - test_frame.c: fail-class truth table (ordering, class-4 precedence, onset)
+      plus an ABI suite pinning every struct size and offset. test_txlog.c (new):
+      synthetic txlog + frames.bin round-trip and the four-way join fixture.
+      Makefile runs test_txq and test_txlog in `make test` (test_txq was built but
+      never run).
+    - two_jup/comb/README_hostlog.md: byte-for-byte layouts for Task 2, the exact
+      gcc deploy line (-DQPSK_RXQ_STAT + -DQPSK_ARQ_NAKSTAT), the rxqstat==0 rail
+      conflict, and the deploy blocker: qpsk_join.h is not yet in capture_r3.sh's
+      scp list or comb/deploy_daemon_go.sh's FILES.
+    
+    test_frame 578/0, test_txlog 25/0, test_txq 25/0, ring harness 29/0;
+    -Werror clean and nakstat==4 preserved. test_k5 was already broken at HEAD.
+    
+    Claude-Session: https://claude.ai/code/session_019NZLGbxoaPRkDnKFMPiBrq
+    Signed-off-by: Travis Collins <travis.collins@analog.com>
+
+diff --git a/host_app_k5/Makefile b/host_app_k5/Makefile
+index fc512dc..943dbaf 100644
+--- a/host_app_k5/Makefile
++++ b/host_app_k5/Makefile
+@@ -46,7 +46,7 @@ qpsk_seq.o: qpsk_seq.c qpsk_seq.h qpsk_frame.h
+ qpsk_uio.o: qpsk_uio.c qpsk_uio.h
+ 	$(CC) $(CFLAGS) -c qpsk_uio.c
+ 
+-qpsk_tun: qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h
++qpsk_tun: qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h
+ 	$(CC) $(CFLAGS) -o qpsk_tun qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o
+ 
+ qpsk_capture: qpsk_capture.c qpsk_hw.h
+@@ -60,7 +60,7 @@ qpsk_capture: qpsk_capture.c qpsk_hw.h
+ # default 1 MB objects. The binary's startup carve guard (qpsk_tun.c) refuses to
+ # run until the 2 MB qpsk dtb is deployed -- see docs/DEPLOY_F1536.md step 5.
+ qpsk_tun_2mb: CFLAGS += -DQPSK_CARVE_2MB
+-qpsk_tun_2mb: qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c qpsk_hw.h qpsk_frame.h qpsk_ber.h qpsk_seq.h qpsk_uio.h
++qpsk_tun_2mb: qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c qpsk_hw.h qpsk_frame.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h
+ 	$(CC) $(CFLAGS) -o qpsk_tun_2mb qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c
+ 
+ # ref_dump: print the fixed -B reference frame as 16 uint64 words for the
+@@ -73,12 +73,12 @@ ref_dump: ref_dump.c qpsk_ber.o qpsk_frame.o qpsk_ber.h qpsk_frame.h
+ seq_dump: seq_dump.c qpsk_seq.o qpsk_frame.o qpsk_seq.h qpsk_frame.h
+ 	$(CC) $(CFLAGS) -o seq_dump seq_dump.c qpsk_seq.o qpsk_frame.o
+ 
+-test_frame: test_frame.c qpsk_frame.o
++test_frame: test_frame.c qpsk_frame.o qpsk_join.h
+ 	$(CC) $(CFLAGS) -o test_frame test_frame.c qpsk_frame.o
+ 
+ # -F path unit test: includes qpsk_tun.c (main renamed) and drives its Tx
+ # path against a fake in-memory DMA regfile -- no hardware needed.
+-test_k5: test_k5.c qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h
++test_k5: test_k5.c qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h
+ 	$(CC) $(CFLAGS) -o test_k5 test_k5.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o
+ 
+ # full-packet BER scorer self-test (no hardware; also `qpsk_tun -T` on-board)
+@@ -93,15 +93,21 @@ test_whiten: test_whiten.c qpsk_frame.o qpsk_frame.h
+ test_seq: test_seq.c qpsk_seq.o qpsk_frame.o qpsk_seq.h qpsk_frame.h
+ 	$(CC) $(CFLAGS) -o test_seq test_seq.c qpsk_seq.o qpsk_frame.o
+ 
+-test_txq: test_txq.c qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h
++test_txq: test_txq.c qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h
+ 	$(CC) $(CFLAGS) -o test_txq test_txq.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o -lm
+ 
+-test: test_frame test_k5 test_ber test_whiten test_seq test_txq
++# COMB campaign T0a: TX<->RX per-frame join + on-disk record ABI (host-only)
++test_txlog: test_txlog.c qpsk_frame.o qpsk_frame.h qpsk_join.h
++	$(CC) $(CFLAGS) -o test_txlog test_txlog.c qpsk_frame.o
++
++test: test_frame test_k5 test_ber test_whiten test_seq test_txq test_txlog
+ 	./test_frame
+ 	./test_k5
+ 	./test_ber
+ 	./test_whiten
+ 	./test_seq
++	./test_txq
++	./test_txlog
+ 
+ clean:
+-	rm -f *.o qpsk_tun qpsk_tun_2mb qpsk_capture test_frame test_k5 test_ber test_whiten test_seq
++	rm -f *.o qpsk_tun qpsk_tun_2mb qpsk_capture test_frame test_k5 test_ber test_whiten test_seq test_txq test_txlog
+diff --git a/host_app_k5/qpsk_join.h b/host_app_k5/qpsk_join.h
+new file mode 100644
+index 00000000..7cfec58
+--- /dev/null
++++ b/host_app_k5/qpsk_join.h
+@@ -0,0 +1,258 @@
++/* qpsk_join.h -- COMB campaign (2026-09-03) instrumentation ABI.
++ *
++ * This header is the SINGLE SOURCE OF TRUTH for the three on-disk record
++ * layouts the daemon writes and the offline tools read:
++ *
++ *   QPSK_FRAMELOG  frames.bin    48 B/record, no file header  (UNCHANGED
++ *                                legacy layout; only the previously-zero
++ *                                `reserved` word now carries fail_class)
++ *   QPSK_FAILHDR   failhdr.bin   32 B file header + 32 B/record  (NEW)
++ *   QPSK_TXLOG     txlog.bin     32 B file header + 32 B/record  (CHANGED:
++ *                                was a bare 16 B "<QIHH" record stream)
++ *
++ * Everything here is header-only (`static inline` / struct definitions) so
++ * that qpsk_tun.c, the host unit tests (which link only qpsk_frame.o) and any
++ * future scorer all agree byte-for-byte by construction.
++ *
++ * DEPLOY NOTE: qpsk_tun.c #includes this header, so this file must be copied
++ * to the board alongside qpsk_tun.c/qpsk_frame.[ch]/... See
++ * two_jup/comb/README_hostlog.md ("Deploy") -- two_jup/capture_r3.sh's scp
++ * list does not yet name it.
++ */
++#ifndef QPSK_JOIN_H
++#define QPSK_JOIN_H
++
++#include <stdint.h>
++#include <stddef.h>
++#include <string.h>
++#include <assert.h>
++#include "qpsk_frame.h"
++
++/* ---------------------------------------------------------------- sentinels */
++#define QPSK_FZO_NONE      0xFFFFFFFFu   /* first_zero_off: no zero tail found */
++#define QPSK_MAGOFF_NONE   0xFFFFu       /* magic_off: no 0x51 0x4B in the slice */
++#define QPSK_GAP_NONE      0xFFFFFFFFu   /* txlog gap_ns: not measured (queue busy) */
++/* txlog t_complete_ns == 0 means "no completion was ever stamped for this
++ * submit" (still in flight at dump, or the ring record was already old when
++ * the reap happened).  It does NOT mean "never transmitted". */
++
++/* zero-tail detector tuning: the shortest suffix that may be called a tail,
++ * and the zero fraction (9/10 = 90 %) required over that suffix. */
++#define QPSK_ZTAIL_MIN     32u
++#define QPSK_ZTAIL_NUM     9u
++#define QPSK_ZTAIL_DEN     10u
++
++/* ------------------------------------------------------------- fail classes */
++enum qpsk_fail_class {
++    QPSK_FC_OK        = 0,  /* slice parses: magic + len + CRC all good      */
++    QPSK_FC_MAGIC     = 1,  /* p[0]!=0x51 || p[1]!=0x4B (or slice too short) */
++    QPSK_FC_LEN       = 2,  /* magic ok, len > max payload for this slice    */
++    QPSK_FC_CRC       = 3,  /* magic+len ok, CRC32 mismatch                  */
++    QPSK_FC_ZEROTAIL  = 4   /* header garbage (would be 1 or 2) AND a >=90 %
++                             * zero suffix -- the ByteBitShifter ALIGNLOSS
++                             * signature (zeros shifted in to the end)       */
++};
++
++/* First offset of the 0x51 0x4B magic inside the slice, or QPSK_MAGOFF_NONE.
++ * A garbage-header frame whose magic reappears at a nonzero offset is a
++ * SHIFT (alignment) event; one with no magic at all is a substitution/erasure
++ * event.  This is the "corruption onset" discriminator the T3 decision table
++ * needs, and it is cheap enough to compute on the failure path only. */
++static inline uint32_t qpsk_first_magic_off(const uint8_t *p, size_t n)
++{
++    if (n < 2) return QPSK_MAGOFF_NONE;
++    for (size_t i = 0; i + 1 < n; i++)
++        if (p[i] == 0x51 && p[i + 1] == 0x4B)
++            return i > QPSK_MAGOFF_NONE ? QPSK_MAGOFF_NONE : (uint32_t)i;
++    return QPSK_MAGOFF_NONE;
++}
++
++/* Classify one received slice.  PURE: no globals, no I/O.
++ *
++ * Mirrors qpsk_frame.c:139-173 (qpsk_frame_decode) check-for-check and IN THE
++ * SAME ORDER -- magic, then len, then CRC -- so that class N means "decode
++ * would have returned -1 at check N".  The caller must pass the DE-WHITENED
++ * bytes (qpsk_frame_decode removes the whitener before parsing); the campaign
++ * runs QPSK_WHITEN=0, in which case the wire bytes are already de-whitened.
++ *
++ * *first_zero_off receives the SMALLEST offset k such that p[k] == 0 and
++ * p[k..n) is at least 90 % zero bytes and at least QPSK_ZTAIL_MIN long, or
++ * QPSK_FZO_NONE.  Anchoring on an actual zero byte makes it the ONSET of the
++ * zero region rather than the earliest offset the 90 % average tolerates
++ * (without the anchor a 200-byte garbage prefix followed by 1328 zeros would
++ * report 53, not 200).  It
++ * is filled in regardless of the returned class (a class-3 CRC failure with a
++ * zero tail is still informative), so an all-zero good-looking slice can be
++ * told from a random one.
++ *
++ * Class 4 takes precedence over 1 and 2 (never over 3): "header garbage AND a
++ * zero tail" is the ALIGNLOSS fingerprint, and a shift that destroys the
++ * header always destroys the magic or the length field first. */
++static inline int qpsk_fail_class(const uint8_t *p, size_t n,
++                                  uint32_t *first_zero_off)
++{
++    uint32_t fzo = QPSK_FZO_NONE;
++    size_t zeros = 0, k;
++    int cls;
++
++    if (n >= QPSK_ZTAIL_MIN) {
++        for (k = n; k-- > 0; ) {
++            size_t len;
++            if (p[k] == 0) zeros++;
++            len = n - k;
++            if (p[k] == 0 && len >= QPSK_ZTAIL_MIN &&
++                zeros * QPSK_ZTAIL_DEN >= len * QPSK_ZTAIL_NUM)
++                fzo = (uint32_t)k;   /* descending k -> ends at the smallest */
++        }
++    }
++    if (first_zero_off)
++        *first_zero_off = fzo;
++
++    if (n < (size_t)QPSK_FRAME_HDR_BYTES || p[0] != 0x51 || p[1] != 0x4B) {
++        cls = QPSK_FC_MAGIC;
++    } else {
++        int len = (int)p[2] | ((int)p[3] << 8);
++        if (len < 0 || (size_t)len > n - (size_t)QPSK_FRAME_HDR_BYTES) {
++            cls = QPSK_FC_LEN;
++        } else {
++            uint32_t crc_rx = (uint32_t)p[8] | ((uint32_t)p[9] << 8) |
++                              ((uint32_t)p[10] << 16) | ((uint32_t)p[11] << 24);
++            unsigned char tmp[QPSK_PKT_BYTES_MAX];
++            size_t used = (size_t)QPSK_FRAME_HDR_BYTES + (size_t)len;
++            if (used > sizeof tmp)
++                return QPSK_FC_LEN;          /* cannot happen: len<=n<=MAX */
++            memcpy(tmp, p, used);
++            memset(tmp + 8, 0, 4);
++            cls = (qpsk_crc32(tmp, used) == crc_rx) ? QPSK_FC_OK : QPSK_FC_CRC;
++        }
++    }
++    if ((cls == QPSK_FC_MAGIC || cls == QPSK_FC_LEN) && fzo != QPSK_FZO_NONE)
++        cls = QPSK_FC_ZEROTAIL;
++    return cls;
++}
++
++/* -------------------------------------------------- QPSK_FRAMELOG record ---
++ * 48 B, little-endian, written back-to-back with NO file header (unchanged
++ * from the pre-campaign layout that every existing parser assumes).  The only
++ * change: `reserved` -- previously always 0 -- now carries the fail class.
++ * Python: struct "<QQIIIIIIII" (10 fields, 48 B). */
++struct frame_rec {
++    uint64_t t_mono_ns;       /* CLOCK_MONOTONIC at the decode                */
++    uint64_t t_real_ns;       /* CLOCK_REALTIME (maps to capture wallclock)   */
++    uint32_t host_seq;        /* decoded seq (pass) or raw header seq (fail)  */
++    uint32_t crc_ok;          /* 1 = good frame, 0 = errored/dropped          */
++    uint32_t reg_packets;     /* 0x104 packets_out (cumulative)               */
++    uint32_t reg_biterr;      /* 0x108 bit_errors_out (cumulative BIST)       */
++    uint32_t reg_rstcs;       /* 0x150 rstcs_count (cumulative carrier reset) */
++    uint32_t reg_cfc;         /* 0x154 cfc_est (CFO trajectory snapshot)      */
++    uint32_t reg_adcforensic; /* 0x15C adc_forensic (level/duty/gap snapshot) */
++    uint32_t fail_class;      /* enum qpsk_fail_class (was `reserved`, == 0)  */
++};
++_Static_assert(sizeof(struct frame_rec) == 48, "frame_rec must be 48 bytes");
++
++/* --------------------------------------------------- QPSK_FAILHDR record ---
++ * 32 B, little-endian.  One record per FAILED frame, appended to a ring of
++ * QPSK_FAILHDR_N entries; the ring is dumped (header + records, oldest first)
++ * on SIGUSR1 and at exit.  Python: struct "<QIIBBH12s".
++ * host_seq is the RAW header seq word -- garbage for a magic-bad frame; index
++ * failures by record position, never by host_seq. */
++struct failhdr_rec {
++    uint64_t t_mono_ns;       /* CLOCK_MONOTONIC, same clock as frame_rec     */
++    uint32_t host_seq;        /* raw p[4..7] as logged in the framelog        */
++    uint32_t first_zero_off;  /* zero-tail onset, or QPSK_FZO_NONE            */
++    uint8_t  fail_class;      /* enum qpsk_fail_class (1..4)                  */
++    uint8_t  pad;             /* 0                                            */
++    uint16_t magic_off;       /* first 0x51 0x4B offset, or QPSK_MAGOFF_NONE  */
++    uint8_t  hdr[12];         /* the 12 raw header bytes of the slice         */
++};
++_Static_assert(sizeof(struct failhdr_rec) == 32, "failhdr_rec must be 32 bytes");
++
++/* ------------------------------------------------------ QPSK_TXLOG record ---
++ * 32 B, little-endian.  One record per TRANSMITTED frame at the submit path
++ * (tx_send: one; tx_send_batch: n).  Python: struct "<QQIIIHH".
++ *
++ * gap_ns is the value txgap_note() computed for THIS transfer: an ESTIMATED
++ * LOWER BOUND on the fabric-visible silence before the submit, and only when
++ * the queue was empty after the reap (inflight_after_reap == 0).  When the
++ * queue was still busy no silence is measurable and gap_ns == QPSK_GAP_NONE.
++ * "not measured" and "measured 0 ns" are therefore distinct values. */
++struct txlog_rec {
++    uint64_t t_submit_ns;     /* CLOCK_MONOTONIC just after DMAC_SUBMIT       */
++    uint64_t t_complete_ns;   /* CLOCK_MONOTONIC at tx_reap; 0 = never reaped */
++    uint32_t seq;             /* header seq word of the submitted frame       */
++    uint32_t gap_ns;          /* txgap_note's gap, or QPSK_GAP_NONE           */
++    uint32_t slot;            /* tx_slot counter (monotonic, not modulo)      */
++    uint16_t inflight;        /* queue depth BEFORE this submit (0,1,..)      */
++    uint16_t spins;           /* polled-mode 100 us spins waiting for a slot  */
++};
++_Static_assert(sizeof(struct txlog_rec) == 32, "txlog_rec must be 32 bytes");
++
++/* --------------------------------------------------------- file headers ---
++ * Both NEW files start with this 32 B header so a reader can tell the layout
++ * apart from the old bare-record dumps (the pre-campaign txlog was a headerless
++ * stream of 16 B "<QIHH" records; two_jup/txlog_gaps.py and
++ * two_jup/loss_ledger.py:tx_gaps_146 still assume that and must be updated).
++ * Python: struct "<8sIIQII". */
++#define QPSK_TXLOG_MAGIC   "QTXLOG02"
++#define QPSK_FAILHDR_MAGIC "QFAILH01"
++struct qpsk_log_hdr {
++    char     magic[8];        /* QPSK_TXLOG_MAGIC / QPSK_FAILHDR_MAGIC        */
++    uint32_t rec_bytes;       /* 32                                           */
++    uint32_t n_records;       /* records that follow this header              */
++    uint64_t t_dump_ns;       /* CLOCK_MONOTONIC at the dump                  */
++    uint32_t total;           /* total events seen (> n_records => wrapped)   */
++    uint32_t flags;           /* bit0 = ring wrapped (oldest events lost)     */
++};
++_Static_assert(sizeof(struct qpsk_log_hdr) == 32, "qpsk_log_hdr must be 32 bytes");
++#define QPSK_LOGF_WRAPPED 0x1u
++
++/* ---------------------------------------------------------- TX<->RX join ---
++ * Reference semantics for the per-frame join the campaign scores.  The real
++ * join runs in Python (two_jup/comb/); this C helper is the executable spec
++ * the Python must agree with, and is what test_txlog.c exercises.
++ *
++ *   NEVER_SENT             the TX board has no submit record for that seq
++ *   SENT_NOT_DECODED       submitted, but the RX framelog has no crc_ok==1
++ *                          record for it (it may have a failed record, or
++ *                          none at all)
++ *   DECODED_NOT_DELIVERED  the RX framelog decoded it (crc_ok==1) but the
++ *                          payload never reached the consumer (tun / qpsk_perf
++ *                          sequence set)
++ *   OK                     submitted, decoded and delivered
++ *
++ * `delivered` may be NULL (n_delivered 0) when no delivery evidence exists,
++ * in which case a decoded frame is reported OK -- state that in any writeup
++ * rather than silently calling the class absent. */
++enum qpsk_join_class {
++    QPSK_JOIN_OK                    = 0,
++    QPSK_JOIN_NEVER_SENT            = 1,
++    QPSK_JOIN_SENT_NOT_DECODED      = 2,
++    QPSK_JOIN_DECODED_NOT_DELIVERED = 3
++};
++
++static inline int qpsk_join_classify(uint32_t seq,
++                                     const struct txlog_rec *tx, size_t ntx,
++                                     const struct frame_rec *rx, size_t nrx,
++                                     const uint32_t *delivered, size_t n_delivered)
++{
++    size_t i;
++    int sent = 0, decoded = 0, deliv = 0;
++
++    for (i = 0; i < ntx; i++)
++        if (tx[i].seq == seq) { sent = 1; break; }
++    if (!sent)
++        return QPSK_JOIN_NEVER_SENT;
++
++    for (i = 0; i < nrx; i++)
++        if (rx[i].crc_ok == 1u && rx[i].host_seq == seq) { decoded = 1; break; }
++    if (!decoded)
++        return QPSK_JOIN_SENT_NOT_DECODED;
++
++    if (!delivered || n_delivered == 0)
++        return QPSK_JOIN_OK;
++    for (i = 0; i < n_delivered; i++)
++        if (delivered[i] == seq) { deliv = 1; break; }
++    return deliv ? QPSK_JOIN_OK : QPSK_JOIN_DECODED_NOT_DELIVERED;
++}
++
++#endif /* QPSK_JOIN_H */
+diff --git a/host_app_k5/qpsk_tun.c b/host_app_k5/qpsk_tun.c
+index d6bbe47..a11a99e 100644
+--- a/host_app_k5/qpsk_tun.c
++++ b/host_app_k5/qpsk_tun.c
+@@ -72,6 +72,9 @@
+ #include "qpsk_ber.h"    /* full-packet BER scorer (-B mode / -T self-test) */
+ #include "qpsk_seq.h"    /* loss-proof sequence-streaming scorer (-S mode) */
+ #include "qpsk_uio.h"    /* UIO /sys scan + fd ops for the IRQ event loop */
++#include "qpsk_join.h"   /* COMB campaign: frame_rec/failhdr_rec/txlog_rec
++                          * on-disk ABI + the pure qpsk_fail_class() parser.
++                          * MUST be deployed alongside this file. */
+ 
+ #include "qpsk_hw.h"     /* board-configurable base addresses (-DQPSK_BOARD_ZED) */
+ #define TX_DMA_BASE  QPSK_TX_DMA_BASE
+@@ -285,19 +288,10 @@ static void stats_dump(void)
+  * crc_ok is per-frame good/bad: CRC pass in tun/echo, scored-CLEAN in -B.
+  * Flush: SIGUSR1 (with the stats dump) and atexit; SIGUSR2 rotates (truncates)
+  * the file so a long capture can be drained without stopping the daemon. */
+-struct frame_rec {
+-    uint64_t t_mono_ns;       /* CLOCK_MONOTONIC at the decode                */
+-    uint64_t t_real_ns;       /* CLOCK_REALTIME (maps to capture wallclock)   */
+-    uint32_t host_seq;        /* decoded seq (pass) or raw header seq (fail)  */
+-    uint32_t crc_ok;          /* 1 = good frame, 0 = errored/dropped          */
+-    uint32_t reg_packets;     /* 0x104 packets_out (cumulative)               */
+-    uint32_t reg_biterr;      /* 0x108 bit_errors_out (cumulative BIST)       */
+-    uint32_t reg_rstcs;       /* 0x150 rstcs_count (cumulative carrier reset) */
+-    uint32_t reg_cfc;         /* 0x154 cfc_est (CFO trajectory snapshot)      */
+-    uint32_t reg_adcforensic; /* 0x15C adc_forensic (level/duty/gap snapshot) */
+-    uint32_t reserved;        /* pad to 48 B / 8-byte record alignment        */
+-};
+-_Static_assert(sizeof(struct frame_rec) == 48, "frame_rec must be 48 bytes");
++/* struct frame_rec (48 B) now lives in qpsk_join.h -- the single ABI source
++ * shared with the offline tools and the host unit tests. The formerly-unused
++ * `reserved` word is now `fail_class` (0 for every good frame, so the layout
++ * and every existing parser are unaffected). */
+ 
+ /* Modem forensic register offsets (read-only status). Reads are plain volatile
+  * loads off the modem BAR mmap -- the direct_reg_access caveat in qpsk_hw.h
+@@ -325,12 +319,14 @@ static uint32_t framelog_seq(const unsigned char *p)
+          | ((uint32_t)p[6] << 16) | ((uint32_t)p[7] << 24);
+ }
+ 
+-static void framelog_record(int crc_ok, uint32_t seq)
++static uint64_t framelog_emit(int crc_ok, uint32_t seq, uint32_t fail_class)
+ {
++    uint64_t t;
+     if (!framelog_fp || !modem_regs)
+-        return;
++        return 0;
+     struct frame_rec r;
+-    r.t_mono_ns       = framelog_clock_ns(CLOCK_MONOTONIC);
++    t = framelog_clock_ns(CLOCK_MONOTONIC);
++    r.t_mono_ns       = t;
+     r.t_real_ns       = framelog_clock_ns(CLOCK_REALTIME);
+     r.host_seq        = seq;
+     r.crc_ok          = crc_ok ? 1u : 0u;
+@@ -339,8 +335,82 @@ static void framelog_record(int crc_ok, uint32_t seq)
+     r.reg_rstcs       = modem_regs[FL_REG_RSTCS   / 4];
+     r.reg_cfc         = modem_regs[FL_REG_CFC     / 4];
+     r.reg_adcforensic = modem_regs[FL_REG_ADCFOR  / 4];
+-    r.reserved        = 0;
++    r.fail_class      = fail_class;
+     fwrite(&r, sizeof r, 1, framelog_fp);
++    return t;
++}
++
++/* Successful-decode sites (and the -B clean bucket) keep the historical
++ * signature and always log fail_class == 0. */
++static void framelog_record(int crc_ok, uint32_t seq)
++{
++    framelog_emit(crc_ok, seq, (uint32_t)QPSK_FC_OK);
++}
++
++/* ---- failed-header ring (QPSK_FAILHDR) -----------------------------------
++ * COMB campaign T0a. One 32 B record per FAILED frame: when + the raw 12-byte
++ * header + the fail class + the zero-tail onset + the first magic offset.
++ * 65,536 entries = 2 MiB, calloc'd once at startup and pre-faulted (the ring
++ * must never take a page fault inside the RX drain we are measuring).
++ * Dumped on SIGUSR1 and at exit to $QPSK_FAILHDR; unset => NULL => the only
++ * cost on the failure path is one pointer test. */
++#define QPSK_FAILHDR_N 65536u
++static struct failhdr_rec *failhdr_buf;   /* NULL = disabled */
++static unsigned failhdr_head;             /* total failures seen (may wrap the ring) */
++static const char *failhdr_path;
++
++static void failhdr_dump(void)
++{
++    if (!failhdr_buf || !failhdr_path) return;
++    FILE *f = fopen(failhdr_path, "wb");
++    if (!f) return;
++    unsigned n = failhdr_head < QPSK_FAILHDR_N ? failhdr_head : QPSK_FAILHDR_N;
++    unsigned start = failhdr_head < QPSK_FAILHDR_N ? 0 : failhdr_head % QPSK_FAILHDR_N;
++    struct qpsk_log_hdr h;
++    memset(&h, 0, sizeof h);
++    memcpy(h.magic, QPSK_FAILHDR_MAGIC, 8);
++    h.rec_bytes = (uint32_t)sizeof(struct failhdr_rec);
++    h.n_records = n;
++    h.t_dump_ns = framelog_clock_ns(CLOCK_MONOTONIC);
++    h.total     = failhdr_head;
++    h.flags     = failhdr_head > QPSK_FAILHDR_N ? QPSK_LOGF_WRAPPED : 0u;
++    fwrite(&h, sizeof h, 1, f);
++    /* at most two bulk writes (tail then head), never a per-record loop */
++    if (start + n <= QPSK_FAILHDR_N) {
++        fwrite(failhdr_buf + start, sizeof *failhdr_buf, n, f);
++    } else {
++        unsigned first = QPSK_FAILHDR_N - start;
++        fwrite(failhdr_buf + start, sizeof *failhdr_buf, first, f);
++        fwrite(failhdr_buf, sizeof *failhdr_buf, n - first, f);
++    }
++    fclose(f);
++}
++
++/* Failed-frame log site: re-parses the slice (pure qpsk_fail_class, mirroring
++ * qpsk_frame_decode's checks in order), writes the framelog record with the
++ * class in `fail_class`, and appends the raw header to the failhdr ring.
++ * `p` must be the DE-WHITENED slice; with QPSK_WHITEN=0 (the campaign default,
++ * and what framelog_seq() has always assumed) the wire bytes already are. */
++static void framelog_record_fail(const unsigned char *p, int n)
++{
++    uint32_t fzo = QPSK_FZO_NONE;
++    if ((!framelog_fp || !modem_regs) && !failhdr_buf)
++        return;                 /* both sinks off: do not re-parse the slice */
++    uint32_t seq = framelog_seq(p);
++    int cls = qpsk_fail_class((const uint8_t *)p, (size_t)n, &fzo);
++    uint64_t t = framelog_emit(0, seq, (uint32_t)cls);
++    if (!failhdr_buf)
++        return;
++    struct failhdr_rec *fr = &failhdr_buf[failhdr_head++ % QPSK_FAILHDR_N];
++    fr->t_mono_ns      = t ? t : framelog_clock_ns(CLOCK_MONOTONIC);
++    fr->host_seq       = seq;
++    fr->first_zero_off = fzo;
++    fr->fail_class     = (uint8_t)cls;
++    fr->pad            = 0;
++    fr->magic_off      = (uint16_t)qpsk_first_magic_off((const uint8_t *)p, (size_t)n);
++    memcpy(fr->hdr, p, n < QPSK_FRAME_HDR_BYTES ? (size_t)n : (size_t)QPSK_FRAME_HDR_BYTES);
++    if (n < QPSK_FRAME_HDR_BYTES)
++        memset(fr->hdr + n, 0, (size_t)(QPSK_FRAME_HDR_BYTES - n));
+ }
+ 
+ static void framelog_flush(void)
+@@ -501,6 +571,11 @@ static double now_s(void);              /* defined below (monotonic seconds) */
+ static uint64_t txgap_n, txgap_empty, txgap_gt20, txgap_gt50, txgap_gt200;
+ static double   txgap_max_us, txgap_sum_us;
+ static uint32_t txgap_hist[48];         /* log2 bins of gap_us (bin i: [2^(i/2)) coarse) */
++static uint32_t txgap_last_ns = QPSK_GAP_NONE; /* gap txgap_note computed for the
++                                         * CURRENT transfer, in ns; QPSK_GAP_NONE
++                                         * when the queue was not empty (no
++                                         * silence is measurable). Read by the
++                                         * txlog writer right after the call. */
+ static double   txgap_prev_t = 0;       /* previous submit time (monotonic s) */
+ static int      txgap_prev_frames = 0;  /* air frames in the previous transfer */
+ static int      tx_idle_batch = 0;      /* QPSK_TX_QUEUED=N: N idle frames per transfer (0/1 = off) */
+@@ -525,10 +600,13 @@ static double txgap_bin_hi_us(int b)                  /* upper edge of bin b, in
+ static void txgap_note(int inflight_after_reap, int frames, double now)
+ {
+     txgap_n++;
++    txgap_last_ns = QPSK_GAP_NONE;
+     if (txgap_prev_t > 0 && inflight_after_reap == 0) {
+         double fin = txgap_prev_t + (double)txgap_prev_frames * frame_period_s;
+         double gap = (now - fin) * 1e6;
+         if (gap < 0) gap = 0;
++        { double ns = gap * 1e3;
++          txgap_last_ns = ns >= 4.0e9 ? 0xFFFFFFFEu : (uint32_t)ns; }  /* clip below the NONE sentinel */
+         txgap_empty++;
+         txgap_sum_us += gap;
+         if (gap > txgap_max_us) txgap_max_us = gap;
+@@ -569,11 +647,23 @@ static void txgap_dump(void)
+  * side shows zero-fill) -- the discriminator the periodic TX zero-fill events
+  * (TX_ANOMALY_SCAN.md: exact 30/33/34-frame cadence) need. Unset = NULL = no
+  * code in the path beyond one pointer test. */
+-struct txlog_rec { uint64_t t_ns; uint32_t slot; uint16_t inflight; uint16_t spins; };
+-#define TXLOG_N 65536u
++/* COMB campaign T0a: struct txlog_rec (32 B) now lives in qpsk_join.h and
++ * carries seq / t_submit_ns / t_complete_ns / gap_ns. The ring is one record
++ * per TRANSMITTED FRAME (tx_send: 1; tx_send_batch: n), not per transfer.
++ * 1,048,576 records x 32 B = 32 MiB resident -- calloc'd AND pre-faulted at
++ * startup, because a lazily-populated mapping would take page faults inside
++ * tx_send() for the first ~14 min of a run and manufacture exactly the TX
++ * starvation this campaign is measuring. At the R3 rate (~1250 f/s) 1 M
++ * records is 838 s, so a 600 s leg never wraps.
++ * NOTE (layout change): the pre-campaign dump was a HEADERLESS stream of 16 B
++ * "<QIHH" records; two_jup/txlog_gaps.py and two_jup/loss_ledger.py's
++ * tx_gaps_146() still assume that and must be updated (Task 2). New dumps
++ * start with a struct qpsk_log_hdr whose magic is QPSK_TXLOG_MAGIC. */
++#define TXLOG_N 1048576u
+ static struct txlog_rec *txlog_buf;      /* NULL = disabled */
+-static unsigned txlog_head;
++static unsigned txlog_head;              /* total frames submitted (may wrap the ring) */
+ static const char *txlog_path;
++static int txlog_on_usr1;                /* QPSK_TXLOG_USR1: dump on SIGUSR1 too */
+ 
+ static void txlog_dump(void)
+ {
+@@ -582,18 +672,99 @@ static void txlog_dump(void)
+     if (!f) return;
+     unsigned n = txlog_head < TXLOG_N ? txlog_head : TXLOG_N;
+     unsigned start = txlog_head < TXLOG_N ? 0 : txlog_head % TXLOG_N;
+-    for (unsigned i = 0; i < n; i++)
+-        fwrite(&txlog_buf[(start + i) % TXLOG_N], sizeof *txlog_buf, 1, f);
++    struct qpsk_log_hdr h;
++    struct timespec ts;
++    memset(&h, 0, sizeof h);
++    memcpy(h.magic, QPSK_TXLOG_MAGIC, 8);
++    h.rec_bytes = (uint32_t)sizeof(struct txlog_rec);
++    h.n_records = n;
++    clock_gettime(CLOCK_MONOTONIC, &ts);
++    h.t_dump_ns = (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
++    h.total     = txlog_head;
++    h.flags     = txlog_head > TXLOG_N ? QPSK_LOGF_WRAPPED : 0u;
++    fwrite(&h, sizeof h, 1, f);
++    /* two bulk writes at most -- a per-record fwrite loop over 1 M records is
++     * ~100 ms of dead time, which at a 2-deep TX queue (~1.6 ms of air) would
++     * itself starve the fabric if this ever ran on SIGUSR1. */
++    if (start + n <= TXLOG_N) {
++        fwrite(txlog_buf + start, sizeof *txlog_buf, n, f);
++    } else {
++        unsigned first = TXLOG_N - start;
++        fwrite(txlog_buf + start, sizeof *txlog_buf, first, f);
++        fwrite(txlog_buf, sizeof *txlog_buf, n - first, f);
++    }
+     fclose(f);
+     fprintf(stderr, "qpsk_tun txlog: wrote %u records (of %u submits) to %s\n",
+             n, txlog_head, txlog_path);
+ }
+ 
++/* Ring index of the frame records belonging to each in-flight transfer, kept
++ * parallel to tx_ids[] so tx_reap() can stamp t_complete_ns. Absolute (not
++ * modulo) so a stale index can be rejected if the ring wrapped past it. */
++static unsigned tx_log_first[MAX_INFLIGHT];
++static unsigned tx_log_cnt[MAX_INFLIGHT];
++
++static void txlog_note_complete(unsigned first, unsigned cnt, uint64_t t)
++{
++    if (!txlog_buf || cnt == 0) return;
++    if (txlog_head - first > TXLOG_N) return;     /* already overwritten */
++    for (unsigned i = 0; i < cnt; i++)
++        txlog_buf[(first + i) % TXLOG_N].t_complete_ns = t;
++}
++
++/* One record per submitted FRAME. Returns the absolute ring index of the
++ * first record written (for the completion stamp). */
++static unsigned txlog_note_submit(const unsigned char *pkt, int nframes,
++                                  int stride, int inflight_before, int spins)
++{
++    unsigned first = txlog_head;
++    struct timespec ts;
++    uint64_t t;
++    if (!txlog_buf) return first;
++    clock_gettime(CLOCK_MONOTONIC, &ts);
++    t = (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
++    for (int i = 0; i < nframes; i++) {
++        const unsigned char *fp = pkt + (size_t)i * (size_t)stride;
++        struct txlog_rec *r = &txlog_buf[txlog_head++ % TXLOG_N];
++        r->t_submit_ns   = t;
++        r->t_complete_ns = 0;
++        /* the header seq word of the frame as submitted; with QPSK_WHITEN=1
++         * these bytes are whitened (the campaign runs WHITEN=0) */
++        r->seq        = (uint32_t)fp[4] | ((uint32_t)fp[5] << 8)
++                      | ((uint32_t)fp[6] << 16) | ((uint32_t)fp[7] << 24);
++        r->gap_ns     = i == 0 ? txgap_last_ns : QPSK_GAP_NONE;
++        r->slot       = tx_slot;
++        r->inflight   = (uint16_t)inflight_before;
++        r->spins      = (uint16_t)(spins > 65535 ? 65535 : spins);
++    }
++    return first;
++}
++
++/* SIGUSR1 (serviced from the event loop, never the handler): flush the
++ * framelog and write the failed-header ring (2 MiB, two bulk writes). The
++ * 32 MiB TX log is NOT written here unless QPSK_TXLOG_USR1 is set -- T1's
++ * 10 s stats poll would otherwise put ~100 ms of file I/O into the loop that
++ * feeds the modulator and manufacture the starvation we are measuring. */
++static void instr_usr1_dump(void)
++{
++    framelog_flush();
++    failhdr_dump();
++    if (txlog_on_usr1)
++        txlog_dump();
++}
++
+ static void tx_reap(void)
+ {
+     while (tx_inflight > 0 &&
+            ((dmac_rd(&txd, DMAC_TRANSFER_DONE) >> tx_ids[0]) & 1)) {
++        if (txlog_buf) {
++            struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
++            txlog_note_complete(tx_log_first[0], tx_log_cnt[0],
++                                (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec);
++        }
+         memmove(tx_ids, tx_ids + 1, sizeof(tx_ids[0]) * (size_t)(tx_inflight - 1));
++        memmove(tx_log_first, tx_log_first + 1, sizeof(tx_log_first[0]) * (size_t)(tx_inflight - 1));
++        memmove(tx_log_cnt, tx_log_cnt + 1, sizeof(tx_log_cnt[0]) * (size_t)(tx_inflight - 1));
+         tx_inflight--;
+     }
+ }
+@@ -664,15 +835,10 @@ static int tx_send(const unsigned char *pkt)
+     dmac_wr(&txd, DMAC_X_LENGTH, (uint32_t)tx_xfer_bytes - 1);
+     dmac_wr(&txd, DMAC_FLAGS, DMAC_FLAG_TLAST);
+     dmac_wr(&txd, DMAC_SUBMIT, 1);
++    { unsigned lf = txlog_note_submit(pkt, 1, pkt_bytes, tx_inflight, spins);
++      tx_log_first[tx_inflight] = lf;
++      tx_log_cnt[tx_inflight]   = txlog_buf ? 1u : 0u; }
+     tx_ids[tx_inflight++] = id;
+-    if (txlog_buf) {
+-        struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+-        struct txlog_rec *r = &txlog_buf[txlog_head++ % TXLOG_N];
+-        r->t_ns = (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+-        r->slot = tx_slot;
+-        r->inflight = (uint16_t)(tx_inflight - 1);
+-        r->spins = (uint16_t)(spins > 65535 ? 65535 : spins);
+-    }
+     tx_slot++;
+     st.frames_tx++;
+     return 0;
+@@ -743,6 +909,9 @@ static int tx_send_batch(const unsigned char *frames, int n)
+     dmac_wr(&txd, DMAC_X_LENGTH, (uint32_t)(n * tx_xfer_bytes) - 1);
+     dmac_wr(&txd, DMAC_FLAGS, DMAC_FLAG_TLAST);
+     dmac_wr(&txd, DMAC_SUBMIT, 1);
++    { unsigned lf = txlog_note_submit(frames, n, pkt_bytes, tx_inflight, 0);
++      tx_log_first[tx_inflight] = lf;
++      tx_log_cnt[tx_inflight]   = txlog_buf ? (unsigned)n : 0u; }
+     tx_ids[tx_inflight++] = id;
+     tx_slot++;
+     st.frames_tx += (unsigned)n;
+@@ -1169,7 +1338,7 @@ static int rx_pump_cyclic(unsigned char *out, uint32_t *seq)
+         int m = qpsk_frame_decode(slice, pkt_bytes, out, seq);
+         fslog_note(slice, m);
+         rx_ring_scan = (rx_ring_scan + 1u) % rx_ring_slots;
+-        if (m < 0) { st.crc_drops++; framelog_record(0, framelog_seq(slice)); return 0; }
++        if (m < 0) { st.crc_drops++; framelog_record_fail(slice, pkt_bytes); return 0; }
+         if (m == 0) { st.idle_rx++; return 0; }
+         rx_cyc_last = *seq; rx_cyc_have = 1;   /* keep the cursor coherent */
+         return m;
+@@ -1214,7 +1383,7 @@ static int rx_pump_cyclic(unsigned char *out, uint32_t *seq)
+             if (qpsk_frame_decode(peek, pkt_bytes, pout, &pseq) >= 0 &&
+                 rx_cyc_have && seq_after(pseq, rx_cyc_last)) {
+                 st.crc_drops++;
+-                framelog_record(0, framelog_seq(slice));
++                framelog_record_fail(slice, pkt_bytes);
+                 rx_ring_scan = (rx_ring_scan + 1u) % rx_ring_slots;
+                 break;                     /* consumed the dead slot; deliver nothing */
+             }
+@@ -1494,7 +1663,7 @@ static int rx_pump_queued(unsigned char *out, uint32_t *seq)
+             if (m > 0) { rx_q_progress = rx_q_delivered = now_s(); return m; }
+             if (m == 0) { st.idle_rx++; rx_q_delivered = now_s(); continue; }   /* idle frame = delivery too (H-6 fix v2) */
+             st.crc_drops++;
+-            framelog_record(0, framelog_seq(slice));
++            framelog_record_fail(slice, pkt_bytes);
+         }
+         unsigned drained = (unsigned)rx_drain;
+         rx_drain = -1;
+@@ -1588,7 +1757,7 @@ static int rx_pump_frame(unsigned char *out, uint32_t *seq)
+               mo,gr,l0,s0,l0?pkt[12]:0,(unsigned)(s0&0xff));
+             for(int i=0;i<pkt_bytes;i++){if(i%8==0)fprintf(stderr,"|");fprintf(stderr,"%02x",pkt[i]);} fprintf(stderr,"\n"); } }
+         int m = qpsk_frame_decode(pkt, pkt_bytes, out, seq);
+-        if (m < 0) { st.crc_drops++; framelog_record(0, framelog_seq(pkt)); return 0; }
++        if (m < 0) { st.crc_drops++; framelog_record_fail(pkt, pkt_bytes); return 0; }
+         if (m == 0) { st.idle_rx++; return 0; } /* peer keepalive: consume */
+         return m;
+     }
+@@ -1605,7 +1774,7 @@ static int rx_pump_frame(unsigned char *out, uint32_t *seq)
+                 return m;
+             if (m == 0) { st.idle_rx++; continue; } /* keepalive: keep draining */
+             st.crc_drops++;
+-            framelog_record(0, framelog_seq(slice));
++            framelog_record_fail(slice, pkt_bytes);
+         }
+         rx_drain = -1;             /* fully drained */
+     }
+@@ -2080,7 +2249,7 @@ static void echo_mode(int duration)
+     dma_open();
+     while (running && now_s() - t0 < duration) {
+         framelog_service();                              /* SIGUSR2 rotate */
+-        if (dump_req) { dump_req = 0; framelog_flush(); } /* SIGUSR1 flush */
++        if (dump_req) { dump_req = 0; instr_usr1_dump(); } /* SIGUSR1 flush */
+         if (tx_capacity()) {
+             for (int i = 0; i < maxp; i++)
+                 payload[i] = (unsigned char)(tx_seq + (uint32_t)i);
+@@ -2149,7 +2318,7 @@ static void ber_run(int duration)
+ 
+     while (running && now_s() - t0 < duration) {
+         framelog_service();                              /* SIGUSR2 rotate */
+-        if (dump_req) { dump_req = 0; framelog_flush(); } /* SIGUSR1 flush */
++        if (dump_req) { dump_req = 0; instr_usr1_dump(); } /* SIGUSR1 flush */
+         /* keep the modulator continuously fed with the reference frame */
+         while (tx_capacity())
+             if (tx_send(ref) != 0)
+@@ -2160,7 +2329,13 @@ static void ber_run(int duration)
+             carve_copy_from(pkt, rx_area_virt(0), (size_t)pkt_bytes);  /* carve -> local */
+             rx_arm(0);
+             int bkt = qpsk_ber_score_frame(pkt, ref, &bs);
+-            framelog_record(bkt == QBER_CLEAN, framelog_seq(pkt));  /* good = 0 bit errors */
++            /* -B scorer: "fail" here is a NOISY BIT BUCKET, not a decode
++             * failure -- a noisy frame can still carry a parseable header, so
++             * crc_ok==0 with fail_class==0 is legitimate in -B mode only. */
++            if (bkt == QBER_CLEAN)
++                framelog_record(1, framelog_seq(pkt));
++            else
++                framelog_record_fail(pkt, pkt_bytes);
+         }
+         if (now_s() - tlast >= 5.0) {
+             tlast = now_s();
+@@ -2514,7 +2689,7 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
+             if (_us > 2000.0) rxq_loop_over2ms++; }
+           _lt = _n; }
+ #endif
+-        if (dump_req) { dump_req = 0; stats_dump(); framelog_flush(); }
++        if (dump_req) { dump_req = 0; stats_dump(); instr_usr1_dump(); }
+         framelog_service();
+ 
+         /* only accept tun-A frames when the Tx DMA can take one AND a pacing
+@@ -3025,9 +3200,35 @@ int main(int argc, char **argv)
+           txlog_buf = calloc(TXLOG_N, sizeof *txlog_buf);
+           if (txlog_buf) {
+               txlog_path = e;
++              /* PRE-FAULT: calloc of 32 MiB is a fresh mmap, so without this
++               * the first ~1 M submits each take a page fault INSIDE tx_send.
++               * memset touches every page once, here, at startup. */
++              memset(txlog_buf, 0, (size_t)TXLOG_N * sizeof *txlog_buf);
++              txlog_on_usr1 = getenv("QPSK_TXLOG_USR1") != NULL;
+               atexit(txlog_dump);
+-              fprintf(stderr, "QPSK_TXLOG: ring of last %u tx submits -> %s\n",
+-                      TXLOG_N, e);
++              fprintf(stderr, "QPSK_TXLOG: ring of last %u tx frames (%zu MiB, %u B/rec) -> %s%s\n",
++                      TXLOG_N,
++                      (size_t)TXLOG_N * sizeof *txlog_buf / (1024u * 1024u),
++                      (unsigned)sizeof *txlog_buf, e,
++                      txlog_on_usr1 ? " (also on SIGUSR1)" : " (at exit only)");
++          } else {
++              fprintf(stderr, "QPSK_TXLOG: calloc of %u records FAILED -- TX log disabled\n",
++                      TXLOG_N);
++          }
++      } }
++    { const char *e = getenv("QPSK_FAILHDR");
++      if (e && *e) {
++          failhdr_buf = calloc(QPSK_FAILHDR_N, sizeof *failhdr_buf);
++          if (failhdr_buf) {
++              failhdr_path = e;
++              memset(failhdr_buf, 0, (size_t)QPSK_FAILHDR_N * sizeof *failhdr_buf);
++              atexit(failhdr_dump);
++              fprintf(stderr, "QPSK_FAILHDR: ring of last %u failed headers (%zu MiB, %u B/rec) -> %s\n",
++                      QPSK_FAILHDR_N,
++                      (size_t)QPSK_FAILHDR_N * sizeof *failhdr_buf / (1024u * 1024u),
++                      (unsigned)sizeof *failhdr_buf, e);
++          } else {
++              fprintf(stderr, "QPSK_FAILHDR: calloc FAILED -- failed-header ring disabled\n");
+           }
+       } }
+     { const char *e = getenv("QPSK_FRAMELOG");
+@@ -3151,7 +3352,7 @@ int main(int argc, char **argv)
+             if (_us > 2000.0) rxq_loop_over2ms++; }
+           _lt = _n; }
+ #endif
+-        if (dump_req) { dump_req = 0; stats_dump(); framelog_flush(); }
++        if (dump_req) { dump_req = 0; stats_dump(); instr_usr1_dump(); }
+         framelog_service();
+ 
+         /* only read the A side when the Tx DMA can take a frame; spin
+diff --git a/host_app_k5/test_frame.c b/host_app_k5/test_frame.c
+index a2d4eb5..444f1a9 100644
+--- a/host_app_k5/test_frame.c
++++ b/host_app_k5/test_frame.c
+@@ -6,7 +6,9 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <stddef.h>
+ #include "qpsk_frame.h"
++#include "qpsk_join.h"   /* COMB campaign: qpsk_fail_class + the log-record ABI */
+ 
+ static int tests = 0, fails = 0;
+ #define CHECK(cond, msg) do { tests++; if (!(cond)) { fails++; \
+@@ -70,6 +72,129 @@ static void run_suite(int pkt_bytes)
+     printf("frame tests @%dB: done\n", pkt_bytes);
+ }
+ 
++
++/* ---- COMB campaign (T0a): qpsk_fail_class truth table --------------------
++ * The daemon writes this class into frame_rec.fail_class at every failed-frame
++ * log site, so the classes must be exactly the checks qpsk_frame_decode makes,
++ * in the same ORDER (magic, then len, then CRC), with class 4 (ALIGNLOSS
++ * zero-tail) overriding a garbage HEADER class (1 or 2) but never a CRC
++ * failure. Every case below is checked at F1536 (the deployed geometry). */
++static void fc_suite(int pkt_bytes)
++{
++    unsigned char pkt[QPSK_PKT_BYTES_MAX];
++    unsigned char payload[QPSK_PKT_BYTES_MAX];
++    int maxp = QPSK_FRAME_MAX_PAYLOAD(pkt_bytes);
++    uint32_t fzo;
++    int i;
++
++    for (i = 0; i < maxp; i++) payload[i] = (unsigned char)(i * 7 + 3);
++
++    /* good frame -> class 0, and its PN-filled padding is NOT a zero tail */
++    qpsk_frame_encode(pkt, pkt_bytes, payload, 64, 0x1234u);
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_OK, "fc: good frame -> 0");
++    CHECK(fzo == QPSK_FZO_NONE, "fc: good frame has no zero tail");
++    CHECK(qpsk_first_magic_off(pkt, pkt_bytes) == 0, "fc: good frame magic at 0");
++
++    /* magic corrupted -> 1 (either byte) */
++    qpsk_frame_encode(pkt, pkt_bytes, payload, 64, 0x1234u);
++    pkt[0] ^= 0xFF;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_MAGIC, "fc: magic[0] -> 1");
++    qpsk_frame_encode(pkt, pkt_bytes, payload, 64, 0x1234u);
++    pkt[1] ^= 0x01;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_MAGIC, "fc: magic[1] -> 1");
++
++    /* len > max payload -> 2 (magic intact) */
++    qpsk_frame_encode(pkt, pkt_bytes, payload, 64, 0x1234u);
++    pkt[2] = (unsigned char)((maxp + 1) & 0xFF);
++    pkt[3] = (unsigned char)(((maxp + 1) >> 8) & 0xFF);
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_LEN, "fc: len>max -> 2");
++    pkt[2] = 0xFF; pkt[3] = 0xFF;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_LEN, "fc: len=0xFFFF -> 2");
++
++    /* crc flipped -> 3 */
++    qpsk_frame_encode(pkt, pkt_bytes, payload, 64, 0x1234u);
++    pkt[8] ^= 0x01;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_CRC, "fc: crc flip -> 3");
++    /* a payload bit flip is also a CRC failure, not a header class */
++    qpsk_frame_encode(pkt, pkt_bytes, payload, 64, 0x1234u);
++    pkt[QPSK_FRAME_HDR_BYTES] ^= 0x80;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_CRC, "fc: payload flip -> 3");
++
++    /* ORDER: magic beats len beats crc */
++    qpsk_frame_encode(pkt, pkt_bytes, payload, 64, 0x1234u);
++    pkt[0] ^= 0xFF; pkt[2] = 0xFF; pkt[3] = 0xFF; pkt[8] ^= 0x01;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_MAGIC,
++          "fc: magic checked before len and crc");
++    qpsk_frame_encode(pkt, pkt_bytes, payload, 64, 0x1234u);
++    pkt[2] = 0xFF; pkt[3] = 0xFF; pkt[8] ^= 0x01;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_LEN,
++          "fc: len checked before crc");
++
++    /* header garbage + zero tail -> 4 (ALIGNLOSS signature) */
++    memset(pkt, 0xA5, (size_t)pkt_bytes);
++    memset(pkt + 200, 0, (size_t)(pkt_bytes - 200));
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_ZEROTAIL,
++          "fc: garbage header + zero tail -> 4");
++    CHECK(fzo == 200u, "fc: zero-tail onset offset");
++    CHECK(qpsk_first_magic_off(pkt, pkt_bytes) == QPSK_MAGOFF_NONE,
++          "fc: no magic in a zero-tail slice");
++
++    /* an all-zero slice is the extreme case: onset 0 */
++    memset(pkt, 0, (size_t)pkt_bytes);
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_ZEROTAIL,
++          "fc: all-zero slice -> 4");
++    CHECK(fzo == 0u, "fc: all-zero onset is 0");
++
++    /* class 4 overrides a LEN failure too (magic survived the shift) */
++    memset(pkt, 0, (size_t)pkt_bytes);
++    pkt[0] = 0x51; pkt[1] = 0x4B; pkt[2] = 0xFF; pkt[3] = 0xFF;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_ZEROTAIL,
++          "fc: len-bad + zero tail -> 4");
++
++    /* ...but NEVER overrides a CRC failure: the header parsed, so this is a
++     * bit-error frame, not an alignment loss */
++    memset(pkt, 0, (size_t)pkt_bytes);
++    pkt[0] = 0x51; pkt[1] = 0x4B; pkt[2] = 64; pkt[3] = 0;
++    pkt[8] = 0xDE; pkt[9] = 0xAD; pkt[10] = 0xBE; pkt[11] = 0xEF;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_CRC,
++          "fc: crc-bad + zero tail stays 3");
++    CHECK(fzo != QPSK_FZO_NONE, "fc: zero-tail onset reported even for class 3");
++
++    /* a shifted-but-present magic is reported by magic_off */
++    memset(pkt, 0x11, (size_t)pkt_bytes);
++    pkt[37] = 0x51; pkt[38] = 0x4B;
++    CHECK(qpsk_first_magic_off(pkt, pkt_bytes) == 37u, "fc: shifted magic offset");
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_MAGIC,
++          "fc: shifted magic is still class 1 (no zero tail)");
++
++    /* a short zero run at the very end must NOT be called a tail */
++    qpsk_frame_encode(pkt, pkt_bytes, payload, 64, 0x1234u);
++    memset(pkt + pkt_bytes - 8, 0, 8);
++    pkt[0] ^= 0xFF;
++    CHECK(qpsk_fail_class(pkt, pkt_bytes, &fzo) == QPSK_FC_MAGIC,
++          "fc: 8-byte zero run is below QPSK_ZTAIL_MIN");
++
++    printf("fail-class truth table @%dB: done\n", pkt_bytes);
++}
++
++/* the on-disk ABI the offline tools parse byte-for-byte */
++static void abi_suite(void)
++{
++    CHECK(sizeof(struct frame_rec) == 48, "abi: frame_rec 48 B");
++    CHECK(sizeof(struct failhdr_rec) == 32, "abi: failhdr_rec 32 B");
++    CHECK(sizeof(struct txlog_rec) == 32, "abi: txlog_rec 32 B");
++    CHECK(sizeof(struct qpsk_log_hdr) == 32, "abi: qpsk_log_hdr 32 B");
++    CHECK(offsetof(struct frame_rec, fail_class) == 44, "abi: fail_class at 44");
++    CHECK(offsetof(struct failhdr_rec, host_seq) == 8, "abi: failhdr host_seq at 8");
++    CHECK(offsetof(struct failhdr_rec, fail_class) == 16, "abi: failhdr class at 16");
++    CHECK(offsetof(struct failhdr_rec, magic_off) == 18, "abi: failhdr magic_off at 18");
++    CHECK(offsetof(struct failhdr_rec, hdr) == 20, "abi: failhdr hdr at 20");
++    CHECK(offsetof(struct txlog_rec, t_complete_ns) == 8, "abi: txlog complete at 8");
++    CHECK(offsetof(struct txlog_rec, seq) == 16, "abi: txlog seq at 16");
++    CHECK(offsetof(struct txlog_rec, gap_ns) == 20, "abi: txlog gap at 20");
++    CHECK(offsetof(struct txlog_rec, inflight) == 28, "abi: txlog inflight at 28");
++}
++
+ int main(void)
+ {
+     CHECK(QPSK_FRAME_HDR_BYTES == 12, "header size");
+@@ -88,6 +213,9 @@ int main(void)
+     run_suite(280);
+     run_suite(560);
+     run_suite(F1536_PKT_BYTES);
++    abi_suite();
++    fc_suite(F1536_PKT_BYTES);
++    fc_suite(280);
+     printf("frame tests: %d run, %d failed\n", tests, fails);
+     return fails ? 1 : 0;
+ }
+diff --git a/host_app_k5/test_txlog.c b/host_app_k5/test_txlog.c
+new file mode 100644
+index 00000000..4d829ef
+--- /dev/null
++++ b/host_app_k5/test_txlog.c
+@@ -0,0 +1,225 @@
++/* test_txlog.c -- COMB campaign (T0a) unit test for the TX<->RX per-frame join.
++ *
++ * Writes a SYNTHETIC QPSK_TXLOG dump and a SYNTHETIC QPSK_FRAMELOG (frames.bin)
++ * to a temp directory, reads them back through the documented binary layouts in
++ * qpsk_join.h, and checks that qpsk_join_classify() puts a known fixture into
++ * never-sent / sent-not-decoded / decoded-not-delivered / ok.  Also pins the
++ * on-disk byte layout (sizes, offsets, file-header magic) so that the Python
++ * parsers in two_jup/comb/ can be written against README_hostlog.md and agree
++ * byte-for-byte.
++ *
++ * Host-only: no board, no DMA, no hardware. Build/run: make test_txlog && ./test_txlog
++ */
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <stddef.h>
++#include "qpsk_frame.h"
++#include "qpsk_join.h"
++
++static int tests = 0, fails = 0;
++#define CHECK(cond, msg) do { tests++; if (!(cond)) { fails++; \
++    fprintf(stderr, "FAIL %s:%d %s\n", __FILE__, __LINE__, msg); } } while (0)
++
++/* ---- the fixture ---------------------------------------------------------
++ * 8 frames, seq 100..107:
++ *   100  submitted, decoded, delivered            -> OK
++ *   101  submitted, decoded, delivered            -> OK
++ *   102  NOT submitted                            -> NEVER_SENT
++ *   103  submitted, RX logged it as a FAILURE     -> SENT_NOT_DECODED
++ *   104  submitted, RX has no record at all       -> SENT_NOT_DECODED
++ *   105  submitted, decoded, NOT delivered        -> DECODED_NOT_DELIVERED
++ *   106  submitted, decoded, delivered            -> OK
++ *   107  NOT submitted, yet the RX decoded a frame carrying that seq
++ *        (a garbage header whose seq word aliased) -> NEVER_SENT wins: the
++ *        TX log is the authority on what was sent.
++ */
++#define NSEQ 8
++static const uint32_t seqs[NSEQ] = {100,101,102,103,104,105,106,107};
++static const int expect[NSEQ] = {
++    QPSK_JOIN_OK, QPSK_JOIN_OK, QPSK_JOIN_NEVER_SENT,
++    QPSK_JOIN_SENT_NOT_DECODED, QPSK_JOIN_SENT_NOT_DECODED,
++    QPSK_JOIN_DECODED_NOT_DELIVERED, QPSK_JOIN_OK, QPSK_JOIN_NEVER_SENT
++};
++
++static void write_txlog(const char *path, const struct txlog_rec *r, unsigned n)
++{
++    struct qpsk_log_hdr h;
++    FILE *f = fopen(path, "wb");
++    if (!f) { perror(path); exit(2); }
++    memset(&h, 0, sizeof h);
++    memcpy(h.magic, QPSK_TXLOG_MAGIC, 8);
++    h.rec_bytes = (uint32_t)sizeof *r;
++    h.n_records = n;
++    h.t_dump_ns = 123456789ull;
++    h.total     = n;
++    h.flags     = 0;
++    fwrite(&h, sizeof h, 1, f);
++    fwrite(r, sizeof *r, n, f);
++    fclose(f);
++}
++
++static void write_framelog(const char *path, const struct frame_rec *r, unsigned n)
++{
++    FILE *f = fopen(path, "wb");        /* NO file header: legacy 48 B stream */
++    if (!f) { perror(path); exit(2); }
++    fwrite(r, sizeof *r, n, f);
++    fclose(f);
++}
++
++static unsigned read_txlog(const char *path, struct txlog_rec **out)
++{
++    struct qpsk_log_hdr h;
++    FILE *f = fopen(path, "rb");
++    unsigned n;
++    if (!f) { perror(path); exit(2); }
++    if (fread(&h, sizeof h, 1, f) != 1) { fprintf(stderr, "short txlog\n"); exit(2); }
++    CHECK(memcmp(h.magic, QPSK_TXLOG_MAGIC, 8) == 0, "txlog file magic");
++    CHECK(h.rec_bytes == sizeof(struct txlog_rec), "txlog rec_bytes == 32");
++    CHECK((h.flags & QPSK_LOGF_WRAPPED) == 0, "fixture txlog did not wrap");
++    n = h.n_records;
++    *out = calloc(n ? n : 1, sizeof **out);
++    if (fread(*out, sizeof **out, n, f) != n) { fprintf(stderr, "short txlog recs\n"); exit(2); }
++    fclose(f);
++    return n;
++}
++
++static unsigned read_framelog(const char *path, struct frame_rec **out)
++{
++    FILE *f = fopen(path, "rb");
++    long sz;
++    unsigned n;
++    if (!f) { perror(path); exit(2); }
++    fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET);
++    CHECK(sz % (long)sizeof(struct frame_rec) == 0, "framelog is a whole number of 48 B records");
++    n = (unsigned)(sz / (long)sizeof(struct frame_rec));
++    *out = calloc(n ? n : 1, sizeof **out);
++    if (fread(*out, sizeof **out, n, f) != n) { fprintf(stderr, "short framelog\n"); exit(2); }
++    fclose(f);
++    return n;
++}
++
++/* Build the frame the TX would have submitted, so the logged seq really is the
++ * header seq word of an encoded frame (not a hand-written integer). */
++static uint32_t encoded_seq_word(uint32_t seq)
++{
++    unsigned char pkt[QPSK_PKT_BYTES_MAX];
++    unsigned char payload[64];
++    memset(payload, 0x5A, sizeof payload);
++    qpsk_frame_encode(pkt, F1536_PKT_BYTES, payload, (int)sizeof payload, seq);
++    return (uint32_t)pkt[4] | ((uint32_t)pkt[5] << 8)
++         | ((uint32_t)pkt[6] << 16) | ((uint32_t)pkt[7] << 24);
++}
++
++int main(void)
++{
++    const char *dir = getenv("TMPDIR");
++    char txpath[512], fpath[512];
++    struct txlog_rec tx[NSEQ];
++    struct frame_rec rx[NSEQ];
++    struct txlog_rec *tx2 = NULL;
++    struct frame_rec *rx2 = NULL;
++    uint32_t delivered[NSEQ];
++    unsigned ntx = 0, nrx = 0, ndel = 0, i;
++
++    if (!dir || !*dir) dir = "/tmp";
++    snprintf(txpath, sizeof txpath, "%s/qpsk_test_txlog.bin", dir);
++    snprintf(fpath,  sizeof fpath,  "%s/qpsk_test_frames.bin", dir);
++
++    /* the encoder really does put the seq at bytes 4..7 little-endian --
++     * the assumption txlog_note_submit() makes when it logs r->seq */
++    CHECK(encoded_seq_word(0xDEADBEEFu) == 0xDEADBEEFu,
++          "encoded frame carries seq at bytes 4..7 LE");
++
++    /* ---- synthesize the TX log (everything except 102 and 107) ---- */
++    memset(tx, 0, sizeof tx);
++    for (i = 0; i < NSEQ; i++) {
++        if (seqs[i] == 102 || seqs[i] == 107) continue;
++        tx[ntx].t_submit_ns   = 1000000000ull + (uint64_t)i * 800000ull;
++        /* frame 106 is still in flight at the dump: t_complete_ns == 0, which
++         * must NOT be read as "never sent" */
++        tx[ntx].t_complete_ns = seqs[i] == 106 ? 0ull
++                              : tx[ntx].t_submit_ns + 700000ull;
++        tx[ntx].seq      = encoded_seq_word(seqs[i]);
++        /* only the submit that found the queue empty has a measured gap */
++        tx[ntx].gap_ns   = seqs[i] == 104 ? 41000u : QPSK_GAP_NONE;
++        tx[ntx].slot     = i;
++        tx[ntx].inflight = (uint16_t)(seqs[i] == 104 ? 0 : 1);
++        tx[ntx].spins    = 0;
++        ntx++;
++    }
++    CHECK(ntx == 6, "fixture submitted 6 of 8 frames");
++
++    /* ---- synthesize the RX framelog ---- */
++    memset(rx, 0, sizeof rx);
++    for (i = 0; i < NSEQ; i++) {
++        if (seqs[i] == 104) continue;               /* no RX record at all */
++        rx[nrx].t_mono_ns  = 2000000000ull + (uint64_t)i * 800000ull;
++        rx[nrx].t_real_ns  = rx[nrx].t_mono_ns + 5000000000ull;
++        rx[nrx].host_seq   = seqs[i];
++        if (seqs[i] == 103) {                       /* logged as a failure */
++            rx[nrx].crc_ok     = 0;
++            rx[nrx].fail_class = QPSK_FC_ZEROTAIL;
++        } else {
++            rx[nrx].crc_ok     = 1;
++            rx[nrx].fail_class = QPSK_FC_OK;
++        }
++        nrx++;
++    }
++    CHECK(nrx == 7, "fixture RX logged 7 records");
++
++    /* ---- delivered set: everything decoded except 105 ---- */
++    for (i = 0; i < NSEQ; i++)
++        if (seqs[i] != 102 && seqs[i] != 103 && seqs[i] != 104 && seqs[i] != 105)
++            delivered[ndel++] = seqs[i];
++
++    write_txlog(txpath, tx, ntx);
++    write_framelog(fpath, rx, nrx);
++
++    /* ---- read back through the documented layouts and join ---- */
++    CHECK(read_txlog(txpath, &tx2) == ntx, "txlog round-trips record count");
++    CHECK(read_framelog(fpath, &rx2) == nrx, "framelog round-trips record count");
++    CHECK(memcmp(tx2, tx, ntx * sizeof *tx) == 0, "txlog round-trips byte-for-byte");
++    CHECK(memcmp(rx2, rx, nrx * sizeof *rx) == 0, "framelog round-trips byte-for-byte");
++
++    for (i = 0; i < NSEQ; i++) {
++        int got = qpsk_join_classify(seqs[i], tx2, ntx, rx2, nrx, delivered, ndel);
++        char msg[96];
++        snprintf(msg, sizeof msg, "join seq %u -> %d (want %d)", seqs[i], got, expect[i]);
++        CHECK(got == expect[i], msg);
++    }
++
++    /* a never-sent frame stays never-sent even with no delivery evidence */
++    CHECK(qpsk_join_classify(102, tx2, ntx, rx2, nrx, NULL, 0) == QPSK_JOIN_NEVER_SENT,
++          "join: never-sent without a delivery set");
++    /* without a delivery set, decoded-not-delivered collapses into OK -- the
++     * documented degradation, not a silent absence of the class */
++    CHECK(qpsk_join_classify(105, tx2, ntx, rx2, nrx, NULL, 0) == QPSK_JOIN_OK,
++          "join: no delivery set -> decoded counts as OK");
++    /* an empty TX log makes every frame never-sent (guards against a scorer
++     * that silently reports 0 % loss when the TX log failed to deploy) */
++    CHECK(qpsk_join_classify(100, tx2, 0, rx2, nrx, delivered, ndel) == QPSK_JOIN_NEVER_SENT,
++          "join: empty TX log -> never-sent");
++    /* t_complete_ns == 0 (still in flight) is not never-sent */
++    CHECK(qpsk_join_classify(106, tx2, ntx, rx2, nrx, delivered, ndel) == QPSK_JOIN_OK,
++          "join: t_complete_ns==0 is not never-sent");
++
++    /* ---- the fail-class census the RX log supports ---- */
++    { unsigned cls[5] = {0,0,0,0,0};
++      for (i = 0; i < nrx; i++)
++          if (rx2[i].crc_ok == 0 && rx2[i].fail_class < 5)
++              cls[rx2[i].fail_class]++;
++      CHECK(cls[QPSK_FC_ZEROTAIL] == 1, "census: one class-4 failure"); }
++
++    /* ---- gap_ns sentinel discipline ---- */
++    { unsigned measured = 0;
++      for (i = 0; i < ntx; i++)
++          if (tx2[i].gap_ns != QPSK_GAP_NONE) measured++;
++      CHECK(measured == 1, "gap: exactly one measured gap (queue-empty submits only)"); }
++
++    free(tx2); free(rx2);
++    remove(txpath); remove(fpath);
++    printf("txlog/join tests: %d run, %d failed\n", tests, fails);
++    return fails ? 1 : 0;
++}
+diff --git a/two_jup/comb/README_hostlog.md b/two_jup/comb/README_hostlog.md
+new file mode 100644
+index 00000000..8d5f1f0
+--- /dev/null
++++ b/two_jup/comb/README_hostlog.md
+@@ -0,0 +1,320 @@
++# Host-daemon instrumentation for the COMB campaign (T0a)
++
++Owner: Task 1 (`host_app_k5/qpsk_tun.c`, `host_app_k5/qpsk_join.h`,
++`host_app_k5/test_frame.c`, `host_app_k5/test_txlog.c`, `host_app_k5/Makefile`).
++Plan: `/home/tcollins/.claude/plans/happy-bubbling-owl.md` (T0a).
++
++`host_app_k5/qpsk_join.h` is the **single source of truth** for every layout
++below. This file is its prose transcription; if the two ever disagree, the
++header wins and this file is the bug.
++
++---
++
++## 1. What the daemon now records
++
++Three env-gated sinks, all default-OFF (unset ⇒ one pointer test on the path,
++no behaviour change — the same opt-in idiom as `QPSK_WHITEN`):
++
++| env | file | layout | ring | dumped |
++|---|---|---|---|---|
++| `QPSK_FRAMELOG` | `frames.bin` | 48 B records, **no file header** (unchanged) | none (streamed, `fflush`) | SIGUSR1 flush, SIGUSR2 rotate, atexit close |
++| `QPSK_FAILHDR` | `failhdr.bin` | 32 B header + 32 B records | 65,536 (**2 MiB**) | SIGUSR1 **and** atexit |
++| `QPSK_TXLOG` | `txlog.bin` | 32 B header + 32 B records | 1,048,576 (**32 MiB**) | **atexit only**, unless `QPSK_TXLOG_USR1` is set |
++
++Memory cost: 32 MiB (txlog) + 2 MiB (failhdr), both `calloc`'d **and memset
++pre-faulted at startup** so no page fault ever lands inside `tx_send()` or the
++RX drain (a lazily-populated 32 MiB mapping would fault for the first ~1 M
++submits, i.e. ~14 min of a run, and would manufacture exactly the TX starvation
++this campaign is measuring).
++
++**Why the TX log is not written on SIGUSR1 by default.** T1's `loopfloor_go.sh`
++polls stats every 10 s = SIGUSR1 every 10 s. Writing 32 MiB there would put
++~100 ms of file I/O into the loop that feeds the modulator, and the TX queue
++holds only ~1.6 ms of air (2 transfers). Set `QPSK_TXLOG_USR1=1` only for a run
++whose purpose is a mid-run snapshot, and record that it was set.
++
++At the R3 rate (~1250 f/s) the 1 M-record TX ring covers **838 s**, so a 600 s
++leg never wraps. The failhdr ring covers 65,536 failures ≈ 13 min at the
++forward leg's 8 % of 1250 f/s — **a 600 s forward leg fits, a longer one does
++not**; check `flags & 0x1` (wrapped) on every dump before quoting a census.
++
++---
++
++## 2. `fail_class` — what a failed frame failed at
++
++`qpsk_fail_class(const uint8_t *p, size_t n, uint32_t *first_zero_off)`
++(header-only, pure, in `qpsk_join.h`) re-parses the slice, mirroring
++`qpsk_frame.c:139-173` check-for-check **in the same order**:
++
++| value | name | meaning |
++|---|---|---|
++| 0 | `QPSK_FC_OK` | magic + len + CRC all good |
++| 1 | `QPSK_FC_MAGIC` | `p[0] != 0x51 \|\| p[1] != 0x4B` (or the slice is shorter than 12 B) |
++| 2 | `QPSK_FC_LEN` | magic ok, `len > n - 12` |
++| 3 | `QPSK_FC_CRC` | magic + len ok, CRC32 mismatch |
++| 4 | `QPSK_FC_ZEROTAIL` | **would have been 1 or 2** *and* the slice has a ≥ 90 % zero suffix — the ByteBitShifter ALIGNLOSS signature |
++
++Precedence rules Task 2's census must reproduce:
++
++* magic is checked before len, len before CRC (`class N` = "decode would have
++  returned −1 at check N");
++* class 4 **overrides** 1 and 2, and **never** overrides 3. A frame whose
++  header parses is a bit-error frame, not an alignment loss, however many
++  zeros follow it.
++
++`first_zero_off` is the smallest offset `k` with `p[k] == 0` such that
++`p[k..n)` is ≥ 90 % zero and at least 32 bytes long, else `0xFFFFFFFF`
++(`QPSK_FZO_NONE`). It is filled in **regardless of class** — a class-3 frame
++with a zero tail is still informative. The `p[k]==0` anchor makes it the *onset*
++of the zero region: without it, 200 bytes of garbage followed by 1328 zeros
++would report 53, not 200.
++
++### Caveats you must not lose
++
++* **`class4 == 0` is NOT evidence against ALIGNLOSS.** The sim's signature is
++  zeros shifted to the end of the **air** frame (3080 B at F1536); the host only
++  ever sees the 1528 B logical slice, so the zero tail may lie entirely outside
++  the window. Use `magic_off` (below) as the second, independent discriminator.
++* **`crc_ok == 0 ⇒ fail_class > 0` does not hold in `-B` mode.** The `-B`
++  scorer logs `crc_ok = (bucket == QBER_CLEAN)`; a noisy-bucket frame can still
++  have a parseable header, giving `crc_ok=0, fail_class=0`. In the tun/echo
++  modes (`-G`, what the legs run) the implication does hold.
++* `fail_class` is computed on the **raw wire bytes**. With `QPSK_WHITEN=1` they
++  are whitened and every class is meaningless — exactly the pre-existing caveat
++  on `host_seq`. The campaign runs `WHITEN=0`.
++* **Index failures by record position, never by `host_seq`**: a magic-bad frame
++  logs a garbage seq word.
++
++---
++
++## 3. Binary layouts (byte-for-byte)
++
++All little-endian, naturally aligned, no padding beyond what is shown.
++
++### 3.1 `frames.bin` — 48 B/record, NO file header (unchanged)
++
++```
++off  size  field              python
++  0     8  t_mono_ns          <Q
++  8     8  t_real_ns          <Q
++ 16     4  host_seq           <I
++ 20     4  crc_ok             <I     1 = good
++ 24     4  reg_packets        <I     0x104
++ 28     4  reg_biterr         <I     0x108
++ 32     4  reg_rstcs          <I     0x150
++ 36     4  reg_cfc            <I     0x154
++ 40     4  reg_adcforensic    <I     0x15C
++ 44     4  fail_class         <I     WAS `reserved` (always 0)
++                                      -> 48 B, struct "<QQIIIIIIII"
++```
++
++The record size, field order and offsets are **unchanged**; only the
++previously-always-zero `reserved` word now carries the class. Every existing
++parser keeps working and reads `fail_class == 0` on pre-campaign captures.
++
++### 3.2 File header for the two new files — 32 B, `struct "<8sIIQII"`
++
++```
++off  size  field        notes
++  0     8  magic        b"QFAILH01" / b"QTXLOG02"
++  8     4  rec_bytes    32
++ 12     4  n_records    records that follow
++ 16     8  t_dump_ns    CLOCK_MONOTONIC at the dump
++ 24     4  total        total events seen (> n_records => ring wrapped)
++ 28     4  flags        bit0 = QPSK_LOGF_WRAPPED (oldest events lost)
++```
++
++Records follow immediately, **oldest first**.
++
++### 3.3 `failhdr.bin` — 32 B/record, `struct "<QIIBBH12s"`
++
++```
++off  size  field            notes
++  0     8  t_mono_ns        same clock as frame_rec.t_mono_ns (join key)
++  8     4  host_seq         RAW p[4..7] -- garbage for a magic-bad frame
++ 12     4  first_zero_off   zero-tail onset, or 0xFFFFFFFF = none
++ 16     1  fail_class       1..4
++ 17     1  pad              0
++ 18     2  magic_off        first 0x51 0x4B offset, or 0xFFFF = none
++ 20    12  hdr[12]          the 12 raw header bytes of the slice
++```
++
++`magic_off` is the corruption-onset discriminator the T3 decision table needs:
++magic present at a **nonzero** offset ⇒ a SHIFT (alignment) event; magic absent
++⇒ substitution/erasure. Records are appended in the same order as the
++corresponding `frames.bin` failures, so the *k*-th failed `frames.bin` record
++(counting from the end, back at most `n_records`) is the *k*-th-from-last
++`failhdr.bin` record; `t_mono_ns` is the exact join key.
++
++### 3.4 `txlog.bin` — 32 B/record, `struct "<QQIIIHH"`
++
++```
++off  size  field            notes
++  0     8  t_submit_ns      CLOCK_MONOTONIC just after DMAC_SUBMIT
++  8     8  t_complete_ns    CLOCK_MONOTONIC at tx_reap; 0 = never stamped
++ 16     4  seq              header seq word of the submitted frame
++ 20     4  gap_ns           txgap_note's gap, or 0xFFFFFFFF = NOT MEASURED
++ 24     4  slot             tx_slot counter (monotonic, not modulo)
++ 28     2  inflight         queue depth BEFORE this submit
++ 30     2  spins            polled-mode 100 us spins waiting for a slot
++```
++
++**One record per TRANSMITTED FRAME**, not per transfer: `tx_send()` writes one,
++`tx_send_batch()` writes `n` (only the first of a batch carries a `gap_ns`).
++
++Sentinel discipline — three ways to get the analysis wrong:
++
++* `gap_ns == 0xFFFFFFFF` means **not measured**, not "0 ns". `txgap_note()`
++  only computes a gap when the queue was empty after the reap
++  (`inflight_after_reap == 0`); otherwise no silence is observable. Do not
++  average the sentinel into anything.
++* `gap_ns` is an **estimated lower bound** on fabric-visible silence
++  (`now − (prev_submit + prev_frames × frame_period)`, clipped at 0), not a
++  measurement of silence.
++* `t_complete_ns == 0` means **no completion was stamped** (still in flight at
++  the dump, or the ring record had already been overwritten when the reap
++  happened). It does **not** mean the frame was never sent. Only the *absence
++  of a record* means never-sent.
++
++### 3.5 Layout change vs. the pre-campaign TX log
++
++The old dump was a **headerless** stream of 16 B `"<QIHH"` records
++(`t_mono_ns, slot, inflight, spins`). Two existing parsers still assume that
++and must be updated (they are outside Task 1's file set):
++
++* `two_jup/txlog_gaps.py` (`REC = struct.Struct("<QIHH")`)
++* `two_jup/loss_ledger.py`, `tx_gaps_146()` (`R = struct.Struct("<QIHH")`)
++
++New dumps are detectable by their `QTXLOG02` magic; old captures on disk are
++unaffected and should keep being read with the old struct.
++
++---
++
++## 4. TX ↔ RX join
++
++`qpsk_join_classify()` in `qpsk_join.h` is the **executable spec**; the Python
++in `two_jup/comb/` must agree with it, and `host_app_k5/test_txlog.c` pins it
++against a fixture.
++
++```
++NEVER_SENT             (1)  no submit record for that seq in the TX board's txlog
++SENT_NOT_DECODED       (2)  submitted, but no crc_ok==1 frames.bin record for it
++DECODED_NOT_DELIVERED  (3)  decoded (crc_ok==1) but the payload never reached
++                            the consumer (tun / qpsk_perf sequence set)
++OK                     (0)  submitted, decoded and delivered
++```
++
++Order matters: the TX log is the authority on what was sent, so a seq with no
++submit record is `NEVER_SENT` even if the RX decoded a frame carrying that seq
++(a garbage header whose seq word aliased). With no delivery evidence
++(`delivered == NULL`) class 3 collapses into `OK` — say so in the write-up
++rather than reporting the class as absent.
++
++---
++
++## 5. Deploy
++
++### 5.1 The exact gcc line the deploy must use
++
++Instrumented campaign build, **both boards**, run in `/root/host_app_k5`:
++
++```sh
++gcc -O2 -Wall -DQPSK_CARVE_2MB -DQPSK_ARQ_NAKSTAT -DQPSK_RXQ_STAT \
++    -o qpsk_tun qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c
++gcc -O2 -Wall -o qpsk_perf qpsk_perf.c
++```
++
++* `-DQPSK_CARVE_2MB` — required for f1536 (unchanged from `capture_r3.sh:128`).
++* `-DQPSK_ARQ_NAKSTAT` — **must be present** or 148's `nakstat` fingerprint
++  (`strings qpsk_tun | grep -c nakstat == 4`) is silently lost.
++  `capture_r3.sh` carries it over automatically by detecting the string in the
++  deployed binary; a hand-rolled deploy must pass it explicitly.
++* `-DQPSK_RXQ_STAT` — the queued-RX counters this campaign needs.
++
++Through `capture_r3.sh` (which must not be edited), that is:
++
++```sh
++HOST_CFLAGS='-DQPSK_RXQ_STAT -DQPSK_ARQ_NAKSTAT' ./capture_r3.sh <A|B> -d 600
++```
++
++Post-deploy verification on **148**, every time:
++
++```sh
++strings /root/host_app_k5/qpsk_tun | grep -c nakstat   # must be 4
++strings /root/host_app_k5/qpsk_tun | grep -c rxqstat   # 1 while instrumented
++md5sum /root/host_app_k5/qpsk_tun
++```
++
++### 5.2 BLOCKER: `qpsk_join.h` must be copied to the board
++
++`qpsk_tun.c` now `#include`s `qpsk_join.h`. **Neither `two_jup/capture_r3.sh`'s
++scp list (line ~106) nor `two_jup/comb/deploy_daemon_go.sh`'s `FILES` names
++it**, so the first deploy through either will fail at gcc with
++`qpsk_join.h: No such file or directory` (loudly — `BUILD_FAIL`, and
++`capture_r3.sh` exits 1 — but at the worst possible moment, with `RIG_LOCK`
++held). One filename must be added to each list:
++
++```
++qpsk_tun.c qpsk_frame.c qpsk_frame.h qpsk_join.h qpsk_hw.h qpsk_ber.c qpsk_ber.h \
++qpsk_seq.c qpsk_seq.h qpsk_uio.c qpsk_uio.h qpsk_perf.c
++```
++
++Both files are outside Task 1's ownership; this is owned by whoever owns
++`capture_r3.sh` / T0c before the first rig deploy.
++
++### 5.3 Rail conflict at campaign close
++
++`two_jup/restore_known_good.sh:65` asserts
++
++```
++rxqstat : $(strings .../qpsk_tun | grep -c rxqstat)  (must be 0 -- plain build)
++```
++
++An instrumented daemon **fails this rail by design** (the count is 1). Ledger
++it for every instrumented deploy and, at campaign close, rebuild plain on both
++boards:
++
++```sh
++gcc -O2 -Wall -DQPSK_CARVE_2MB -DQPSK_ARQ_NAKSTAT \
++    -o qpsk_tun qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c
++```
++
++then re-check `nakstat == 4` and `rxqstat == 0` on 148.
++
++### 5.4 Runtime env for a leg
++
++```sh
++QPSK_FRAMELOG=/dev/shm/frames.bin \
++QPSK_FAILHDR=/dev/shm/failhdr.bin \
++QPSK_TXLOG=/dev/shm/txlog.bin \
++  qpsk_tun ...        # then SIGUSR1 to flush/dump, SIGTERM for the final dump
++```
++
++`SIGUSR1` = stats + framelog flush + failhdr dump (cheap).
++`SIGUSR2` = rotate (truncate) the framelog only — it does **not** rotate the
++rings. The rings are dumped whole, oldest first, on every dump.
++
++---
++
++## 6. Host-side tests
++
++```sh
++cd host_app_k5
++make test_frame test_txlog && ./test_frame && ./test_txlog
++```
++
++* `test_frame` — the framing contract suite plus the new `fail_class` truth
++  table (good→0, magic→1, len→2, crc→3, garbage+zero-tail→4, the
++  magic‑before‑len‑before‑crc ordering, class‑4 precedence over 1/2 but not
++  over 3, `first_zero_off` onset, `magic_off` for a shifted magic, and the
++  sub‑32‑byte zero run that must **not** count as a tail) and an ABI suite
++  pinning every struct size and field offset above.
++* `test_txlog` — writes a synthetic `txlog.bin` + `frames.bin` through the
++  layouts above, reads them back, and checks the four join classes on a
++  fixture, plus the sentinel discipline (`gap_ns` NONE vs measured,
++  `t_complete_ns == 0` is not never-sent, an empty TX log makes everything
++  never-sent rather than silently reporting 0 % loss).
++
++`make test` also runs these. Note `test_k5` is **broken at HEAD** for reasons
++unrelated to this work (`AXR_HOLE_SZ` / `AXR_RENAK` undeclared) — it was already
++failing before Task 1 touched anything.

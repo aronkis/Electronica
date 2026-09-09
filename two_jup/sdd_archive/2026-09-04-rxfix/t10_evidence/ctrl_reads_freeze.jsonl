@@ -1,0 +1,1 @@
+{"ts":"2026-09-04T16:49:50-04:00","seq":1,"board":148,"dry":false,"freeze":1,"fixctl_base":"0x0","hold":10,"words":{"witA":"0x2D6","witB":"0xA","cSS":"0x5D6D5136","cRH":"0x5D6D5136","cCFC":"0x5D6D512E","cCS":"0x5D6D512B","cPD":"0x5D6D20F6","cPC":"0x5D53BADD"},"aux":{"0x104":"0x2215E","0x124":"0x22162"},"aux_lag_s":10.049,"sweep_span_s":10.057,"freeze_effective":true}
