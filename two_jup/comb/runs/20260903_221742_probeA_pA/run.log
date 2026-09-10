@@ -1,0 +1,7 @@
+2026-09-03T22:17:42-04:00 probe=A leg=A dir=fwd rx=10.0.0.148 peer=10.0.0.146 dur=600 dry=0
+2026-09-03T22:17:42-04:00 poke: in_voltage0_gain_control_mode=spi in_voltage0_hardwaregain=@keep
+2026-09-03T22:17:42-04:00 orig(step1 fallback): in_voltage0_hardwaregain=34 in_voltage0_gain_control_mode=automatic
+2026-09-03T22:21:15-04:00 RESTORE (attr_poke.txt): in_voltage0_hardwaregain=34.000000 in_voltage0_gain_control_mode=automatic 
+  ATTR_RESTORE in_voltage0_hardwaregain want='34.000000' write=ok after='34.000000 dB'
+  ATTR_RESTORE in_voltage0_gain_control_mode want='automatic' write=ok after='automatic'
+2026-09-03T22:21:17-04:00 RESTORE VERIFIED: all attributes back to their before-values

@@ -1,0 +1,18 @@
+2026-09-04T20:12:03-04:00 === w1leg_go.sh MODE=ctrl dur=600 period=10 fixctl_base=0x0 dry=0 -> /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260904_201203_w1_ctrl ===
+2026-09-04T20:12:03-04:00 FIXCTL_BASE=0x0 stated explicitly (enSlack=0, DBGCAP mux bits 12/13=0)
+2026-09-04T20:12:03-04:00 R4B=1 (1 = also sweep the ninth word 0x234, {locked, skips[15:0], opens[14:0]})
+2026-09-04T20:12:04-04:00 board image readback: 9f13705d9fb0 (expect 9f13705d9fb0)
+2026-09-04T20:12:04-04:00 --- arm #1: arm148_mode1.sh (148-only mode-1 internal loopback) ---
+2026-09-04T20:13:35-04:00 arm #1:   armed, waiting 70 s for the transient
+  post-arm: fps=1248 errps=0 capTAP=0xBCF94856
+ARM_OK profile=lvds_61p44_fdd_jupiter fps=1248 capTAP=0xBCF94856
+2026-09-04T20:13:36-04:00 SINK=tgenrx arm: pre=0x00000030 post=0x00000031
+2026-09-04T20:13:36-04:00 --- reads 1-3 (10 s apart), pre-re-arm ---
+2026-09-04T20:13:59-04:00 --- freeze-path control: ONE read with the freeze HELD for 10 s ---
+2026-09-04T20:13:59-04:00     (both frozen sweeps inside one 10 s freeze window; every delta must be 0)
+2026-09-04T20:14:10-04:00 --- arm #2: ONE re-arm (the edge-counter liveness positive control) ---
+2026-09-04T20:15:40-04:00 arm #2:   armed, waiting 70 s for the transient
+  post-arm: fps=1248 errps=0 capTAP=0xBCF94856
+ARM_OK profile=lvds_61p44_fdd_jupiter fps=1248 capTAP=0xBCF94856
+2026-09-04T20:15:40-04:00 --- reads 4-6 (10 s apart), post-re-arm ---
+2026-09-04T20:16:05-04:00 SINK=tgenrx disarm: 0x00000030

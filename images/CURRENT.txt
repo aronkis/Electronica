@@ -1,0 +1,9 @@
+# role  file (relative to images/)  md5  note   -- read by ops/deploy_image.sh <ip> A|B
+A BOOT.BIN.148.rxfixpad.bf2a7305bbe0 bf2a7305bbe0e0e38b3529d09edddaef W1+R4B+byte-seam census+PAD; on rig 148 since 2026-09-08 17:12; forward PER 0.070-0.079 % (WHITEN=1)
+B BOOT.BIN.146.rxfixr4dr1.9acbe2ebe1db 9acbe2ebe1dbf280e030952fc4fc23d8 W1+R4D+R1; on rig 146 since 2026-09-05; reverse PER 0.191 % pooled (level-limited)
+# On-board rollbacks (.bak on each board), also banked here:
+#   148: BOOT.BIN.148.rxfixbs.dec007ae70dd   146: BOOT.BIN.146.w1x148.2728dab3979a
+# SRO-sign caveat for a FRESH pair: A wants the receiver oscillator FASTER (negative sample-rate
+# offset), B wants it SLOWER. Measure the RX-LO residual sign first (docs/bringup.rst).
+# Kernel + dtbs: Image.6.12.77-uio.a1ba00b51431.gz, system-qpsk.{148,146}.dtb.*; deploy_kernel.sh /
+# deploy_dtb.sh BEFORE deploy_image.sh on a fresh board. Older images: tag archive/pre-cleanup-2026-09-09.

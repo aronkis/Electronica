@@ -1,0 +1,20 @@
+20:05:18 === [1/5] preconditions ===
+20:05:18   SENTINEL_STOP already present (external hold) -- will NOT remove it
+20:05:19   148 current image: 2728dab3979a (expect 2728dab3979a)
+2728dab3979a
+20:05:20 === [2/5] stage + flash ===
+20:05:23   FLASHED 9f13705d9fb0
+20:06:31 === [3/5] readback verify ===
+20:06:32   booted image: 9f13705d9fb0 (expect 9f13705d9fb0)
+20:06:32 === [4/5] two-pass gate (arm148_mode1: ARM_OK, fps>=1120, capTAP golden) ===
+  post-arm: fps=1248 errps=0 capTAP=0xBCF94856
+ARM_OK profile=lvds_61p44_fdd_jupiter fps=1248 capTAP=0xBCF94856
+  post-arm: fps=1248 errps=0 capTAP=0xBCF94856
+ARM_OK profile=lvds_61p44_fdd_jupiter fps=1248 capTAP=0xBCF94856
+20:09:33   GATE_PASS x2
+20:09:33 === [5/5] Tier-2 witness (read BEFORE any rollback): sel6 4 MB, decoded ===
+20:09:35   4194304
+records 524288  demod_marks 43  tx_marks 43
+toff min 12314 max 12314 mode 12314 (1.000)  distinct 1
+slot histogram [131072, 131072, 131072, 131072]
+20:09:36 FLASH_DDRCAP2_OK 9f13705d9fb0 (sentinel untouched -- external hold or DRY)

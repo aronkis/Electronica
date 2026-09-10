@@ -1,0 +1,3 @@
+TXFIX_GATE_LAUNCH id=G2 variant=U bin=obj_txrate/Vtxrate args=50 40 fcbase3 beat_runs/g2_fcbase3_U 0 6
+TXRATE sel=fcbase3 NF=50 K=40 zeroEvents=2 firstZeroFrame=40 armedDropClk=4041064 maxPopQuiet=103032 packets=51 biterr=103 frames=53
+TXFIX_GATE_RUN_EXIT=0

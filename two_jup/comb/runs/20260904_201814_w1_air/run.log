@@ -1,0 +1,12 @@
+2026-09-04T20:18:14-04:00 === w1leg_go.sh MODE=air dur=600 period=10 fixctl_base=0x0 dry=0 -> /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260904_201814_w1_air ===
+2026-09-04T20:18:14-04:00 FIXCTL_BASE=0x0 stated explicitly (enSlack=0, DBGCAP mux bits 12/13=0)
+2026-09-04T20:18:14-04:00 R4B=1 (1 = also sweep the ninth word 0x234, {locked, skips[15:0], opens[14:0]})
+2026-09-04T20:18:15-04:00 board image readback: 9f13705d9fb0 (expect 9f13705d9fb0)
+2026-09-04T20:18:15-04:00 air leg: LEG=A DUR=600 RATE_GATE=900, reader window 480s at 10s cadence
+2026-09-04T20:18:15-04:00 reader started (pid 2741019), waiting on /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260904_201814_w1_air/capture_r3.log
+2026-09-04T20:18:15-04:00 leg: legrun_go.sh LEG=A DUR=600 RATE_GATE=900 OUT=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260904_201814_w1_air
+2026-09-04T20:18:15-04:00 leg=A dir=fwd dur=600 knobs: DAEMON_ENV_A=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1 DAEMON_ENV_B=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1
+2026-09-04T20:18:15-04:00 requested: RXM_148= RXM_146= DRAIN_148= DRAIN_146=
+2026-09-04T20:28:34-04:00 tgen_mode restored: 0x00000030
+2026-09-04T20:32:41-04:00 legrun_go.sh exit=0
+2026-09-04T20:32:41-04:00 reader joined

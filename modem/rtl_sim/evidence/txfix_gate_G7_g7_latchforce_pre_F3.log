@@ -1,0 +1,3 @@
+TXFIX_GATE_LAUNCH id=G7 variant=F3 bin=obj_txkick_F3/Vtxkick args=26 6 latchforce_pre beat_runs/g7_latchforce_pre_F3 0 6
+TXKICK sel=latchforce_pre SEL=6 NF=26 K=6 k=0 packets=58 biterr=2391 rstcs=0 txFrameStartPulses=60 txFrameIdx=59
+TXFIX_GATE_RUN_EXIT=0

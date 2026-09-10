@@ -1,0 +1,530 @@
+
+	Trial License -- for use to evaluate programs for possible purchase as an end-user only.
+
+=== sim_byte_gate_k5 06-Aug-2026 12:53:05 ===
+host K5 contract self-check OK (encode(info)+PN9 filler == ROM payload, 24640 bits)
+MID-CHAIN GOLDENS: cap_in=0x5216F3E2 cap_deint=0x52B9CE5C cap_out=0x04922282
+harness: BIST msgdec disp-branch stubbed (sim-only, math preserved)
+harness: RxAlign latency 41 -> 25 (sim-only; behavioral-Viterbi lead = 16 beats)
+harness: modulator tap = Transmitter/QPSK Tx/QPSK Modulator (2 output ports logged)
+sim window T=0.03 s (~9 frames @ sps4, framePeriod=3211.7 us)
+--- RUN A aligned/golden  (idx0=1 txds=1 T=0.03s) ---
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxI'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 176)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxQ'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 176)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'UpperLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter/IntegClamp'.  The original value of the parameter,
+0.06, cannot be represented exactly using the run-time data type sfix30_En23.
+The value is quantized to 0.059999942779541016. Quantization error occurred
+with an absolute difference of 5.7220458982154554e-8 and a relative difference
+of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 176)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'LowerLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter/IntegClamp'.  The original value of the parameter,
+-0.06, cannot be represented exactly using the run-time data type sfix30_En23.
+The value is quantized to -0.059999942779541016. Quantization error occurred
+with an absolute difference of 5.7220458982154554e-8 and a relative difference
+of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 176)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'UpperLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter Shadow/IntegClamp'.  The original value of the
+parameter, 0.06, cannot be represented exactly using the run-time data type
+sfix30_En23. The value is quantized to 0.059999942779541016. Quantization error
+occurred with an absolute difference of 5.7220458982154554e-8 and a relative
+difference of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 176)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'LowerLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter Shadow/IntegClamp'.  The original value of the
+parameter, -0.06, cannot be represented exactly using the run-time data type
+sfix30_En23. The value is quantized to -0.059999942779541016. Quantization
+error occurred with an absolute difference of 5.7220458982154554e-8 and a
+relative difference of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 176)
+In run (line 112)] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+    telI = <strong>reinterpretcast(uint16(bitshift(w, -16)),
+    numerictype(1,16,0))</strong>;
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+        s1 =
+        bitor(bitshift(uint32(<strong>reinterpretcast(dI,numerictype(0,16,0))</strong>),16),
+        ...
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+             uint32(<strong>reinterpretcast(dQ,numerictype(0,16,0))</strong>));
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+    telQ = <strong>reinterpretcast(uint16(bitand(w, uint32(65535))),
+    numerictype(1,16,0))</strong>;
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Saturate on overflow detected. This originated from
+'byte_harness_k5/DUT/Receiver/QPSK Rx/CfcEstSI'
+Suggested Actions:
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 176)
+In run (line 112)] 
+  logged elements: bit_errors_out, byte_rx_data, byte_rx_last, byte_rx_user, byte_rx_valid, cap_deint, cap_in, cap_out, packets_out, modTap1, modTap2
+A aligned/golden: packets=8 errors=153 cap_in=0x5216F3E2 cap_deint=0x52B9CE5C cap_out=0x04922282 syms=115198 rxwords=1401
+[A] air: 8 full frames, firstGolden=3, golden=6, all-after-first-golden=1, perFrameErr=[12323 12323 0 0 0 0 0 0]
+[A] bist: cap=0x04922282 (golden 0x04922282) errs@70%=153 errs@end=153 pkts 5->8 -> true
+[A] byte-rx: 6 complete packets, last 4 checked -> true
+[A] RESULT: PASS
+[B] SKIPPED for f1536 (rotated word-phase realign; k5-proven plumbing)
+--- RUN C aligned/ALTpad  (idx0=1 txds=1 T=0.03s) ---
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxI'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 193)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxQ'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 193)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'UpperLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter/IntegClamp'.  The original value of the parameter,
+0.06, cannot be represented exactly using the run-time data type sfix30_En23.
+The value is quantized to 0.059999942779541016. Quantization error occurred
+with an absolute difference of 5.7220458982154554e-8 and a relative difference
+of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 193)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'LowerLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter/IntegClamp'.  The original value of the parameter,
+-0.06, cannot be represented exactly using the run-time data type sfix30_En23.
+The value is quantized to -0.059999942779541016. Quantization error occurred
+with an absolute difference of 5.7220458982154554e-8 and a relative difference
+of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 193)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'UpperLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter Shadow/IntegClamp'.  The original value of the
+parameter, 0.06, cannot be represented exactly using the run-time data type
+sfix30_En23. The value is quantized to 0.059999942779541016. Quantization error
+occurred with an absolute difference of 5.7220458982154554e-8 and a relative
+difference of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 193)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'LowerLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter Shadow/IntegClamp'.  The original value of the
+parameter, -0.06, cannot be represented exactly using the run-time data type
+sfix30_En23. The value is quantized to -0.059999942779541016. Quantization
+error occurred with an absolute difference of 5.7220458982154554e-8 and a
+relative difference of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 193)
+In run (line 112)] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+    telI = <strong>reinterpretcast(uint16(bitshift(w, -16)),
+    numerictype(1,16,0))</strong>;
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+        s1 =
+        bitor(bitshift(uint32(<strong>reinterpretcast(dI,numerictype(0,16,0))</strong>),16),
+        ...
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+             uint32(<strong>reinterpretcast(dQ,numerictype(0,16,0))</strong>));
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+    telQ = <strong>reinterpretcast(uint16(bitand(w, uint32(65535))),
+    numerictype(1,16,0))</strong>;
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Saturate on overflow detected. This originated from
+'byte_harness_k5/DUT/Receiver/QPSK Rx/CfcEstSI'
+Suggested Actions:
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 193)
+In run (line 112)] 
+  logged elements: bit_errors_out, byte_rx_data, byte_rx_last, byte_rx_user, byte_rx_valid, cap_deint, cap_in, cap_out, packets_out, modTap1, modTap2
+C aligned/ALTpad: packets=8 errors=153 cap_in=0x521673E2 cap_deint=0x52B9CE5C cap_out=0x04922282 syms=115198 rxwords=1401
+[C] air: 8 full frames, firstGolden=3, golden=6, all-after-first-golden=1, perFrameErr=[12239 12239 0 0 0 0 0 0]
+[C] discriminator: steady air==ROM? false (must be false)
+[C] bist: cap=0x04922282 (golden 0x04922282) errs@70%=153 errs@end=153 pkts 5->8 -> true
+[C] byte-rx: 6 complete packets, last 4 checked -> true
+[C] RESULT: PASS
+--- RUN D ROM regression  (idx0=1 txds=0 T=0.03s) ---
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxI'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 195)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxQ'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 195)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'UpperLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter/IntegClamp'.  The original value of the parameter,
+0.06, cannot be represented exactly using the run-time data type sfix30_En23.
+The value is quantized to 0.059999942779541016. Quantization error occurred
+with an absolute difference of 5.7220458982154554e-8 and a relative difference
+of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 195)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'LowerLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter/IntegClamp'.  The original value of the parameter,
+-0.06, cannot be represented exactly using the run-time data type sfix30_En23.
+The value is quantized to -0.059999942779541016. Quantization error occurred
+with an absolute difference of 5.7220458982154554e-8 and a relative difference
+of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 195)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'UpperLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter Shadow/IntegClamp'.  The original value of the
+parameter, 0.06, cannot be represented exactly using the run-time data type
+sfix30_En23. The value is quantized to 0.059999942779541016. Quantization error
+occurred with an absolute difference of 5.7220458982154554e-8 and a relative
+difference of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 195)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred for 'LowerLimit' of
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Symbol
+Synchronizer/Loop Filter Shadow/IntegClamp'.  The original value of the
+parameter, -0.06, cannot be represented exactly using the run-time data type
+sfix30_En23. The value is quantized to -0.059999942779541016. Quantization
+error occurred with an absolute difference of 5.7220458982154554e-8 and a
+relative difference of 9.53674316369243e-07.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 195)
+In run (line 112)] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+    telI = <strong>reinterpretcast(uint16(bitshift(w, -16)),
+    numerictype(1,16,0))</strong>;
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+        s1 =
+        bitor(bitshift(uint32(<strong>reinterpretcast(dI,numerictype(0,16,0))</strong>),16),
+        ...
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+             uint32(<strong>reinterpretcast(dQ,numerictype(0,16,0))</strong>));
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Wrap on overflow detected.
+
+In MATLAB Function '<a
+href="matlab:Stateflow.Debug.Runtime.open_object('byte_harness_k5/DUT/Receiver/QPSK
+Rx/Frequency and Time Synchronizer/Preamble Detector/PdTelemetry',
+0);">byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time
+Synchronizer/Preamble Detector/PdTelemetry</a>':
+
+    telQ = <strong>reinterpretcast(uint16(bitand(w, uint32(65535))),
+    numerictype(1,16,0))</strong>;
+
+Suggested Actions:
+    • Suppress future instances of this diagnostic from this source. - Suppress
+] 
+[Warning: Saturate on overflow detected. This originated from
+'byte_harness_k5/DUT/Receiver/QPSK Rx/CfcEstSI'
+Suggested Actions:
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 368)
+In sim_byte_gate_k5 (line 195)
+In run (line 112)] 
+  logged elements: bit_errors_out, byte_rx_data, byte_rx_last, byte_rx_user, byte_rx_valid, cap_deint, cap_in, cap_out, packets_out, modTap1, modTap2
+D ROM regression: packets=8 errors=51 cap_in=0x5216F3E2 cap_deint=0x52B9CE5C cap_out=0x04922282 syms=115198 rxwords=1401
+[D] air: 8 full frames, firstGolden=1, golden=8, all-after-first-golden=1, perFrameErr=[0 0 0 0 0 0 0 0]
+[D] bist: cap=0x04922282 (golden 0x04922282) errs@70%=51 errs@end=51 pkts 5->8 -> true
+[D] byte-rx: 6 complete packets, last 4 checked -> true
+[D] RESULT: PASS
+WROTE SIM_BYTE_GATE_K5.txt (PASS)
+SIM_BYTE_GATE_K5_DONE PASS
+[Warning: Unable to close the model 'byte_harness_k5' because it has been
+changed. To save changes, use close_system('byte_harness_k5',1). To discard
+changes, use close_system('byte_harness_k5',0).] 

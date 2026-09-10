@@ -1,0 +1,3 @@
+WRAP4E_FILE wrap_byte_sro4e.v t21
+WRAP4E_DEFINE RXFIX_R4E
+STAGEWIN wrote r4e_p10_stagewin.txt events=1 beats=6809152 arm=drop W=96

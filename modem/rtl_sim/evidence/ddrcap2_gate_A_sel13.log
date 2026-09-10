@@ -1,0 +1,11 @@
+=== PART A: liveness / markers / slots / toff / tref (NF=20 sel filter) ===
+  sel13 records>1000                                         PASS n=1331660
+  sel13 I/Q not all zero                                     PASS 
+  sel13 demod marks per frame ~1                             PASS 
+  sel13 tx marks per frame ~1                                PASS 
+  sel13 slot cycles 0..3                                     PASS 
+  sel13 toff in range and steady                             PASS mode=12323 frac=1.000
+  sel13 tref slot monotone mod 12333                         PASS 
+  sel13 countReg not constant                                PASS distinct=272
+  sel13 underflow bit mean ~0.25 (4 records/symbol)          PASS underflow mean=0.250 (want 0.25+/-0.03)
+DDRCAP2_GATE_A PASS

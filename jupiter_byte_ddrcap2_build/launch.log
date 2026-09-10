@@ -1,0 +1,6 @@
+DDRCAP_BUILD sync start 2026-09-02T15:19:12-04:00
+DDRCAP_BUILD sync done 2026-09-02T15:19:26-04:00
+DDRCAP_UNIT ddrcap-build-1788376766 started 2026-09-02T15:19:26-04:00
+DDRCAP_BUILD launched on hdl-dev-2 as unit ddrcap-build-1788376766 ; remote tree: /home/tcollins/qpsk-builds/jupiter_byte_ddrcap2_build
+  check with: ssh hdl-dev-2 systemctl --user status ddrcap-build-1788376766
+  log at:     ssh hdl-dev-2 tail -f /home/tcollins/qpsk-builds/jupiter_byte_ddrcap2_build/build_ddrcap_vivado.log

@@ -1,0 +1,34 @@
+GOLDEN sel=0 frames=226 records=10211420 nonzero=10050382 packets=226 biterr=51
+GOLDEN sel=3 frames=226 records=2552855 nonzero=2552855 packets=226 biterr=51
+GOLDEN sel=2 frames=226 records=10211420 nonzero=10211213 packets=226 biterr=51
+GOLDEN sel=5 frames=226 records=2552855 nonzero=2552855 packets=226 biterr=51
+# NF=110 per selector (ruling: netlist emits ~2 packets per NF unit -> ~220 packets, matching brief intent)
+sel0 frames_lines=206 modal_tx_marker_spacing(top3 count,delta)=    205 49332 
+sel2 frames_lines=206 modal_tx_marker_spacing(top3 count,delta)=    205 49332 
+sel3 frames_lines=206 modal_tx_marker_spacing(top3 count,delta)=    205 12333 
+sel5 frames_lines=206 modal_tx_marker_spacing(top3 count,delta)=    205 12333 
+# ddrcap_pc_large.py checks (part 3 CROSS-CHECK is sel6-only; FAIL on sel0/2/3/5 is expected per task-2 ruling)
+-- sel0 vs sel3 --
+  [PASS] 1 LIVENESS     39 distinct I in 200k beats, delta spread 50
+  [PASS] 2 SELECTOR     200000/200000 words differ between selectors
+  [FAIL] 3 CROSS-CHECK  no offset 0..2 at any of 8 markers reproduces 0xBCF94856
+  [PASS] 4 MARKERS      modal spacing 49332 (205/205 intervals) -> sample domain
+DDRCAP_PC_LARGE 1 FAILED -- WITNESS-DEAD at this size
+-- sel2 vs sel0 --
+  [PASS] 1 LIVENESS     1026 distinct I in 200k beats, delta spread 1114
+  [PASS] 2 SELECTOR     200000/200000 words differ between selectors
+  [FAIL] 3 CROSS-CHECK  no offset 0..2 at any of 8 markers reproduces 0xBCF94856
+  [PASS] 4 MARKERS      modal spacing 49332 (205/205 intervals) -> sample domain
+DDRCAP_PC_LARGE 1 FAILED -- WITNESS-DEAD at this size
+-- sel3 vs sel0 --
+  [PASS] 1 LIVENESS     578 distinct I in 200k beats, delta spread 1162
+  [PASS] 2 SELECTOR     200000/200000 words differ between selectors
+  [FAIL] 3 CROSS-CHECK  no offset 0..2 at any of 8 markers reproduces 0xBCF94856
+  [PASS] 4 MARKERS      modal spacing 12333 (205/205 intervals) -> symbol domain
+DDRCAP_PC_LARGE 1 FAILED -- WITNESS-DEAD at this size
+-- sel5 vs sel0 --
+  [PASS] 1 LIVENESS     2359 distinct I in 200k beats, delta spread 4636
+  [PASS] 2 SELECTOR     200000/200000 words differ between selectors
+  [FAIL] 3 CROSS-CHECK  no offset 0..2 at any of 8 markers reproduces 0xBCF94856
+  [PASS] 4 MARKERS      modal spacing 12333 (206/206 intervals) -> symbol domain
+DDRCAP_PC_LARGE 1 FAILED -- WITNESS-DEAD at this size

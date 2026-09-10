@@ -1,0 +1,114 @@
+#!/bin/bash
+# build_txfix.sh -- full BD-regenerating build for a TXFIX fix-variant image
+# (F1/F2/F3). Copy of jupiter_byte_ddrcap2_build/build_ddrcap.sh, generalised:
+# REMOTE_DIR is derived from this kit's own basename (not hard-coded) so F1/F2/F3
+# can build in independent remote dirs without clobbering each other, and JOBS
+# is an env override (default 6) threaded through to build_txfix.tcl via
+# `set_param general.maxThreads $env(JOBS)` / `-jobs $env(JOBS)` in both
+# launch_runs calls -- so two variants can each run at -jobs 3 concurrently
+# without oversubscribing hdl-dev-2 (8 cores). See the plan's Vivado
+# constraints paragraph: hdl-dev-2 has 8 cores / 61 GB RAM; three concurrent
+# builds at full jobs is oversubscribed and disk-tight (67 GB free at last
+# check, 86% used) -- this script preflights disk and concurrent-unit state
+# before touching the remote host.
+#
+# vivado_prj.runs/v_*/ is excluded alongside synth_1/impl_1: kits derived from
+# jupiter_byte_tmr146_build carry nine placement-variant impl runs (v_aslh ..
+# v_wldbp, the 2026-08-25 copy_run study) whose routed DCPs are several GB and
+# are irrelevant to a from-scratch re-synth.  ddrcap2-derived kits have no runs
+# directory at all, so this is a no-op for the F1/F2/F3 lineage.
+#
+# This script never deletes anything remote (old kit dirs, e.g.
+# jupiter_byte_beatfix2_build, are referenced by system.bd's mem_init_sys.txt
+# on hdl-dev-2 and must survive).
+#
+# Usage: build_txfix.sh [--dry]
+#   --dry   do everything (sync, preflight) except the remote systemd-run
+#           launch; prints the exact remote launch command instead.
+set -u
+KIT_LOCAL=$(cd "$(dirname "$0")" && pwd)
+KIT=$(basename "$KIT_LOCAL")
+REMOTE_HOST=hdl-dev-2
+REMOTE_DIR="~/qpsk-builds/$KIT"
+REMOTE_DIR_EXPANDED="/home/tcollins/qpsk-builds/$KIT"
+JOBS="${JOBS:-6}"
+ALLOW_CONCURRENT="${ALLOW_CONCURRENT:-0}"
+DRY=0
+if [ "${1:-}" = "--dry" ]; then DRY=1; fi
+
+case "$KIT" in
+  jupiter_byte_txfix*_build) ;;
+  *) echo "TXFIX_BUILD_BAD_KIT $KIT (expected jupiter_byte_txfix<VARIANT>_build)"; exit 1 ;;
+esac
+if [ ! -f "$KIT_LOCAL/TXFIX_VARIANT" ]; then
+  echo "TXFIX_BUILD_NO_VARIANT_MARKER $KIT_LOCAL/TXFIX_VARIANT missing -- run jupiter_byte_txfix_kit.sh first"
+  exit 1
+fi
+VARIANT=$(head -1 "$KIT_LOCAL/TXFIX_VARIANT")
+
+echo "TXFIX_BUILD preflight start $(date -Is) kit=$KIT variant=$VARIANT jobs=$JOBS"
+
+# --- preflight: remote disk + concurrent-unit check (never destructive) -----
+FREE_KB=$(ssh "$REMOTE_HOST" "df -Pk \$HOME | tail -1 | awk '{print \$4}'")
+if [ -z "$FREE_KB" ]; then
+  echo "TXFIX_BUILD_PREFLIGHT_FAILED could not read remote free disk"; exit 1
+fi
+FREE_GB=$((FREE_KB / 1024 / 1024))
+if [ "$FREE_GB" -lt 25 ]; then
+  echo "TXFIX_BUILD_PREFLIGHT_FAILED free=${FREE_GB}GB < 25GB on $REMOTE_HOST"; exit 1
+fi
+echo "TXFIX_BUILD preflight disk free=${FREE_GB}GB"
+
+ACTIVE_UNITS=$(ssh "$REMOTE_HOST" "systemctl --user list-units --state=running,active 'txfix-build-*' 'ddrcap-build-*' --no-legend 2>/dev/null | awk '{print \$1}'")
+if [ -n "$ACTIVE_UNITS" ] && [ "$ALLOW_CONCURRENT" != "1" ]; then
+  echo "TXFIX_BUILD_PREFLIGHT_FAILED concurrent build unit(s) active on $REMOTE_HOST: $ACTIVE_UNITS (set ALLOW_CONCURRENT=1 to override, e.g. two variants at JOBS=3 each)"
+  exit 1
+fi
+if [ -n "$ACTIVE_UNITS" ]; then
+  echo "TXFIX_BUILD preflight NOTE: proceeding alongside active unit(s) [$ACTIVE_UNITS] under ALLOW_CONCURRENT=1"
+fi
+
+echo "TXFIX_BUILD sync start $(date -Is)"
+rsync -a --delete \
+  --exclude 'vivado_prj.runs/synth_1/' \
+  --exclude 'vivado_prj.runs/impl_1/' \
+  --exclude 'vivado_prj.runs/v_*/' \
+  --exclude 'vivado_prj.cache/' \
+  --exclude 'vivado_prj.sim/' \
+  --exclude 'vivado_prj.hw/' \
+  --exclude '*.log' --exclude '*.jou' --exclude '*.str' \
+  --exclude 'boot/BOOT.BIN' \
+  --exclude 'LAUNCHED' \
+  "$KIT_LOCAL"/ "$REMOTE_HOST:$REMOTE_DIR"/
+RC=$?
+if [ $RC -ne 0 ]; then echo "TXFIX_BUILD_SYNC_FAILED rc=$RC"; exit 1; fi
+echo "TXFIX_BUILD sync done $(date -Is)"
+
+UNIT="txfix-build-${KIT#jupiter_byte_}-$(date +%s)"
+LAUNCH_CMD="REMOTE_DIR='$REMOTE_DIR_EXPANDED' UNIT='$UNIT' JOBS='$JOBS' VARIANT='$VARIANT' IMPL_STRATEGY='${IMPL_STRATEGY:-}' SEQBIST_WITH_CRC='${SEQBIST_WITH_CRC:-}' bash -s"
+
+if [ $DRY -eq 1 ]; then
+  echo "TXFIX_BUILD_DRY unit=$UNIT remote_dir=$REMOTE_DIR_EXPANDED jobs=$JOBS variant=$VARIANT"
+  echo "TXFIX_BUILD_DRY would run: ssh $REMOTE_HOST \"$LAUNCH_CMD\" <<'REMOTE' ... REMOTE (systemd-run --user --unit=$UNIT ... timeout 14400 vivado -mode batch -notrace -source \$REMOTE_DIR/build_txfix.tcl > \$REMOTE_DIR/build_txfix_vivado.log 2>&1)"
+  echo "TXFIX_BUILD_DRY log would be at: $REMOTE_DIR_EXPANDED/build_txfix_vivado.log"
+  exit 0
+fi
+
+ssh "$REMOTE_HOST" "$LAUNCH_CMD" <<'REMOTE'
+set -u
+export PATH=/opt/Xilinx/2025.1/Vivado/bin:/usr/bin:/bin
+Z="$REMOTE_DIR/hdl_prj_jupiter_composite/vivado_ip_prj"
+rm -f "$Z/boot/BOOT.BIN"
+systemd-run --user --unit="$UNIT" --collect \
+  --working-directory="$Z" \
+  --setenv=PATH=/opt/Xilinx/2025.1/Vivado/bin:/usr/bin:/bin \
+  --setenv=JOBS="$JOBS" \
+  --setenv=IMPL_STRATEGY="$IMPL_STRATEGY" \
+  --setenv=VARIANT="$VARIANT" \
+  --setenv=SEQBIST_WITH_CRC="$SEQBIST_WITH_CRC" \
+  bash -c "timeout 14400 vivado -mode batch -notrace -source \"$REMOTE_DIR/build_txfix.tcl\" > \"$REMOTE_DIR/build_txfix_vivado.log\" 2>&1"
+echo "TXFIX_UNIT $UNIT started $(date -Is)"
+REMOTE
+echo "TXFIX_BUILD launched on $REMOTE_HOST as unit $UNIT ; remote tree: $REMOTE_DIR_EXPANDED"
+echo "  check with: ssh $REMOTE_HOST systemctl --user status $UNIT"
+echo "  log at:     ssh $REMOTE_HOST tail -f $REMOTE_DIR_EXPANDED/build_txfix_vivado.log"

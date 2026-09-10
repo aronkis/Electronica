@@ -1,0 +1,60 @@
+RX drain budget: 4 slices/pump call (0 = unbounded; TX can be fed between chunks)
+RX queued-request mode ON (no reset between transfers; wdog 3.0s)
+QPSK_TXLOG: ring of last 1048576 tx frames (32 MiB, 32 B/rec) -> /dev/shm/txlog.bin (also on SIGUSR1)
+QPSK_FAILHDR: ring of last 65536 failed headers (2 MiB, 32 B/rec) -> /dev/shm/failhdr.bin
+framelog: /dev/shm/frames.bin (48 B/frame)
+irq mode: uio2/uio1
+READY tun0
+rx_queued: completions but NO DELIVERY for 10.0s -- re-arming (recovery #1)
+qpsk_tun stats: tunA_rx=2 tunA_tx=0 tunB_rx=0 tunB_tx=0 dma_tx=6229 dma_rx_ok=0 crc_drop=6208 seq_gap=0 idle_tx=6227 idle_rx=0 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6229 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=2 tunA_tx=0 tunB_rx=0 tunB_tx=0 dma_tx=12457 dma_rx_ok=0 crc_drop=8555 seq_gap=0 idle_tx=12455 idle_rx=3855 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=170 gt20us=13 gt50us=8 gt200us=1 max_us=490 p99_us=127 mean_us=7.7 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=3 tunA_tx=0 tunB_rx=0 tunB_tx=1 dma_tx=18685 dma_rx_ok=1 crc_drop=10453 seq_gap=0 idle_tx=18682 idle_rx=8160 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=3 tunA_tx=0 tunB_rx=0 tunB_tx=1 dma_tx=24913 dma_rx_ok=1 crc_drop=10822 seq_gap=0 idle_tx=24910 idle_rx=13986 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=3 tunA_tx=0 tunB_rx=0 tunB_tx=1 dma_tx=31141 dma_rx_ok=1 crc_drop=11201 seq_gap=0 idle_tx=31138 idle_rx=19813 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=3 tunA_tx=0 tunB_rx=0 tunB_tx=2186 dma_tx=37369 dma_rx_ok=2186 crc_drop=11605 seq_gap=140 idle_tx=37366 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=1 gt20us=1 gt50us=1 gt200us=1 max_us=631 p99_us=767 mean_us=631.3 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=7908 dma_tx=43597 dma_rx_ok=7908 crc_drop=12093 seq_gap=505 idle_tx=43593 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=237 gt20us=43 gt50us=41 gt200us=39 max_us=838 p99_us=1023 mean_us=108.9 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=13631 dma_tx=49825 dma_rx_ok=13631 crc_drop=12580 seq_gap=877 idle_tx=49821 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=198 gt20us=167 gt50us=166 gt200us=165 max_us=1103 p99_us=1023 mean_us=563.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=19361 dma_tx=56053 dma_rx_ok=19361 crc_drop=13057 seq_gap=1249 idle_tx=56049 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=206 gt20us=144 gt50us=142 gt200us=142 max_us=1122 p99_us=1023 mean_us=472.2 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=22947 dma_tx=62281 dma_rx_ok=22947 crc_drop=14047 seq_gap=1482 idle_tx=62277 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=79 gt20us=79 gt50us=79 gt200us=79 max_us=7321 p99_us=8191 mean_us=807.8 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=22947 dma_tx=68509 dma_rx_ok=22947 crc_drop=15951 seq_gap=1482 idle_tx=68505 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+rx_queued: completions but NO DELIVERY for 10.0s -- re-arming (recovery #2)
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=22947 dma_tx=74737 dma_rx_ok=22947 crc_drop=17855 seq_gap=1482 idle_tx=74733 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=22947 dma_tx=80965 dma_rx_ok=22947 crc_drop=19775 seq_gap=1482 idle_tx=80960 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+rx_queued: completions but NO DELIVERY for 10.0s -- re-arming (recovery #3)
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=22947 dma_tx=87193 dma_rx_ok=22947 crc_drop=21663 seq_gap=1482 idle_tx=87188 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=22947 dma_tx=88497 dma_rx_ok=22947 crc_drop=22047 seq_gap=1482 idle_tx=88492 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=1304 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+qpsk_tun txlog: wrote 30268 records (of 30268 submits) to /dev/shm/txlog.bin
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=22947 dma_tx=93421 dma_rx_ok=22947 crc_drop=23551 seq_gap=1482 idle_tx=93416 idle_rx=23438 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=4924 empty=2 gt20us=2 gt50us=2 gt200us=2 max_us=15659 p99_us=16383 mean_us=8407.6 idle_batch=0
+qpsk_tun nakstat: seen=0 magic=0 parsed=0
+rx_queued: completions but NO DELIVERY for 10.0s -- re-arming (recovery #4)

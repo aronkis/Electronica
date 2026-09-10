@@ -1,0 +1,13 @@
+18:09:06 === [1/5] preconditions ===
+18:09:06 [dry] would touch/remove SENTINEL_STOP (DRY never touches it, present or absent, owned or not)
+18:09:06   148 current image: [dry] md5sum /boot/BOOT.BIN | cut -c1-12 (expect 9f13705d9fb0)
+[dry] [ -f /root/BOOT.BIN.9f13705d9fb0.bak ] || cp -f /boot/BOOT.BIN /root/BOOT.BIN.9f13705d9fb0.bak; md5sum /root/BOOT.BIN.9f13705d9fb0.bak | cut -c1-12
+18:09:06 === [2/5] stage + flash ===
+18:09:06   [dry] NB=$(stat -c %s /root/BOOT.BIN.staged 2>/dev/null||echo 0); if [ "$NB" -gt 6000000 ]; then cp -f /root/BOOT.BIN.staged /boot/BOOT.BIN && sync && echo "FLASHED $(md5sum /boot/BOOT.BIN|cut -c1-12)"; else echo "ABORT staged=$NB"; fi
+18:09:06 === [3/5] readback verify ===
+18:09:06   booted image: [dry] md5sum /boot/BOOT.BIN | cut -c1-12 (expect dec007ae70dd)
+18:09:06 === [4/5] two-pass gate (arm148_mode1: ARM_OK, fps>=1120, capTAP golden) ===
+18:09:06   GATE_PASS x2
+18:09:06 === [5/5] Tier-2 witness (read BEFORE any rollback): sel6 4 MB, decoded ===
+18:09:06   [dry] echo enabled > /sys/bus/iio/devices/iio:device0/reg_access; echo '0x10C 0x60003' > /sys/kernel/debug/iio/iio:device0/direct_reg_access; sleep 1; cd /tmp && rm -f w.bin && iio_readdev -b 4096 -s 1048576 axi-adrv9002-rx2-lpc voltage0_i voltage0_q > /tmp/w.bin 2>/dev/null; stat -c %s /tmp/w.bin
+18:09:06 FLASH_DDRCAP2_OK dec007ae70dd (sentinel untouched -- external hold or DRY)

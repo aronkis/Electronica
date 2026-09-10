@@ -1,0 +1,11 @@
+=== PART A: liveness / markers / slots / toff / tref (NF=40 sel filter) ===
+  sel12 records>1000                                         PASS 
+  sel12 I/Q not all zero                                     PASS 
+  sel12 demod marks per frame ~1                             PASS 
+  sel12 tx marks per frame ~1                                PASS 
+  sel12 slot cycles 0..3                                     PASS 
+  sel12 toff in range and steady                             PASS mode=12323 frac=1.000
+  sel12 tref slot monotone mod 12333                         PASS 
+  sel12 secondary-peak census (data, not a gate)             PASS secondaries(0.45x-0.8x)/frame mean=16.0 largest_secondary_ratio=0.61 offset_from_main=-1399 records frames_checked=66
+  sel12 correlator single main peak (>0.8x max)              PASS frames_checked=66
+DDRCAP2_GATE_A PASS

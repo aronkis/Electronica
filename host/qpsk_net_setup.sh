@@ -1,0 +1,189 @@
+#!/bin/bash
+# qpsk_net_setup.sh -- board-side bring-up for the QPSK network interface.
+#
+# Subcommands:
+#   regs [internal|cable]   program the modem for DMA-byte Tx (default cable)
+#   up   [internal|cable]   regs + daemon + two-netns topology (nsA/nsB)
+#   down                    kill daemon, delete namespaces
+#
+# Topology (single board): nsA{qpsk0 10.66.0.1, ret0 10.77.0.1} <-RF->
+# nsB{qpsk1 10.66.0.2, ret1 10.77.0.2}. Forward traffic nsA->nsB rides the
+# modem (daemon bridges qpsk0 -> Tx DMA -> RF -> Rx DMA -> qpsk1); the
+# reverse direction is routed over ret0/ret1, a second qpsk_tun instance
+# in -l loopback mode (this kernel has no CONFIG_VETH; an in-process tun
+# bridge serves as the return link). rp_filter is disabled to allow the
+# asymmetric paths.
+#
+# Register order is the proven recipe from ByteDmaRegisters.m: soft reset
+# (clears the register file too) THEN the select writes THEN DMA start (the
+# daemon performs its own engine resets when launched).
+set -e
+cd "$(dirname "$0")"
+
+# Modem regfile base. Default = ZynqMP byte bitstream (Jupiter / ADRV9002-ZCU102,
+# 0x9D000000). For the ZedBoard (Zynq-7000) byte design the regs live in the GP0
+# window: set QPSK_BOARD=zed, or override the base directly with QPSK_MODEM_BASE.
+# Must match how qpsk_tun was compiled (-DQPSK_BOARD_ZED -> 0x43C00000).
+MODEM=${QPSK_MODEM_BASE:-0x9D000000}
+[ "${QPSK_BOARD:-}" = zed ] && MODEM=${QPSK_MODEM_BASE:-0x43C00000}
+DEVMEM="busybox devmem"
+
+# tx_data_source offset: the K5 image moves it to 0x158 (legacy 0x11C is the
+# K5 debug sentinel). Must match qpsk_hw.h QPSK_TX_DATA_SOURCE_OFF. For a
+# legacy byte image: QPSK_TXSRC_OFF=0x11C.
+# NOTE (two-radio K5 on Jupiter): the modem is bound to the mwipcore driver
+# there, and raw devmem writes to 0x9D000xxx are SILENTLY IGNORED -- this
+# single-board script's regs() does not work on that image. Use
+# byte_link_up.sh (mwipcore debugfs direct_reg_access; tag
+# archive/pre-cleanup-2026-09-09) instead.
+TXSRC_OFF=${QPSK_TXSRC_OFF:-0x158}
+
+# Packet size and capture mode are INDEPENDENT. Packet size = the deployed
+# bitstream's DataBitsPerPacket/8 (default build 2240 bits = 280 B; a
+# 4480-bit build is 560 B -- set QPSK_PKT_BYTES for that).
+#
+# RX capture defaults to LEGACY single-packet (-M 0): it rearms the single
+# S2MM engine in every ~18 us inter-packet gap, so it captures essentially
+# every packet (~1% loss) -- best throughput, at the cost of one CPU core
+# pegged. Multi-packet (-M K, needs the byte_ctrl_gpio TLAST gate at
+# 0x9D300000) cuts CPU but loses ~1 packet per transfer at the engine
+# rearm (the SYNC_TRANSFER_START realign), trading loss for CPU on a
+# measured curve (W=spin window via QPSK_SPIN_W; see qpsk_tun.c). It is
+# therefore OPT-IN: set QPSK_RX_MULTI=K (e.g. 16) for CPU-constrained or
+# low-rate use. For a throughput link, legacy is the right default.
+PKT=${QPSK_PKT_BYTES:-280}
+MULTI=${QPSK_RX_MULTI:-0}
+DFLAGS=""
+# Positive-presence probe for byte_ctrl_gpio (AXI GPIO @ 0x9D300000): a claimed
+# 9d300000 region in /proc/iomem OR a qpsk_byte_gpio UIO node. Mirrors
+# qpsk_gpio_present() in qpsk_uio.c. Replaces the old blind devmem read-probe
+# (which "succeeds" even on a floating bus and could poke an absent peripheral).
+gpio_present() {
+    grep -qiE '(^|[[:space:]0]+)9d300000-' /proc/iomem 2>/dev/null && return 0
+    for n in /sys/class/uio/uio*/name; do
+        # uio_pdrv_genirq may name the node bare or WITH the @unit-address
+        # (kernel 6.12.77 uses "qpsk_byte_gpio@9d300000"). Accept both.
+        [ -r "$n" ] || continue
+        case "$(cat "$n" 2>/dev/null)" in
+            qpsk_byte_gpio|qpsk_byte_gpio@*) return 0 ;;
+        esac
+    done
+    return 1
+}
+
+detect() {
+    DFLAGS="-p $PKT"
+    if [ "$MULTI" -gt 0 ] && gpio_present; then
+        DFLAGS="-p $PKT -M $MULTI"   # opt-in multi-packet (lower CPU, some loss)
+    fi
+    MTU=$((PKT - 12))
+    ADVMSS=$((MTU - 60))
+    echo "link: pkt=$PKT bytes, daemon flags '$DFLAGS', mtu=$MTU"
+}
+
+# Enable the ADRV9002 front-end: Tx attenuation 0 dB + Rx AGC (echo-mode
+# sweep 2026-06-12: 83% frame survival on cable, equal to internal --
+# only the parked Tx artifact's episodes remain; -10 dB or manual Rx gain
+# collapse the link). The cyclic all-zeros host buffer only keeps the Tx
+# channel enabled (the in-FPGA Tx drives the DAC); the background Rx
+# reader keeps the ADC streaming.
+rf() {
+    pkill -f iio_writedev 2>/dev/null || true
+    pkill -f iio_readdev 2>/dev/null || true
+    sleep 0.5
+    iio_attr -q -o -c adrv9002-phy voltage0 hardwaregain 0
+    iio_attr -q -i -c adrv9002-phy voltage0 gain_control_mode automatic
+    dd if=/dev/zero of=/tmp/zeros.bin bs=16384 count=1 2>/dev/null
+    nohup iio_writedev -c -b 4096 axi-adrv9002-tx-lpc voltage0 voltage1 \
+        < /tmp/zeros.bin >/tmp/iio_tx.log 2>&1 &
+    nohup iio_readdev -b 16384 axi-adrv9002-rx-lpc voltage0_i voltage0_q \
+        >/dev/null 2>/tmp/iio_rx.log &
+    sleep 2
+    echo "rf armed (tx atten 0 dB, rx agc)"
+}
+
+regs() {
+    local rxsel=1
+    [ "$1" = internal ] && rxsel=0
+    $DEVMEM $MODEM 32 1                 # soft reset strobe (regs revert to 0)
+    sleep 0.1
+    $DEVMEM $((MODEM + TXSRC_OFF)) 32 1  # tx_data_source = DMA bytes (K5: 0x158)
+    $DEVMEM $((MODEM + 0x118)) 32 0     # tx_source_select
+    $DEVMEM $((MODEM + 0x114)) 32 $rxsel  # rx_input_select
+    echo "regs set (rx_input_select=$rxsel)"
+}
+
+down() {
+    pkill -f 'qpsk_tun -i qpsk0' 2>/dev/null || true
+    pkill -f 'qpsk_tun -l -i ret0' 2>/dev/null || true
+    pkill -f iio_writedev 2>/dev/null || true
+    pkill -f iio_readdev 2>/dev/null || true
+    sleep 0.3
+    ip netns del nsA 2>/dev/null || true
+    ip netns del nsB 2>/dev/null || true
+    echo "down"
+}
+
+up() {
+    down >/dev/null
+    # arg 2 == noRF: caller (e.g. QPSKNetworkTests) has armed the ADRV9002
+    # via MATLAB and holds it open -- skip the leak-prone CLI rf() (a
+    # killed cyclic iio_writedev wedges the tx dmaengine channel).
+    if [ "$2" != noRF ]; then
+        rf
+    else
+        echo "rf skipped (caller-armed radio)"
+    fi
+    regs "$1"
+    [ -x ./qpsk_tun ] || { echo "build qpsk_tun first"; exit 1; }
+
+    detect
+    nohup ./qpsk_tun -i qpsk0 -i qpsk1 -s 60 $DFLAGS >/tmp/qpsk_tun.log 2>&1 &
+    nohup ./qpsk_tun -l -i ret0 -i ret1 -p $PKT >/tmp/qpsk_ret.log 2>&1 &
+    for i in $(seq 50); do
+        ip link show qpsk0 >/dev/null 2>&1 && ip link show ret1 >/dev/null 2>&1 && break
+        sleep 0.1
+    done
+    ip link show qpsk1 >/dev/null
+
+    ip netns add nsA
+    ip netns add nsB
+    ip link set qpsk0 netns nsA
+    ip link set qpsk1 netns nsB
+    ip link set ret0 netns nsA
+    ip link set ret1 netns nsB
+
+    ip -n nsA addr add 10.66.0.1 peer 10.66.0.2 dev qpsk0
+    ip -n nsB addr add 10.66.0.2 peer 10.66.0.1 dev qpsk1
+    ip -n nsA addr add 10.77.0.1 peer 10.77.0.2 dev ret0
+    ip -n nsB addr add 10.77.0.2 peer 10.77.0.1 dev ret1
+    ip -n nsA link set qpsk0 up mtu $MTU
+    ip -n nsB link set qpsk1 up mtu $MTU
+    ip -n nsA link set ret0 up mtu $MTU
+    ip -n nsB link set ret1 up mtu $MTU
+    ip -n nsA link set lo up
+    ip -n nsB link set lo up
+
+    # forward nsA->10.66.0.2 rides RF (qpsk0 peer route, present already);
+    # reverse nsB->10.66.0.1 returns over the ret pair, NOT qpsk1
+    # rto_min: link RTT is ~5 ms; the default 200 ms RTO turns each
+    # residual ARQ loss into a long stall (measured 0.98 vs 1.21 Mbit/s
+    # short-run TCP). advmss keeps TCP segments inside one QPSK frame.
+    ip -n nsB route replace 10.66.0.1 via 10.77.0.1 dev ret1 rto_min 25ms
+    ip -n nsA route replace 10.66.0.2 dev qpsk0 advmss $ADVMSS rto_min 25ms
+    ip netns exec nsA sysctl -qw net.ipv4.conf.all.rp_filter=0 \
+        net.ipv4.conf.default.rp_filter=0 net.ipv4.conf.qpsk0.rp_filter=0 \
+        net.ipv4.conf.ret0.rp_filter=0
+    ip netns exec nsB sysctl -qw net.ipv4.conf.all.rp_filter=0 \
+        net.ipv4.conf.default.rp_filter=0 net.ipv4.conf.qpsk1.rp_filter=0 \
+        net.ipv4.conf.ret1.rp_filter=0
+    echo "up (daemon log: /tmp/qpsk_tun.log)"
+}
+
+case "$1" in
+    rf)   rf ;;
+    regs) regs "$2" ;;
+    up)   up "$2" "$3" ;;
+    down) down ;;
+    *)    echo "usage: $0 {rf|regs|up|down} [internal|cable] [noRF]"; exit 2 ;;
+esac

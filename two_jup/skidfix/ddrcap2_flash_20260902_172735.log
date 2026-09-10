@@ -1,0 +1,11 @@
+17:27:35 === [1/5] preconditions ===
+17:27:35   sentinel stopped (SENTINEL_STOP)
+17:27:36   148 current image: 1cd0cd752aa6 (expect 1cd0cd752aa6)
+1cd0cd752aa6
+17:27:36 === [2/5] stage + flash ===
+17:27:40   FLASHED 638b36de3493
+17:28:47 === [3/5] readback verify ===
+17:28:47   booted image:  (expect 638b36de3493)
+17:28:47 === ROLLBACK to 1cd0cd752aa6 (rail: no retry) ===
+17:28:47   restore-copy: 
+17:28:47 FLASH_DDRCAP2_FATAL: rollback restore-copy failed (got: '', expect 1cd0cd752aa6) -- PHYSICAL ATTENTION before reboot

@@ -1,0 +1,3 @@
+=== PART C: sel14 differs golden vs perturbed TX words ===
+  sel14 golden vs perturbed differ                           PASS diff=1181864/1331660
+DDRCAP2_GATE_C PASS

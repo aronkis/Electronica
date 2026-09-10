@@ -1,61 +1,62 @@
-# =============================================================================
-# Repo slimmed to the CANONICAL K5 QPSK Jupiter modem design. Everything at repo
-# root is IGNORED except the keepers whitelisted below; the ~150 experimental
-# snapshot dirs (composite_*, V*, fec_*, zed_*, jupiter_t8*, rf_*, ...) remain on
-# LOCAL DISK, untracked -- they are NOT in the repo. Re-add one with:
-#     git add -f <path>
-# =============================================================================
+# # =============================================================================
+# # Repo slimmed to the CANONICAL K5 QPSK Jupiter modem design. Everything at repo
+# # root is IGNORED except the keepers whitelisted below; the ~150 experimental
+# # snapshot dirs (composite_*, V*, fec_*, zed_*, jupiter_t8*, rf_*, ...) remain on
+# # LOCAL DISK, untracked -- they are NOT in the repo. Re-add one with:
+# #     git add -f <path>
+# # =============================================================================
 
-# ---- ignore all root entries, then whitelist the canonical keepers ----
-/*
-!/.gitignore
-!/README.md
-!/build_env_jupiter.sh
-!/2026-07-01-bidir-240k-k5-design.md
-!/docs/
-!/docs_session/
-!/host_app_k5/
-!/jupiter_240k5_byte/
-!/k5_240/
-!/plans/
-!/two_jup/
+# # ---- ignore all root entries, then whitelist the canonical keepers ----
+# /*
+# !/.gitignore
+# !/README.md
+# !/build_env_jupiter.sh
+# !/2026-07-01-bidir-240k-k5-design.md
+# !/docs/
+# !/docs_session/
+# !/host_app_k5/
+# !/jupiter_240k5_byte/
+# !/k5_240/
+# !/plans/
+# !/two_jup/
+# !/ops/
 
-# ---- build/derived artifacts INSIDE the kept dirs. These come AFTER the
-#      whitelist re-includes so they win (last matching pattern decides). ----
-*.iq
-*.mat
-# golden payload is load-bearing (loaded by the build gates) -- keep despite *.mat
-!/k5_240/golden_k5.mat
-*.log
-*.out
-*.jou
-*.pyc
-*.vvp
-*.vvpout
-*.autosave
-*BOOT.BIN
-*BOOT.BIN.save
-hdl_prj_*/
-slprj/
-obj_*/
-.Xil/
-ipcore/
-s1_rtl/
-__pycache__/
-docs/superpowers/
-two_jup/phaseB_agc/
-jupiter_240k5_byte/rtl_sim/*.txt
-jupiter_240k5_byte/rtl_sim/*.csv
-jupiter_240k5_byte/rtl_sim/diag/
-jupiter_240k5_byte/rtl_sim/replay/
-two_jup/hunt/
-two_jup/paired/
-two_jup/census/
-host_app_k5/qpsk_tun
-host_app_k5/qpsk_capture
-host_app_k5/qpsk_ringwrite
-host_app_k5/test_frame
-host_app_k5/test_k5
-host_app_k5/test_ber
-host_app_k5/test_whiten
-host_app_k5/test_seq
+# # ---- build/derived artifacts INSIDE the kept dirs. These come AFTER the
+# #      whitelist re-includes so they win (last matching pattern decides). ----
+# *.iq
+# *.mat
+# # golden payload is load-bearing (loaded by the build gates) -- keep despite *.mat
+# !/k5_240/golden_k5.mat
+# *.log
+# *.out
+# *.jou
+# *.pyc
+# *.vvp
+# *.vvpout
+# *.autosave
+# *BOOT.BIN
+# *BOOT.BIN.save
+# hdl_prj_*/
+# slprj/
+# obj_*/
+# .Xil/
+# ipcore/
+# s1_rtl/
+# __pycache__/
+# docs/superpowers/
+# two_jup/phaseB_agc/
+# jupiter_240k5_byte/rtl_sim/*.txt
+# jupiter_240k5_byte/rtl_sim/*.csv
+# jupiter_240k5_byte/rtl_sim/diag/
+# jupiter_240k5_byte/rtl_sim/replay/
+# two_jup/hunt/
+# two_jup/paired/
+# two_jup/census/
+# host_app_k5/qpsk_tun
+# host_app_k5/qpsk_capture
+# host_app_k5/qpsk_ringwrite
+# host_app_k5/test_frame
+# host_app_k5/test_k5
+# host_app_k5/test_ber
+# host_app_k5/test_whiten
+# host_app_k5/test_seq

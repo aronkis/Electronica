@@ -1,0 +1,3 @@
+=== PART R: sel15 RHCTR re-verify only (flat build, NF=8) ===
+  force Rate_Handle FIFO push=0x15 -> sel15 I[7:3]           PASS expect=0xA8 mask=0xF8
+DDRCAP2_GATE_R PASS

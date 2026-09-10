@@ -1,0 +1,4 @@
+19:33:48 NOTE: SKIP_GOLD=1 pre capTAP 0xF78C3553 (credit decided by bytes + positive control)
+BOARD 536870912
+19:34:00 sel13_leg sel13 bytes=536870912 pre=0xF78C3553 post=0x93883153
+19:34:00 WARN: post capTAP not golden -- capture not credited

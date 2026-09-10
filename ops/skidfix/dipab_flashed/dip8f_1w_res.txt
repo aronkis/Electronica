@@ -1,0 +1,3 @@
+iq=../../two_jup/simgen_symsync/tickfix/tf_0_201.iq nsamp=9965064 vphase=0 cadence=2 rstcs_end=4200 skip=0 dumptaps=0
+dips_done=26 dip_period=1528 dip_len=1100
+packets=201 biterr=11656 frameStart=201 rstcs=0 cfc_est=-105 nrxw=38354 outFrames=200

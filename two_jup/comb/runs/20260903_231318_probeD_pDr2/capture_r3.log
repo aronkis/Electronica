@@ -1,0 +1,19 @@
+=== capture_r3 A (fwd): R3/f1536 link, 600s traffic, Tap-A 4000000 samp on 10.0.0.148 -> /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_231318_probeD_pDr2/cap ===
+  10.0.0.146 build: BUILD_OK
+  10.0.0.148: preserving deployed NAK-stat instrumentation (-DQPSK_ARQ_NAKSTAT)
+  10.0.0.148 build: BUILD_OK
+  10.0.0.148: NAK-stat counter VERIFIED present after rebuild
+--- bringup_r2r3.sh r3 (logger on) ---
+=== r3 bring-up: lvds_61p44_fdd_jupiter, -r 15360, gate >= 1120 f/s ===
+10.0.0.148 armed ROM (lvds_61p44_fdd_jupiter)
+10.0.0.146 armed ROM (lvds_61p44_fdd_jupiter)
+146: ssi-fix VERIFIED: tx0=c3d4 rx0 preserved (2/4) (rearmed, 0x114=1)
+148: ssi-fix VERIFIED: tx0=c5d3 rx0 preserved (0/4) (rearmed, 0x114=1)
+gate try 1: 148 rx=814 f/s  146 rx=1247 f/s (need >= 1120)
+gate try 2: 148 rx=813 f/s  146 rx=1247 f/s (need >= 1120)
+gate try 3: 148 rx=768 f/s  146 rx=1247 f/s (need >= 1120)
+gate try 4: 148 rx=809 f/s  146 rx=1247 f/s (need >= 1120)
+gate try 5: 148 rx=830 f/s  146 rx=1247 f/s (need >= 1120)
+gate try 6: 148 rx=764 f/s  146 rx=1247 f/s (need >= 1120)
+ARM GATE FAILED after 6 tries -- NOT starting daemons
+R3 BRINGUP FAILED

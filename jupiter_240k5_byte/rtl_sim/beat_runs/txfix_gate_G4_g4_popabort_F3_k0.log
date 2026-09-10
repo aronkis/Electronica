@@ -1,0 +1,3 @@
+TXFIX_GATE_LAUNCH id=G4 variant=F3 bin=obj_txkick_F3/Vtxkick args=26 6 popabort beat_runs/g4_popabort_F3_k0 0 6
+TXKICK sel=popabort SEL=6 NF=26 K=6 k=0 packets=58 biterr=51 rstcs=0 txFrameStartPulses=60 txFrameIdx=59
+TXFIX_GATE_RUN_EXIT=0

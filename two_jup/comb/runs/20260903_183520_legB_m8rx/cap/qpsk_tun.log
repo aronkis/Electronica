@@ -1,0 +1,266 @@
+RX drain budget: 4 slices/pump call (0 = unbounded; TX can be fed between chunks)
+RX queued-request mode ON (no reset between transfers; wdog 3.0s)
+QPSK_TXLOG: ring of last 1048576 tx frames (32 MiB, 32 B/rec) -> /dev/shm/txlog.bin (also on SIGUSR1)
+QPSK_FAILHDR: ring of last 65536 failed headers (2 MiB, 32 B/rec) -> /dev/shm/failhdr.bin
+framelog: /dev/shm/frames.bin (48 B/frame)
+irq mode: uio2/uio1
+READY tun0
+rx_queued: no ENGINE event for 3.0s -- re-arming (recovery #1)
+qpsk_tun stats: tunA_rx=2 tunA_tx=0 tunB_rx=0 tunB_tx=0 dma_tx=6228 dma_rx_ok=0 crc_drop=6224 seq_gap=0 idle_tx=6226 idle_rx=0 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=2 tunA_tx=0 tunB_rx=0 tunB_tx=0 dma_tx=12456 dma_rx_ok=0 crc_drop=10527 seq_gap=0 idle_tx=12454 idle_rx=1922 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=4 gt20us=4 gt50us=1 gt200us=0 max_us=158 p99_us=191 mean_us=65.9 idle_batch=0
+qpsk_tun stats: tunA_rx=3 tunA_tx=0 tunB_rx=0 tunB_tx=1 dma_tx=18684 dma_rx_ok=1 crc_drop=11967 seq_gap=0 idle_tx=18681 idle_rx=6700 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=2 gt20us=2 gt50us=0 gt200us=0 max_us=43 p99_us=47 mean_us=42.3 idle_batch=0
+qpsk_tun stats: tunA_rx=3 tunA_tx=0 tunB_rx=0 tunB_tx=1 dma_tx=24912 dma_rx_ok=1 crc_drop=12418 seq_gap=0 idle_tx=24909 idle_rx=12481 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=3 tunA_tx=0 tunB_rx=0 tunB_tx=1 dma_tx=31140 dma_rx_ok=1 crc_drop=12582 seq_gap=0 idle_tx=31137 idle_rx=18546 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=3 tunA_tx=0 tunB_rx=0 tunB_tx=1411 dma_tx=37368 dma_rx_ok=1411 crc_drop=12760 seq_gap=47 idle_tx=37365 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=7402 dma_tx=43596 dma_rx_ok=7402 crc_drop=12986 seq_gap=245 idle_tx=43592 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=13403 dma_tx=49824 dma_rx_ok=13403 crc_drop=13208 seq_gap=434 idle_tx=49820 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=19412 dma_tx=56052 dma_rx_ok=19412 crc_drop=13421 seq_gap=617 idle_tx=56048 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=25403 dma_tx=62280 dma_rx_ok=25403 crc_drop=13640 seq_gap=802 idle_tx=62276 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=3 gt20us=3 gt50us=3 gt200us=3 max_us=20397 p99_us=24575 mean_us=7114.5 idle_batch=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=31345 dma_tx=68508 dma_rx_ok=31345 crc_drop=13874 seq_gap=1001 idle_tx=68504 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=6 gt20us=6 gt50us=6 gt200us=6 max_us=583 p99_us=767 mean_us=554.4 idle_batch=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=37337 dma_tx=74736 dma_rx_ok=37337 crc_drop=14110 seq_gap=1186 idle_tx=74732 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=4 tunA_tx=0 tunB_rx=0 tunB_tx=43343 dma_tx=80964 dma_rx_ok=43343 crc_drop=14332 seq_gap=1367 idle_tx=80960 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=49339 dma_tx=87192 dma_rx_ok=49339 crc_drop=14558 seq_gap=1553 idle_tx=87187 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=55339 dma_tx=93420 dma_rx_ok=55339 crc_drop=14787 seq_gap=1737 idle_tx=93415 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=61332 dma_tx=99648 dma_rx_ok=61332 crc_drop=15015 seq_gap=1930 idle_tx=99643 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=67312 dma_tx=105876 dma_rx_ok=67312 crc_drop=15257 seq_gap=2125 idle_tx=105871 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=73317 dma_tx=112104 dma_rx_ok=73317 crc_drop=15480 seq_gap=2311 idle_tx=112099 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=79316 dma_tx=118332 dma_rx_ok=79316 crc_drop=15707 seq_gap=2495 idle_tx=118327 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=85324 dma_tx=124560 dma_rx_ok=85324 crc_drop=15926 seq_gap=2681 idle_tx=124555 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=91336 dma_tx=130788 dma_rx_ok=91336 crc_drop=16142 seq_gap=2859 idle_tx=130783 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=97345 dma_tx=137016 dma_rx_ok=97345 crc_drop=16361 seq_gap=3044 idle_tx=137011 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=103339 dma_tx=143244 dma_rx_ok=103339 crc_drop=16595 seq_gap=3231 idle_tx=143239 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=48 gt20us=18 gt50us=17 gt200us=16 max_us=641 p99_us=767 mean_us=178.9 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=109327 dma_tx=149472 dma_rx_ok=109327 crc_drop=16833 seq_gap=3417 idle_tx=149467 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=3 gt20us=3 gt50us=3 gt200us=3 max_us=576 p99_us=767 mean_us=551.9 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=115312 dma_tx=155700 dma_rx_ok=115312 crc_drop=17074 seq_gap=3603 idle_tx=155695 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=1 gt20us=1 gt50us=1 gt200us=1 max_us=584 p99_us=767 mean_us=584.4 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=121308 dma_tx=161928 dma_rx_ok=121308 crc_drop=17305 seq_gap=3786 idle_tx=161923 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=5 tunA_tx=0 tunB_rx=0 tunB_tx=127307 dma_tx=168156 dma_rx_ok=127307 crc_drop=17533 seq_gap=3972 idle_tx=168151 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=133303 dma_tx=174384 dma_rx_ok=133303 crc_drop=17765 seq_gap=4156 idle_tx=174378 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=139310 dma_tx=180612 dma_rx_ok=139310 crc_drop=17986 seq_gap=4342 idle_tx=180606 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=145320 dma_tx=186840 dma_rx_ok=145320 crc_drop=18204 seq_gap=4522 idle_tx=186834 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=151319 dma_tx=193068 dma_rx_ok=151319 crc_drop=18433 seq_gap=4701 idle_tx=193062 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=157325 dma_tx=199296 dma_rx_ok=157325 crc_drop=18655 seq_gap=4885 idle_tx=199290 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=163341 dma_tx=205524 dma_rx_ok=163341 crc_drop=18867 seq_gap=5061 idle_tx=205518 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=169339 dma_tx=211752 dma_rx_ok=169339 crc_drop=19096 seq_gap=5247 idle_tx=211746 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=175343 dma_tx=217980 dma_rx_ok=175343 crc_drop=19320 seq_gap=5441 idle_tx=217974 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=181348 dma_tx=224208 dma_rx_ok=181348 crc_drop=19543 seq_gap=5625 idle_tx=224202 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=107 gt20us=13 gt50us=11 gt200us=8 max_us=528 p99_us=767 mean_us=42.3 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=187346 dma_tx=230436 dma_rx_ok=187346 crc_drop=19773 seq_gap=5811 idle_tx=230430 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=18 gt20us=15 gt50us=15 gt200us=15 max_us=587 p99_us=767 mean_us=444.2 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=193351 dma_tx=236664 dma_rx_ok=193351 crc_drop=19990 seq_gap=5996 idle_tx=236658 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=199329 dma_tx=242892 dma_rx_ok=199329 crc_drop=20229 seq_gap=6193 idle_tx=242886 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=1 gt20us=1 gt50us=1 gt200us=1 max_us=626 p99_us=767 mean_us=626.3 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=205333 dma_tx=249120 dma_rx_ok=205333 crc_drop=20450 seq_gap=6380 idle_tx=249114 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=211329 dma_tx=255348 dma_rx_ok=211329 crc_drop=20680 seq_gap=6565 idle_tx=255342 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=217329 dma_tx=261576 dma_rx_ok=217329 crc_drop=20907 seq_gap=6749 idle_tx=261570 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=223333 dma_tx=267804 dma_rx_ok=223333 crc_drop=21131 seq_gap=6932 idle_tx=267798 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=229340 dma_tx=274032 dma_rx_ok=229340 crc_drop=21351 seq_gap=7115 idle_tx=274026 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=235327 dma_tx=280260 dma_rx_ok=235327 crc_drop=21575 seq_gap=7308 idle_tx=280254 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=241307 dma_tx=286488 dma_rx_ok=241307 crc_drop=21817 seq_gap=7499 idle_tx=286482 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=247295 dma_tx=292716 dma_rx_ok=247295 crc_drop=22047 seq_gap=7695 idle_tx=292710 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=253285 dma_tx=298944 dma_rx_ok=253285 crc_drop=22279 seq_gap=7888 idle_tx=298938 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=259297 dma_tx=305172 dma_rx_ok=259297 crc_drop=22489 seq_gap=8077 idle_tx=305166 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=265302 dma_tx=311400 dma_rx_ok=265302 crc_drop=22713 seq_gap=8260 idle_tx=311394 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=18 gt20us=18 gt50us=18 gt200us=18 max_us=591 p99_us=767 mean_us=524.1 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=271305 dma_tx=317628 dma_rx_ok=271305 crc_drop=22937 seq_gap=8446 idle_tx=317622 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=277309 dma_tx=323856 dma_rx_ok=277309 crc_drop=23159 seq_gap=8627 idle_tx=323850 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=283314 dma_tx=330084 dma_rx_ok=283314 crc_drop=23383 seq_gap=8810 idle_tx=330078 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=6 tunA_tx=0 tunB_rx=0 tunB_tx=289304 dma_tx=336312 dma_rx_ok=289304 crc_drop=23615 seq_gap=9001 idle_tx=336306 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=295311 dma_tx=342540 dma_rx_ok=295311 crc_drop=23832 seq_gap=9192 idle_tx=342533 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=301295 dma_tx=348768 dma_rx_ok=301295 crc_drop=24071 seq_gap=9387 idle_tx=348761 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=307295 dma_tx=354996 dma_rx_ok=307295 crc_drop=24291 seq_gap=9582 idle_tx=354989 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=313298 dma_tx=361224 dma_rx_ok=313298 crc_drop=24512 seq_gap=9768 idle_tx=361217 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=319297 dma_tx=367452 dma_rx_ok=319297 crc_drop=24737 seq_gap=9950 idle_tx=367445 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=325291 dma_tx=373679 dma_rx_ok=325291 crc_drop=24973 seq_gap=10136 idle_tx=373672 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6227 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=331292 dma_tx=379907 dma_rx_ok=331292 crc_drop=25197 seq_gap=10318 idle_tx=379900 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=337296 dma_tx=386135 dma_rx_ok=337296 crc_drop=25421 seq_gap=10502 idle_tx=386128 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=343312 dma_tx=392363 dma_rx_ok=343312 crc_drop=25633 seq_gap=10685 idle_tx=392356 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=153 gt20us=9 gt50us=5 gt200us=5 max_us=502 p99_us=511 mean_us=17.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=349318 dma_tx=398591 dma_rx_ok=349318 crc_drop=25854 seq_gap=10871 idle_tx=398584 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=3 gt20us=3 gt50us=3 gt200us=3 max_us=565 p99_us=767 mean_us=523.9 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=355299 dma_tx=404819 dma_rx_ok=355299 crc_drop=26101 seq_gap=11061 idle_tx=404812 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=361293 dma_tx=411047 dma_rx_ok=361293 crc_drop=26334 seq_gap=11250 idle_tx=411040 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=367302 dma_tx=417275 dma_rx_ok=367302 crc_drop=26553 seq_gap=11431 idle_tx=417268 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=373300 dma_tx=423503 dma_rx_ok=373300 crc_drop=26782 seq_gap=11615 idle_tx=423496 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=379284 dma_tx=429731 dma_rx_ok=379284 crc_drop=27024 seq_gap=11800 idle_tx=429724 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=385299 dma_tx=435959 dma_rx_ok=385299 crc_drop=27237 seq_gap=11979 idle_tx=435952 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=391305 dma_tx=442187 dma_rx_ok=391305 crc_drop=27459 seq_gap=12165 idle_tx=442180 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=397314 dma_tx=448415 dma_rx_ok=397314 crc_drop=27678 seq_gap=12348 idle_tx=448408 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=403308 dma_tx=454643 dma_rx_ok=403308 crc_drop=27911 seq_gap=12533 idle_tx=454636 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=409259 dma_tx=460871 dma_rx_ok=409259 crc_drop=28141 seq_gap=12732 idle_tx=460864 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=415261 dma_tx=467099 dma_rx_ok=415261 crc_drop=28367 seq_gap=12919 idle_tx=467092 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=421277 dma_tx=473327 dma_rx_ok=421277 crc_drop=28579 seq_gap=13098 idle_tx=473320 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=427283 dma_tx=479555 dma_rx_ok=427283 crc_drop=28801 seq_gap=13282 idle_tx=479548 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=1 gt20us=1 gt50us=1 gt200us=1 max_us=489 p99_us=511 mean_us=489.2 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=433288 dma_tx=485783 dma_rx_ok=433288 crc_drop=29024 seq_gap=13461 idle_tx=485776 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=1 gt20us=1 gt50us=1 gt200us=1 max_us=587 p99_us=767 mean_us=586.7 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=439287 dma_tx=492011 dma_rx_ok=439287 crc_drop=29253 seq_gap=13642 idle_tx=492004 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=445285 dma_tx=498239 dma_rx_ok=445285 crc_drop=29483 seq_gap=13827 idle_tx=498232 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=451300 dma_tx=504467 dma_rx_ok=451300 crc_drop=29695 seq_gap=14006 idle_tx=504460 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=457303 dma_tx=510695 dma_rx_ok=457303 crc_drop=29920 seq_gap=14189 idle_tx=510688 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=463305 dma_tx=516923 dma_rx_ok=463305 crc_drop=30144 seq_gap=14376 idle_tx=516916 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=469284 dma_tx=523151 dma_rx_ok=469284 crc_drop=30385 seq_gap=14569 idle_tx=523144 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=475266 dma_tx=529379 dma_rx_ok=475266 crc_drop=30623 seq_gap=14760 idle_tx=529372 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=481259 dma_tx=535607 dma_rx_ok=481259 crc_drop=30850 seq_gap=14952 idle_tx=535600 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=487256 dma_tx=541835 dma_rx_ok=487256 crc_drop=31073 seq_gap=15145 idle_tx=541828 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=493260 dma_tx=548063 dma_rx_ok=493260 crc_drop=31294 seq_gap=15328 idle_tx=548056 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=499269 dma_tx=554291 dma_rx_ok=499269 crc_drop=31511 seq_gap=15509 idle_tx=554284 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=505260 dma_tx=560519 dma_rx_ok=505260 crc_drop=31742 seq_gap=15694 idle_tx=560512 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=1 gt20us=1 gt50us=1 gt200us=1 max_us=500 p99_us=511 mean_us=499.5 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=511261 dma_tx=566747 dma_rx_ok=511261 crc_drop=31973 seq_gap=15877 idle_tx=566740 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=18 gt20us=18 gt50us=18 gt200us=18 max_us=559 p99_us=767 mean_us=516.5 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=517268 dma_tx=572975 dma_rx_ok=517268 crc_drop=32194 seq_gap=16060 idle_tx=572968 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=1 gt20us=1 gt50us=1 gt200us=1 max_us=606 p99_us=767 mean_us=606.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=523279 dma_tx=579203 dma_rx_ok=523279 crc_drop=32411 seq_gap=16239 idle_tx=579196 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=1 gt20us=1 gt50us=1 gt200us=1 max_us=648 p99_us=767 mean_us=648.4 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=529289 dma_tx=585431 dma_rx_ok=529289 crc_drop=32629 seq_gap=16416 idle_tx=585424 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=535279 dma_tx=591659 dma_rx_ok=535279 crc_drop=32867 seq_gap=16598 idle_tx=591652 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=541295 dma_tx=597887 dma_rx_ok=541295 crc_drop=33079 seq_gap=16778 idle_tx=597880 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=547291 dma_tx=604115 dma_rx_ok=547291 crc_drop=33311 seq_gap=16966 idle_tx=604108 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=553295 dma_tx=610343 dma_rx_ok=553295 crc_drop=33529 seq_gap=17147 idle_tx=610336 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=559302 dma_tx=616571 dma_rx_ok=559302 crc_drop=33756 seq_gap=17332 idle_tx=616564 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=565315 dma_tx=622799 dma_rx_ok=565315 crc_drop=33971 seq_gap=17508 idle_tx=622792 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=571313 dma_tx=629026 dma_rx_ok=571313 crc_drop=34200 seq_gap=17694 idle_tx=629019 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6227 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=577310 dma_tx=635254 dma_rx_ok=577310 crc_drop=34429 seq_gap=17876 idle_tx=635247 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=583284 dma_tx=641482 dma_rx_ok=583284 crc_drop=34677 seq_gap=18067 idle_tx=641475 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=589261 dma_tx=647710 dma_rx_ok=589261 crc_drop=34917 seq_gap=18269 idle_tx=647703 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=595259 dma_tx=653938 dma_rx_ok=595259 crc_drop=35133 seq_gap=18456 idle_tx=653931 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=8 gt20us=8 gt50us=8 gt200us=8 max_us=558 p99_us=767 mean_us=522.2 idle_batch=0
+qpsk_tun stats: tunA_rx=7 tunA_tx=0 tunB_rx=0 tunB_tx=601256 dma_tx=660166 dma_rx_ok=601256 crc_drop=35363 seq_gap=18653 idle_tx=660159 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=4 gt20us=4 gt50us=4 gt200us=4 max_us=598 p99_us=767 mean_us=574.4 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=607247 dma_tx=666394 dma_rx_ok=607247 crc_drop=35593 seq_gap=18844 idle_tx=666386 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=613241 dma_tx=672622 dma_rx_ok=613241 crc_drop=35824 seq_gap=19028 idle_tx=672614 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=619235 dma_tx=678850 dma_rx_ok=619235 crc_drop=36054 seq_gap=19218 idle_tx=678842 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=625234 dma_tx=685078 dma_rx_ok=625234 crc_drop=36283 seq_gap=19402 idle_tx=685070 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=631241 dma_tx=691306 dma_rx_ok=631241 crc_drop=36504 seq_gap=19584 idle_tx=691298 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=637244 dma_tx=697534 dma_rx_ok=637244 crc_drop=36729 seq_gap=19768 idle_tx=697526 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=643242 dma_tx=703762 dma_rx_ok=643242 crc_drop=36954 seq_gap=19958 idle_tx=703754 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=649247 dma_tx=709990 dma_rx_ok=649247 crc_drop=37168 seq_gap=20142 idle_tx=709982 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=655240 dma_tx=716218 dma_rx_ok=655240 crc_drop=37393 seq_gap=20339 idle_tx=716210 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=661244 dma_tx=722446 dma_rx_ok=661244 crc_drop=37611 seq_gap=20525 idle_tx=722438 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=667257 dma_tx=728674 dma_rx_ok=667257 crc_drop=37822 seq_gap=20703 idle_tx=728666 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=673275 dma_tx=734902 dma_rx_ok=673275 crc_drop=38031 seq_gap=20883 idle_tx=734894 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=62 gt20us=2 gt50us=1 gt200us=1 max_us=237 p99_us=255 mean_us=6.3 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=679272 dma_tx=741130 dma_rx_ok=679272 crc_drop=38262 seq_gap=21068 idle_tx=741122 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=25 gt20us=25 gt50us=25 gt200us=25 max_us=664 p99_us=767 mean_us=552.4 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=680795 dma_tx=747358 dma_rx_ok=680795 crc_drop=40037 seq_gap=21126 idle_tx=747350 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=680795 dma_tx=753586 dma_rx_ok=680795 crc_drop=42221 seq_gap=21126 idle_tx=753578 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+rx_queued: completions but NO DELIVERY for 10.0s -- re-arming (recovery #2)
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=680795 dma_tx=759814 dma_rx_ok=680795 crc_drop=44481 seq_gap=21126 idle_tx=759806 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=680795 dma_tx=766042 dma_rx_ok=680795 crc_drop=46657 seq_gap=21126 idle_tx=766034 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+rx_queued: completions but NO DELIVERY for 10.0s -- re-arming (recovery #3)
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=680795 dma_tx=772270 dma_rx_ok=680795 crc_drop=48865 seq_gap=21126 idle_tx=772262 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=680795 dma_tx=775462 dma_rx_ok=680795 crc_drop=50009 seq_gap=21126 idle_tx=775454 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=3192 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0
+qpsk_tun txlog: wrote 714588 records (of 714588 submits) to /dev/shm/txlog.bin
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=680795 dma_tx=778306 dma_rx_ok=680795 crc_drop=61205 seq_gap=21126 idle_tx=778298 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=2844 empty=4 gt20us=4 gt50us=4 gt200us=4 max_us=185953 p99_us=196607 mean_us=46891.3 idle_batch=0
+rx_queued: completions but NO DELIVERY for 10.0s -- re-arming (recovery #4)
+qpsk_tun stats: tunA_rx=8 tunA_tx=0 tunB_rx=0 tunB_tx=680795 dma_tx=784534 dma_rx_ok=680795 crc_drop=69733 seq_gap=21126 idle_tx=784526 idle_rx=23184 tun_drop=0 oversize=0 tx_stall=0 b_drop=0 retx=0 dups=0 recovered=0 naks_tx=0 naks_rx=0 arq_lost=0
+qpsk_tun txgap: n=6228 empty=0 gt20us=0 gt50us=0 gt200us=0 max_us=0 p99_us=0 mean_us=0.0 idle_batch=0

@@ -1,0 +1,28 @@
+# id variant bin args... -> logged to beat_runs/txfix_gate_<id>_<variant>.log, out_prefix beat_runs/g<id>_<variant>...
+# format: id|variant|bin|NF|K|sel|out_prefix|k|SEL
+G0|U|obj_txkick_U/Vtxkick|50|0|none|beat_runs/g0_none_U|0|6
+G1|U|obj_txkick_U/Vtxkick|26|6|popabort|beat_runs/g1_popabort_U_k0|0|6
+G2|U|obj_txrate/Vtxrate|50|40|fcbase3|beat_runs/g2_fcbase3_U|0|6
+G3|F1|obj_txkick_F1/Vtxkick|50|0|none|beat_runs/g3_none_F1|0|6
+G3|F2|obj_txkick_F2/Vtxkick|50|0|none|beat_runs/g3_none_F2|0|6
+G3|F3|obj_txkick_F3/Vtxkick|50|0|none|beat_runs/g3_none_F3|0|6
+G4|F1|obj_txkick_F1/Vtxkick|26|6|popabort|beat_runs/g4_popabort_F1_k0|0|6
+G4|F1|obj_txkick_F1/Vtxkick|26|6|popabort|beat_runs/g4_popabort_F1_k6|6|6
+G4|F2|obj_txkick_F2/Vtxkick|26|6|popabort|beat_runs/g4_popabort_F2_k0|0|6
+G4|F2|obj_txkick_F2/Vtxkick|26|6|popabort|beat_runs/g4_popabort_F2_k6|6|6
+G4|F3|obj_txkick_F3/Vtxkick|26|6|popabort|beat_runs/g4_popabort_F3_k0|0|6
+G4|F3|obj_txkick_F3/Vtxkick|26|6|popabort|beat_runs/g4_popabort_F3_k6|6|6
+G6|F1|obj_txkick_F1/Vtxkick|26|6|latchforce|beat_runs/g6_latchforce_F1|0|6
+G6|F2|obj_txkick_F2/Vtxkick|26|6|latchforce|beat_runs/g6_latchforce_F2|0|6
+G6|F3|obj_txkick_F3/Vtxkick|26|6|latchforce|beat_runs/g6_latchforce_F3|0|6
+G7|F1|obj_txkick_F1/Vtxkick|26|6|latchforce_pre|beat_runs/g7_latchforce_pre_F1|0|6
+G7|F2|obj_txkick_F2/Vtxkick|26|6|latchforce_pre|beat_runs/g7_latchforce_pre_F2|0|6
+G7|F3|obj_txkick_F3/Vtxkick|26|6|latchforce_pre|beat_runs/g7_latchforce_pre_F3|0|6
+G8|F1|obj_txrate_F1/Vtxrate|50|40|fcbase3|beat_runs/g8_fcbase3_F1|0|6
+G9|F2|obj_txrate_F2/Vtxrate|50|40|fcbase3|beat_runs/g9_fcbase3_F2|0|6
+G9|F3|obj_txrate_F3/Vtxrate|50|40|fcbase3|beat_runs/g9_fcbase3_F3|0|6
+G10|F2|obj_txkick_F2/Vtxkick|26|6|frcwrap|beat_runs/g10_frcwrap_F2|0|6
+G10|F3|obj_txkick_F3/Vtxkick|26|6|frcwrap|beat_runs/g10_frcwrap_F3|0|6
+G11|F3|obj_txkick_F3/Vtxkick|8|3|nearfull|beat_runs/g11_nearfull_F3|0|6
+G12|F1|obj_txkick_F1/Vtxkick|8|3|nearfull|beat_runs/g12_nearfull_F1|0|6
+G12|F2|obj_txkick_F2/Vtxkick|8|3|nearfull|beat_runs/g12_nearfull_F2|0|6

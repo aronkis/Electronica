@@ -1,0 +1,26 @@
+================================================================
+ PACKET_F1536 -- K=5 large-frame (1536-byte host) bit contract
+================================================================
+ trellis        = poly2trellis(5,[35 23])   TB=25  (term, hard)
+ message        = 'ADI Hello World' (120 bits, MSB-first per char)
+ PN pad         = 12168 bits, rng(15360,'twister'), randi([0 1],12168,1)
+ info field     = 12288 usable (192*64) + 4 always-zero pad = 12292
+ info/tail/coded= 12292 / 4 / 24592
+ interleave     = ROWS=1537 COLS=16, read perm = r*COLS+c (legacy)
+ deinterleave   = perm = c*ROWS+r (exact inverse; grid 1537x16=24592,
+                  fully gridded -- no ungridded tail)
+ filler         = 48-bit PN9 (x^9+x^5+1, seed ones; no DC dwell) -> payload 24640 bits = 770 uint32 words
+ word alignment = 24640 bits = 385 uint64 = 770 uint32 (exact)
+ ROM packing    = word w = bits[32w..32w+31], MSB-first (bit 32w ->
+                  word bit 31); one-line uint32([...]) literal
+ CAP_OUT pack   = LSB-first 32-bit pack of first 32 decoded info bits
+ CAP_OUT_GOLDEN=0x04922282
+----------------------------------------------------------------
+ DELIVERY CONTRACT (byte-RX, controller option b -- DELIVERY-SIDE ONLY;
+   the payload/coded/interleave/filler/ROM/golden ABOVE are UNCHANGED):
+   WordsPerPacketRx = 191  ->  191 x 64 = 12224 info bits delivered/frame.
+   Bound: RxAlign emits at most InfoBits-TailBits-RxPipelineSkip(41)=12247
+   info bits/frame before the frame boundary resets it; WPP*64=12224 fits
+   with a 23-bit margin (WPP=192 -> 12288 would truncate every frame).
+   Discarded/frame: 64 usable + 4 zero-pad = 68 info bits (12292-12224; 0.55%), mirroring
+   k5's 60-bit discard. Host frame 1528 B -> MTU 1516 (> 1500 target).

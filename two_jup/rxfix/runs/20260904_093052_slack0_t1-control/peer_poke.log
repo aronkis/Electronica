@@ -1,0 +1,2 @@
+2026-09-04T09:33:00-04:00 146 fixctl=0x0 (triggered on the 'wedge verdict:' marker -- the same event that fires 148's LOOP_POKE -- so this lands strictly before capture_r3.sh's framelog rotate/Tap-A capture/traffic window)
+2026-09-04T09:33:01-04:00 146 fixctl write exit=0

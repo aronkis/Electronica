@@ -1,0 +1,8 @@
+2026-09-04T09:45:43-04:00 === stage3h_reader: checker on 148 in HOST-FRAME mode during the daemon leg; DUR=540 DRY=0 -> /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_094543_slack1_t1-slackon/s3h ===
+2026-09-04T09:47:34-04:00 leg bring-up complete and no arm in flight after 110s -- taking the checker
+2026-09-04T09:47:40-04:00 tgen_rx ctrl before: 0x00000030
+2026-09-04T09:47:41-04:00 HOST-FRAME mode: tgen_mode (bit5) cleared, ctrl=0x00000010 (bit0 untouched)
+2026-09-04T09:47:42-04:00 checker clear pulse (bit4 low->high), ctrl=0x00000010
+2026-09-04T09:56:43-04:00 window_s=540 n_readings=49 ctrl_after=0x00000010
+2026-09-04T09:56:44-04:00 tgen_mode restored for later generator legs, ctrl=0x00000030
+2026-09-04T09:56:44-04:00 STAGE3H_DONE /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_094543_slack1_t1-slackon/s3h

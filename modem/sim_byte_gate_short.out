@@ -1,0 +1,206 @@
+
+	Trial License -- for use to evaluate programs for possible purchase as an end-user only.
+
+=== sim_byte_gate_k5 07-Jul-2026 19:44:58 ===
+host K5 contract self-check OK (encode(info) == ROM payload, 2240 bits)
+harness: BIST msgdec disp-branch stubbed (sim-only, math preserved)
+harness: modulator tap = Transmitter/QPSK Tx/QPSK Modulator (2 output ports logged)
+DEBUG: T override = 0.004 s
+--- RUN A aligned/golden  (idx0=1 txds=1 T=0.004s) ---
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxI'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 100)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxQ'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 100)
+In run (line 112)] 
+[Warning: Wrap on overflow detected. This originated from
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Coarse
+Frequency Compensator/Raise Power to 4/Product2'
+Suggested Actions:
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 100)
+In run (line 112)] 
+  logged elements: bit_errors_out, byte_rx_data, byte_rx_last, byte_rx_user, byte_rx_valid, cap_out, packets_out, modTap1, modTap2
+A aligned/golden: packets=1 errors=51 cap_out=0x00000000 syms=3839 rxwords=14
+[A] air: 2 full frames, firstGolden=2, golden=1, all-after-first-golden=1, perFrameErr=[1105 0]
+[A] bist: cap=0x00000000 (golden 0x04922282) errs@70%=0 errs@end=51 pkts 0->1 -> false
+[A] byte-rx: no complete packets -> false
+[A] RESULT: FAIL
+--- RUN B rotated/golden  (idx0=18 txds=1 T=0.004s) ---
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxI'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 102)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxQ'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 102)
+In run (line 112)] 
+[Warning: Wrap on overflow detected. This originated from
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Coarse
+Frequency Compensator/Raise Power to 4/Product2'
+Suggested Actions:
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 102)
+In run (line 112)] 
+  logged elements: bit_errors_out, byte_rx_data, byte_rx_last, byte_rx_user, byte_rx_valid, cap_out, packets_out, modTap1, modTap2
+B rotated/golden: packets=1 errors=51 cap_out=0x00000000 syms=3839 rxwords=13
+[B] air: 2 full frames, firstGolden=NaN, golden=0, all-after-first-golden=0, perFrameErr=[1105 1105]
+[B] bist: cap=0x00000000 (golden 0x04922282) errs@70%=0 errs@end=51 pkts 0->1 -> false
+[B] byte-rx: no complete packets -> false
+[B] RESULT: FAIL
+--- RUN C aligned/ALTpad  (idx0=1 txds=1 T=0.004s) ---
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxI'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 104)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxQ'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 104)
+In run (line 112)] 
+[Warning: Wrap on overflow detected. This originated from
+'byte_harness_k5/DUT/Receiver/QPSK Rx/Frequency and Time Synchronizer/Coarse
+Frequency Compensator/Raise Power to 4/Product2'
+Suggested Actions:
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 104)
+In run (line 112)] 
+  logged elements: bit_errors_out, byte_rx_data, byte_rx_last, byte_rx_user, byte_rx_valid, cap_out, packets_out, modTap1, modTap2
+C aligned/ALTpad: packets=1 errors=51 cap_out=0x00000000 syms=3839 rxwords=14
+[C] air: 2 full frames, firstGolden=2, golden=1, all-after-first-golden=1, perFrameErr=[1093 0]
+[C] discriminator: steady air==ROM? false (must be false)
+[C] bist: cap=0x00000000 (golden 0x04922282) errs@70%=0 errs@end=51 pkts 0->1 -> false
+[C] byte-rx: no complete packets -> false
+[C] RESULT: FAIL
+--- RUN D ROM regression  (idx0=1 txds=0 T=0.004s) ---
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxI'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 106)
+In run (line 112)] 
+[Warning: Parameter precision loss occurred 25 times for 'a.h' of
+'byte_harness_k5/DUT/REP_TxQ'. First occurrence: The original value of the
+parameter, -0.004041818487955137, cannot be represented exactly using the
+run-time data type sfix16_En15. The value is quantized to -0.0040283203125.
+Quantization error occurred with an absolute difference of
+1.3498175455137207e-5 and a relative difference of 0.00333962930185078.
+Suggested Actions:
+    • To control the level of precision loss at which a warning or error is
+    issued, adjust the diagnostic threshold settings. - Open
+    • To review details in the Parameter Quantization Advisor app, click the
+    Open button. - Open
+    •  - Suppress
+] 
+[> In sim_byte_gate_k5>run_case_k5 (line 251)
+In sim_byte_gate_k5 (line 106)
+In run (line 112)] 
+  logged elements: bit_errors_out, byte_rx_data, byte_rx_last, byte_rx_user, byte_rx_valid, cap_out, packets_out, modTap1, modTap2
+D ROM regression: packets=1 errors=51 cap_out=0x00000000 syms=3839 rxwords=14
+[D] air: 2 full frames, firstGolden=1, golden=2, all-after-first-golden=1, perFrameErr=[0 0]
+[D] bist: cap=0x00000000 (golden 0x04922282) errs@70%=0 errs@end=51 pkts 0->1 -> false
+[D] byte-rx: no complete packets -> false
+[D] RESULT: FAIL
+WROTE SIM_BYTE_GATE_K5.txt (FAIL)
+{Error using assert
+SIM_BYTE_GATE_K5 FAILED
+
+Error in sim_byte_gate_k5 (line 125)
+assert(allPass, 'SIM_BYTE_GATE_K5 FAILED');
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error in run (line 112)
+evalin('caller', strcat(scriptStem, ';'));
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+} 
+[Warning: Unable to close the model 'byte_harness_k5' because it has been
+changed. To save changes, use close_system('byte_harness_k5',1). To discard
+changes, use close_system('byte_harness_k5',0).] 

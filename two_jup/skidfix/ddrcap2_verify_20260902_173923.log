@@ -1,0 +1,17 @@
+17:39:23 === verify-in-place on 148: image 638b36de3493 (expect 638b36de3493) ===
+17:39:23 === gate pass 1 ===
+  found: /root/lvds_61p44_fdd_jupiter.bin /root/lvds_61p44_fdd_jupiter.json 
+  post-arm: fps=1247 errps=55 capTAP=0xBCF94856
+ARM_OK profile=lvds_61p44_fdd_jupiter fps=1247 capTAP=0xBCF94856
+17:40:53 === gate pass 2 ===
+  found: /root/lvds_61p44_fdd_jupiter.bin /root/lvds_61p44_fdd_jupiter.json 
+  post-arm: fps=1247 errps=55 capTAP=0xBCF94856
+ARM_OK profile=lvds_61p44_fdd_jupiter fps=1247 capTAP=0xBCF94856
+17:42:23   GATE_PASS x2
+17:42:23 === Tier-2 witness: sel6, 1 M records, decoded ===
+BOARD 4194304
+17:42:26   witness bytes: 4194304
+records 524288  demod_marks 43  tx_marks 43
+toff min 26 max 26 mode 26 (1.000)  distinct 1
+slot histogram [131072, 131072, 131072, 131072]
+17:42:26 VERIFY_IN_PLACE_OK 638b36de3493

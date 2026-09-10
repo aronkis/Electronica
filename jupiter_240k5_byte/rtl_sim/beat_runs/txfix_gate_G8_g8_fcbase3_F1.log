@@ -1,0 +1,3 @@
+TXFIX_GATE_LAUNCH id=G8 variant=F1 bin=obj_txrate_F1/Vtxrate args=50 40 fcbase3 beat_runs/g8_fcbase3_F1 0 6
+TXRATE sel=fcbase3 NF=50 K=40 zeroEvents=14 firstZeroFrame=40 armedDropClk=4045326 maxPopQuiet=106 packets=52 biterr=51 frames=53
+TXFIX_GATE_RUN_EXIT=0

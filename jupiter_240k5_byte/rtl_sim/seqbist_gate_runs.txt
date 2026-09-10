@@ -1,0 +1,25 @@
+# SEQ-BIST T0c full-loop sim gate manifest (2026-09-03)
+# gid|nframes|skip_every|corrupt_every|fill|gap|pfx|force|max_mclks|expect_filler
+# gap = 96000: the DUT consumes exactly one host frame per 197,328 clks and
+# emits a packets_out every 98,664, so every other delivered RX frame is an
+# all-zero filler.  expect_filler=1 tells the scorer to account for it.
+# nframes is in CHECKER frames (= 2 x emitted frames on this rail).  1000 was
+# chosen from the measured sim rate: this DUT runs at ~15 kclk/s (see
+# beat_runs/THROUGHPUT.md) and consumes one host frame per 197,328 clks, i.e.
+# ~13.2 s of wall time per emitted frame -- 2000 checker frames would be ~3.7 h
+# per gate.  1000 checker frames = 500 emitted = ~1.8 h.
+# G4 force: `overrun` (TGEN gap -> 0 for 2 M clks) makes the TX chain drop whole
+# sequence numbers.  `starve` (withholding TX data) only DELAYS frames here --
+# the byte plane back-pressures -- so it is the negative control, not the gate.
+G1|1000|0|0|1516|96000|beat_runs/seqbist_g1|none|150|1
+G2|1000|50|0|1516|96000|beat_runs/seqbist_g2|none|150|1
+G3|1000|0|40|1516|96000|beat_runs/seqbist_g3|none|150|1
+G4|1000|0|0|1516|96000|beat_runs/seqbist_g4|overrun:100:2000000|150|1
+# G1B/G1C: gap sweep for the CLEAN null.  gap=96000 turned out to still
+# over-supply (the TGEN offers a frame every ~97.7 k clks against a 197,328-clk
+# consumption rate, so the TX chain occasionally drops one -- the generator's
+# fault, not the fabric's).  A gap at or above the consumption period cannot
+# over-supply; the cost is a higher all-zero filler fraction, which the scorer
+# accounts for exactly.
+G1B|1000|0|0|1516|150000|beat_runs/seqbist_g1b|none|150|1
+G1C|1000|0|0|1516|190000|beat_runs/seqbist_g1c|none|150|1

@@ -1,0 +1,2 @@
+2026-09-03T17:52:36-04:00 leg=B dir=rev dur=600 knobs: DAEMON_ENV_A=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1 DAEMON_ENV_B=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1 RXM_A=16
+2026-09-03T17:52:37-04:00 requested: RXM_148=16 RXM_146= DRAIN_148= DRAIN_146=

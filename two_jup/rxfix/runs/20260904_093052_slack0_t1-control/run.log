@@ -1,0 +1,13 @@
+2026-09-04T09:30:52-04:00 === slackleg_go.sh: SLACK=0 fixctl=0x0 dur=600 dry=0 -> /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_093052_slack0_t1-control ===
+2026-09-04T09:30:52-04:00 peer (146) write watcher started (pid 1878013), waiting on /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_093052_slack0_t1-control/capture_r3.log for 'wedge verdict:'
+2026-09-04T09:30:52-04:00 stage3h_reader.sh started (pid 1878018) -> /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_093052_slack0_t1-control/s3h
+2026-09-04T09:30:52-04:00 leg: LEG=A DUR=600 OUT=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/rxfix/runs/20260904_093052_slack0_t1-control (LOOP_POKE=0x208=0x0 exported for capture_r3.sh's 5b hook)
+2026-09-04T09:30:52-04:00 leg=A dir=fwd dur=600 knobs: DAEMON_ENV_A=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1 DAEMON_ENV_B=QPSK_FAILHDR=/dev/shm/failhdr.bin QPSK_TXLOG=/dev/shm/txlog.bin QPSK_TXLOG_USR1=1
+2026-09-04T09:30:52-04:00 requested: RXM_148= RXM_146= DRAIN_148= DRAIN_146=
+2026-09-04T09:45:20-04:00 legrun_go.sh exit=0
+2026-09-04T09:45:20-04:00 peer (146) write watcher joined
+2026-09-04T09:45:20-04:00 stage3h_reader.sh joined
+2026-09-04T09:45:20-04:00 restore: stopping the peer (146) write watcher (pid 1878013) BEFORE issuing any restore write, so an in-flight or still-sleeping 146 poke cannot land after the restore
+2026-09-04T09:45:20-04:00 RESTORE 1/2: 146 fixctl=0x0
+2026-09-04T09:45:21-04:00 RESTORE 2/2: 148 fixctl=0x0
+2026-09-04T09:45:22-04:00 RESTORE ISSUED on both boards (exit 0; UNVERIFIED -- 0x208 is write-only, no readback exists)

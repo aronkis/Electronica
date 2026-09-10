@@ -1,0 +1,10 @@
+2026-09-03T22:37:21-04:00 probe=B leg=A dir=fwd rx=10.0.0.148 peer=10.0.0.146 dur=600 dry=0
+2026-09-03T22:37:21-04:00 poke: in_voltage0_agc_tracking_en=0 in_voltage0_bbdc_rejection_tracking_en=0 in_voltage0_rfdc_tracking_en=0 in_voltage0_rssi_tracking_en=0 in_voltage0_quadrature_fic_tracking_en=0
+2026-09-03T22:37:21-04:00 orig(step1 fallback): in_voltage0_quadrature_fic_tracking_en=1 in_voltage0_rssi_tracking_en=1 in_voltage0_rfdc_tracking_en=1 in_voltage0_bbdc_rejection_tracking_en=1 in_voltage0_agc_tracking_en=1
+2026-09-03T22:52:31-04:00 RESTORE (attr_poke.txt): in_voltage0_quadrature_fic_tracking_en=1 in_voltage0_rssi_tracking_en=1 in_voltage0_rfdc_tracking_en=1 in_voltage0_bbdc_rejection_tracking_en=1 in_voltage0_agc_tracking_en=1 
+  ATTR_RESTORE in_voltage0_quadrature_fic_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_rssi_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_rfdc_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_bbdc_rejection_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_agc_tracking_en want='1' write=ok after='1'
+2026-09-03T22:52:32-04:00 RESTORE VERIFIED: all attributes back to their before-values

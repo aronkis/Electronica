@@ -1,0 +1,3 @@
+iq=chunk_315_350_r0.iq nsamp=2170607 vphase=0 cadence=4 rstcs_end=8400 skip=0
+packets=43 biterr=2587 frameStart=44 rstcs=0 cfc_est=-952
+outFrames=43 capGoldFrames=0/43 nrxw=8213 nuser=43 goldAny=0 capEverGold=0

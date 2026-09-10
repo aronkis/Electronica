@@ -1,0 +1,3 @@
+WRAP4E_FILE wrap_byte_sro4e.v t21
+WRAP4E_DEFINE RXFIX_R4E
+SRO_RX sk4e_m10 packets=23 nrxw=4393 pushes=333304 pops=333282 anom=991 rhPE=34 rhPF=17 pdPof=0 pdPE=0

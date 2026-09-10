@@ -1,0 +1,40 @@
+
+	Trial License -- for use to evaluate programs for possible purchase as an end-user only.
+
+[seg] 10000000 samples (~203 frames), 0 interior zeros, lead-skip 0
+[base] 202 frames CFO=7Hz EVM med=4.11% sig=1.55% missedslots=0 (3s)
+[thr] degraded if frameEVM > 11.87% or preCorr < 0.50
+[inj] baseline frame 50 mid-frame -> symbol ~608016, raw sample n0=2432064 (153.4 frames from end: 152)
+[run] insert    2 samp (  0.5 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=7.6% ser=[0.002 0.000 0.000 0.000] (3s)
+[run] delete    2 samp (  0.5 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=7.7% ser=[0.369 0.000 0.000 0.000] (3s)
+[run] insert    4 samp (  1.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.1% ser=[0.370 0.000 0.000 0.000] (3s)
+[run] delete    4 samp (  1.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.1% ser=[0.370 0.000 0.000 0.000] (3s)
+[run] insert   32 samp (  8.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.1% ser=[0.376 0.000 0.000 0.000] (3s)
+[run] delete   32 samp (  8.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.1% ser=[0.376 0.000 0.000 0.000] (3s)
+[run] insert   64 samp ( 16.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.1% ser=[0.376 0.000 0.000 0.000] (3s)
+[run] delete   64 samp ( 16.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.1% ser=[0.376 0.000 0.000 0.000] (3s)
+[run] insert  128 samp ( 32.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.1% ser=[0.376 0.000 0.000 0.000] (3s)
+[run] delete  128 samp ( 32.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.1% ser=[0.376 0.000 0.000 0.000] (3s)
+[run] insert  256 samp ( 64.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.4% ser=[0.376 0.000 0.000 0.000] (3s)
+[run] delete  256 samp ( 64.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=5.4% ser=[0.376 0.000 0.000 0.000] (2s)
+[run] insert  512 samp (128.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=7.3% ser=[0.378 0.000 0.000 0.000] (3s)
+[run] delete  512 samp (128.0 sym): missed=0 degraded=0 crcfail=1 recover=1 peakEVM=7.7% ser=[0.378 0.000 0.000 0.000] (3s)
+
+== TABLE ==
+| Slip | Samples | Symbols | Frames missed (sync) | Frames degraded (EVM) | Frames CRC-fail (payload mismatch) | Frames to recover | Peak frame EVM |
+|---|---|---|---|---|---|---|---|
+| insert | 2 | 0.5 | 0 | 0 | 1 | **1** | 7.6% |
+| delete | 2 | 0.5 | 0 | 0 | 1 | **1** | 7.7% |
+| insert | 4 | 1.0 | 0 | 0 | 1 | **1** | 5.1% |
+| delete | 4 | 1.0 | 0 | 0 | 1 | **1** | 5.1% |
+| insert | 32 | 8.0 | 0 | 0 | 1 | **1** | 5.1% |
+| delete | 32 | 8.0 | 0 | 0 | 1 | **1** | 5.1% |
+| insert | 64 | 16.0 | 0 | 0 | 1 | **1** | 5.1% |
+| delete | 64 | 16.0 | 0 | 0 | 1 | **1** | 5.1% |
+| insert | 128 | 32.0 | 0 | 0 | 1 | **1** | 5.1% |
+| delete | 128 | 32.0 | 0 | 0 | 1 | **1** | 5.1% |
+| insert | 256 | 64.0 | 0 | 0 | 1 | **1** | 5.4% |
+| delete | 256 | 64.0 | 0 | 0 | 1 | **1** | 5.4% |
+| insert | 512 | 128.0 | 0 | 0 | 1 | **1** | 7.3% |
+| delete | 512 | 128.0 | 0 | 0 | 1 | **1** | 7.7% |
+== END TABLE ==

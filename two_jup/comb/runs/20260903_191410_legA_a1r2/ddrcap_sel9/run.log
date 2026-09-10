@@ -1,0 +1,2 @@
+2026-09-03T19:18:24-04:00 sel=9 offset_s=0 out=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_191410_legA_a1r2/ddrcap_sel9 dry=0
+19:18:28 ABORT: capTAP 0x76C5315B != golden

@@ -1,0 +1,13 @@
+=== PART B: forced non-null per field (flat build, NF=8) ===
+  force timingOffset=0x2ABC -> ch2[13:0]                     PASS expect=0x2ABC mask=0xFFFF K=8 maxRun=16 window=[1086012,1086142)
+  force heldTs=0x12345 -> slot0 = 0x2345                     PASS expect=0x2345 mask=0xFFFF K=3 maxRun=4 window=[1086012,1086142)
+  force tref=0x1234 -> slot1                                 PASS expect=0x1234 mask=0xFFFF K=3 maxRun=4 window=[1086012,1086142)
+  tref no-force (falsifiability control)                     PASS NO FORCE: expect=0x1234 mask=0xFFFF K=3 maxRun=0 (must stay <K) -> FAIL-AS-EXPECTED
+  force runMax=0x2AAC0000 -> slot2 = 0x0AAB                  PASS expect=0xAAB mask=0xFFFF K=3 maxRun=4 window=[1086012,1086142)
+  force threshold=0x15540000 -> slot3 = 0x0555               PASS expect=0x555 mask=0xFFFF K=3 maxRun=4 window=[1086012,1086142)
+  force corr=0x01234567 -> sel12 I=0x0123                    PASS expect=0x123 mask=0xFFFF K=8 maxRun=16 window=[1086012,1086142)
+  ... sel12 Q=0x4567                                         PASS expect=0x4567 mask=0xFFFF K=8 maxRun=16 window=[1086012,1086142)
+  force muReg=0x155 -> sel13 Q                               PASS expect=0x155 mask=0xFFFF K=8 maxRun=65 window=[1086012,1086142)
+  force Rate_Handle FIFO push=0x15 -> sel15 I[7:3]           PASS expect=0xA8 mask=0xF8 K=8 maxRun=65 window=[1086012,1086142)
+  FIFO push no-force (falsifiability control)                PASS NO FORCE: expect=0xA8 mask=0xF8 K=8 maxRun=5 (must stay <K) -> FAIL-AS-EXPECTED
+DDRCAP2_GATE_B PASS

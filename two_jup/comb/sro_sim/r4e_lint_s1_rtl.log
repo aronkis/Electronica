@@ -1,0 +1,337 @@
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'cs_prop_gain'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+                     ... For warning description see https://verilator.org/warn/PINMISSING?v=5.020
+                     ... Use "/* verilator lint_off PINMISSING */" and lint_on around source to disable this message.
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'cs_integ_gain'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'ss_prop_gain'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'ss_integ_gain'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'agc_loop_gain'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'cfo_threshold'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'framestat_pop'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'ce_out_0'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'ce_out_1'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'byte_fifo_ovf'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'framestat_head_lo'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'framestat_head_hi'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'framestat_stat'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-PINMISSING: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:163:17: Cell has missing pin: 'framestat_wordcnt'
+  163 |   TxRxComposite dut(
+      |                 ^~~
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Interpolation_Filter.v:981:54: Operator ADD expects 16 bits on the RHS, but RHS's SIGNED generates 2 bits.
+                                                                                                                                : ... note: In instance 'wrap_byte_sro.dut.u_Receiver.u_QPSK_Rx.u_Frequency_and_Time_Synchronizer.u_Symbol_Synchronizer.u_Interpolation_Filter'
+  981 |   assign Product1_out1_re = Product1_mul_temp[26:11] + $signed({1'b0, Product1_mul_temp[26] & (|Product1_mul_temp[10:0])});
+      |                                                      ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Symbol_Synchronizer.v:374:1: ... note: In file included from 'Symbol_Synchronizer.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Frequency_and_Time_Synchronizer.v:116:1: ... note: In file included from 'Frequency_and_Time_Synchronizer.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/QPSK_Rx.v:196:1: ... note: In file included from 'QPSK_Rx.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Receiver.v:334:1: ... note: In file included from 'Receiver.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:718:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Interpolation_Filter.v:983:56: Operator ADD expects 16 bits on the RHS, but RHS's SIGNED generates 2 bits.
+                                                                                                                                : ... note: In instance 'wrap_byte_sro.dut.u_Receiver.u_QPSK_Rx.u_Frequency_and_Time_Synchronizer.u_Symbol_Synchronizer.u_Interpolation_Filter'
+  983 |   assign Product1_out1_im = Product1_mul_temp_1[26:11] + $signed({1'b0, Product1_mul_temp_1[26] & (|Product1_mul_temp_1[10:0])});
+      |                                                        ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Symbol_Synchronizer.v:374:1: ... note: In file included from 'Symbol_Synchronizer.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Frequency_and_Time_Synchronizer.v:116:1: ... note: In file included from 'Frequency_and_Time_Synchronizer.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/QPSK_Rx.v:196:1: ... note: In file included from 'QPSK_Rx.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Receiver.v:334:1: ... note: In file included from 'Receiver.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:718:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Interpolation_Filter.v:1120:54: Operator ADD expects 16 bits on the RHS, but RHS's SIGNED generates 2 bits.
+                                                                                                                                 : ... note: In instance 'wrap_byte_sro.dut.u_Receiver.u_QPSK_Rx.u_Frequency_and_Time_Synchronizer.u_Symbol_Synchronizer.u_Interpolation_Filter'
+ 1120 |   assign Product2_out1_re = Product2_mul_temp[25:10] + $signed({1'b0, Product2_mul_temp[26] & (|Product2_mul_temp[9:0])});
+      |                                                      ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Symbol_Synchronizer.v:374:1: ... note: In file included from 'Symbol_Synchronizer.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Frequency_and_Time_Synchronizer.v:116:1: ... note: In file included from 'Frequency_and_Time_Synchronizer.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/QPSK_Rx.v:196:1: ... note: In file included from 'QPSK_Rx.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Receiver.v:334:1: ... note: In file included from 'Receiver.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:718:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Interpolation_Filter.v:1122:56: Operator ADD expects 16 bits on the RHS, but RHS's SIGNED generates 2 bits.
+                                                                                                                                 : ... note: In instance 'wrap_byte_sro.dut.u_Receiver.u_QPSK_Rx.u_Frequency_and_Time_Synchronizer.u_Symbol_Synchronizer.u_Interpolation_Filter'
+ 1122 |   assign Product2_out1_im = Product2_mul_temp_1[25:10] + $signed({1'b0, Product2_mul_temp_1[26] & (|Product2_mul_temp_1[9:0])});
+      |                                                        ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Symbol_Synchronizer.v:374:1: ... note: In file included from 'Symbol_Synchronizer.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Frequency_and_Time_Synchronizer.v:116:1: ... note: In file included from 'Frequency_and_Time_Synchronizer.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/QPSK_Rx.v:196:1: ... note: In file included from 'QPSK_Rx.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Receiver.v:334:1: ... note: In file included from 'Receiver.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:718:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxInterleaveK5.v:334:61: Operator SUB expects 32 bits on the LHS, but LHS's SIGNED generates 17 bits.
+                                                                                                                          : ... note: In instance 'wrap_byte_sro.dut.u_Transmitter.u_Input_Data.u_FEC_Tx_Encoder_K5.u_TxInterleaveK5'
+  334 |   assign dataOut_3 = p102dataOut_1[$signed({1'b0, beatIdx}) - 32'sd24592];
+      |                                                             ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FEC_Tx_Encoder_K5.v:85:1: ... note: In file included from 'FEC_Tx_Encoder_K5.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Input_Data.v:128:1: ... note: In file included from 'Input_Data.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Transmitter.v:119:1: ... note: In file included from 'Transmitter.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:592:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/MATLAB_Function_block3.v:936:26: Operator ADD expects 64 bits on the RHS, but RHS's VARREF 'bb' generates 32 bits.
+                                                                                                                                  : ... note: In instance 'wrap_byte_sro.dut.u_Transmitter.u_Input_Data.u_Message_Generator.u_MATLAB_Function'
+  936 |         msgbits[add_cast + bb] = wv[bm1] != 1'b0;
+      |                          ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Message_Generator.v:49:1: ... note: In file included from 'Message_Generator.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Input_Data.v:92:1: ... note: In file included from 'Input_Data.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Transmitter.v:119:1: ... note: In file included from 'Transmitter.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:592:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/MATLAB_Function_block3.v:936:16: Bit extraction of var[24639:0] requires 15 bit index, not 64 bits.
+                                                                                                                                 : ... note: In instance 'wrap_byte_sro.dut.u_Transmitter.u_Input_Data.u_Message_Generator.u_MATLAB_Function'
+  936 |         msgbits[add_cast + bb] = wv[bm1] != 1'b0;
+      |                ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Message_Generator.v:49:1: ... note: In file included from 'Message_Generator.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Input_Data.v:92:1: ... note: In file included from 'Input_Data.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Transmitter.v:119:1: ... note: In file included from 'Transmitter.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:592:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/MATLAB_Function_block3.v:936:36: Bit extraction of var[31:0] requires 5 bit index, not 8 bits.
+                                                                                                                                 : ... note: In instance 'wrap_byte_sro.dut.u_Transmitter.u_Input_Data.u_Message_Generator.u_MATLAB_Function'
+  936 |         msgbits[add_cast + bb] = wv[bm1] != 1'b0;
+      |                                    ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Message_Generator.v:49:1: ... note: In file included from 'Message_Generator.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Input_Data.v:92:1: ... note: In file included from 'Input_Data.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Transmitter.v:119:1: ... note: In file included from 'Transmitter.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:592:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/MATLAB_Function_block3.v:955:24: Bit extraction of var[24639:0] requires 15 bit index, not 33 bits.
+                                                                                                                                 : ... note: In instance 'wrap_byte_sro.dut.u_Transmitter.u_Input_Data.u_Message_Generator.u_MATLAB_Function'
+  955 |         out_1 = msgbits[$signed({1'b0, sub_cast}) - 32'sd1];
+      |                        ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Message_Generator.v:49:1: ... note: In file included from 'Message_Generator.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Input_Data.v:92:1: ... note: In file included from 'Input_Data.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Transmitter.v:119:1: ... note: In file included from 'Transmitter.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:592:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/MATLAB_Function.v:334:36: Bit extraction of array[119:0] requires 7 bit index, not 33 bits.
+                                                                                                                          : ... note: In instance 'wrap_byte_sro.dut.u_Receiver.u_Capture_Data_Bits.u_MATLAB_Function'
+  334 |   assign p12tmp_2 = {{24{p12tmp_tmp[$signed({1'b0, tmp_3}) - 32'sd1][7]}}, p12tmp_tmp[$signed({1'b0, tmp_3}) - 32'sd1]};
+      |                                    ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Capture_Data_Bits.v:78:1: ... note: In file included from 'Capture_Data_Bits.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Receiver.v:375:1: ... note: In file included from 'Receiver.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:718:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/MATLAB_Function.v:334:86: Bit extraction of array[119:0] requires 7 bit index, not 33 bits.
+                                                                                                                          : ... note: In instance 'wrap_byte_sro.dut.u_Receiver.u_Capture_Data_Bits.u_MATLAB_Function'
+  334 |   assign p12tmp_2 = {{24{p12tmp_tmp[$signed({1'b0, tmp_3}) - 32'sd1][7]}}, p12tmp_tmp[$signed({1'b0, tmp_3}) - 32'sd1]};
+      |                                                                                      ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Capture_Data_Bits.v:78:1: ... note: In file included from 'Capture_Data_Bits.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Receiver.v:375:1: ... note: In file included from 'Receiver.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:718:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/ByteBitShifter.v:231:29: Bit extraction of var[63:0] requires 6 bit index, not 64 bits.
+                                                                                                                         : ... note: In instance 'wrap_byte_sro.dut.u_Transmitter.u_Input_Data.u_ByteBitShifter'
+  231 |         bit_rsvd_1 = byteVal[bm1] != 1'b0;
+      |                             ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Input_Data.v:115:1: ... note: In file included from 'Input_Data.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Transmitter.v:119:1: ... note: In file included from 'Transmitter.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:592:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatFifo.v:232:17: Bit extraction of array[63:0] requires 6 bit index, not 16 bits.
+                                                                                                                        : ... note: In instance 'wrap_byte_sro.dut.u_FrameStatFifo'
+  232 |         mem_temp[wr] = rec;
+      |                 ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1672:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatFifo.v:251:20: Bit extraction of array[63:0] requires 6 bit index, not 16 bits.
+                                                                                                                        : ... note: In instance 'wrap_byte_sro.dut.u_FrameStatFifo'
+  251 |     head = mem_temp[rd_temp];
+      |                    ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1672:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/ByteRxFifo.v:274:15: Bit extraction of array[63:0] requires 6 bit index, not 16 bits.
+                                                                                                                     : ... note: In instance 'wrap_byte_sro.dut.u_ByteRxFifo'
+  274 |       mem_temp[wr] = word;
+      |               ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1523:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/ByteRxFifo.v:280:17: Bit extraction of array[63:0] requires 6 bit index, not 16 bits.
+                                                                                                                     : ... note: In instance 'wrap_byte_sro.dut.u_ByteRxFifo'
+  280 |       memFl_temp[wr] = add_temp_0[7:0];
+      |                 ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1523:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/ByteRxFifo.v:284:25: Bit extraction of array[63:0] requires 6 bit index, not 16 bits.
+                                                                                                                     : ... note: In instance 'wrap_byte_sro.dut.u_ByteRxFifo'
+  284 |     outWord_1 = mem_temp[rd_temp];
+      |                         ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1523:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/ByteRxFifo.v:285:20: Bit extraction of array[63:0] requires 6 bit index, not 16 bits.
+                                                                                                                     : ... note: In instance 'wrap_byte_sro.dut.u_ByteRxFifo'
+  285 |     fl = memFl_temp[rd_temp];
+      |                    ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1523:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/REP_TxQ.v:1563:33: Operator ADD expects 16 bits on the RHS, but RHS's SIGNED generates 2 bits.
+                                                                                                                    : ... note: In instance 'wrap_byte_sro.dut.u_REP_TxQ'
+ 1563 |               addtree_24[30:15] + $signed({1'b0, addtree_24[14]})));
+      |                                 ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1048:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/REP_TxI.v:1563:33: Operator ADD expects 16 bits on the RHS, but RHS's SIGNED generates 2 bits.
+                                                                                                                    : ... note: In instance 'wrap_byte_sro.dut.u_REP_TxI'
+ 1563 |               addtree_24[30:15] + $signed({1'b0, addtree_24[14]})));
+      |                                 ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:981:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/ByteWordBuffer.v:242:52: Operator SUB expects 32 bits on the LHS, but LHS's SIGNED generates 9 bits.
+                                                                                                                          : ... note: In instance 'wrap_byte_sro.dut.u_ByteWordBuffer'
+  242 |     word_1 = state_buf_1[$signed({1'b0, sub_cast}) - 32'sd1];
+      |                                                    ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:564:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/ByteWordBuffer.v:251:60: Operator SUB expects 32 bits on the LHS, but LHS's SIGNED generates 9 bits.
+                                                                                                                          : ... note: In instance 'wrap_byte_sro.dut.u_ByteWordBuffer'
+  251 |     wordFirst_1 = state_bufF_1[$signed({1'b0, sub_cast_0}) - 32'sd1];
+      |                                                            ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:564:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/ByteWordBuffer.v:270:18: Bit extraction of array[15:0] requires 4 bit index, not 8 bits.
+                                                                                                                         : ... note: In instance 'wrap_byte_sro.dut.u_ByteWordBuffer'
+  270 |       state_buf_1[wr] = dataIn;
+      |                  ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:564:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHTRUNC: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/ByteWordBuffer.v:271:19: Bit extraction of var[15:0] requires 4 bit index, not 8 bits.
+                                                                                                                         : ... note: In instance 'wrap_byte_sro.dut.u_ByteWordBuffer'
+  271 |       state_bufF_1[wr] = firstIn;
+      |                   ^
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:564:1: ... note: In file included from 'TxRxComposite.v'
+                     /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/qpsk_traffic_gen_v2.v:116:27: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'bidx' generates 11 bits.
+                                                                                                                   : ... note: In instance 'wrap_byte_sro.u_tgen'
+  116 |       default: cb = (bidx < (HDR_BYTES + {1'b0,fill_lat})) ? pn_byte_w[7:0] : 8'h00;
+      |                           ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:151:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/qpsk_traffic_gen_v2.v:116:40: Operator ADD expects 32 bits on the RHS, but RHS's REPLICATE generates 13 bits.
+                                                                                                                   : ... note: In instance 'wrap_byte_sro.u_tgen'
+  116 |       default: cb = (bidx < (HDR_BYTES + {1'b0,fill_lat})) ? pn_byte_w[7:0] : 8'h00;
+      |                                        ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:151:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/qpsk_traffic_gen_v2.v:154:20: Operator GTE expects 32 bits on the LHS, but LHS's VARREF 'bidx' generates 11 bits.
+                                                                                                                   : ... note: In instance 'wrap_byte_sro.u_tgen'
+  154 |           if (bidx >= HDR_BYTES && bidx < (HDR_BYTES + {1'b0,fill_lat}))
+      |                    ^~
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:151:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/qpsk_traffic_gen_v2.v:154:41: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'bidx' generates 11 bits.
+                                                                                                                   : ... note: In instance 'wrap_byte_sro.u_tgen'
+  154 |           if (bidx >= HDR_BYTES && bidx < (HDR_BYTES + {1'b0,fill_lat}))
+      |                                         ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:151:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHEXPAND: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/qpsk_traffic_gen_v2.v:154:54: Operator ADD expects 32 bits on the RHS, but RHS's REPLICATE generates 13 bits.
+                                                                                                                   : ... note: In instance 'wrap_byte_sro.u_tgen'
+  154 |           if (bidx >= HDR_BYTES && bidx < (HDR_BYTES + {1'b0,fill_lat}))
+      |                                                      ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:151:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-WIDTHCONCAT: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Preamble_Detector.v:306:30: More than a 8k bit replication is probably wrong: 49332
+                                                                                                                             : ... note: In instance 'wrap_byte_sro.dut.u_Receiver.u_QPSK_Rx.u_Frequency_and_Time_Synchronizer.u_Preamble_Detector'
+  306 |         Delay10_reg <= {49332{1'b0}};
+      |                              ^
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Frequency_and_Time_Synchronizer.v:160:1: ... note: In file included from 'Frequency_and_Time_Synchronizer.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/QPSK_Rx.v:196:1: ... note: In file included from 'QPSK_Rx.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/Receiver.v:334:1: ... note: In file included from 'Receiver.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:718:1: ... note: In file included from 'TxRxComposite.v'
+                      /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatChecksum.v:112:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatChecksum.t_1' (not all control paths of combinational always assign a value)
+                                                                                                                      : ... Suggest use of always_latch for intentional latches
+  112 |   always @(acc, prevStr, prevTog, strobe, word, wordTog) begin
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1649:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatChecksum.v:112:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatChecksum.t_3' (not all control paths of combinational always assign a value)
+                                                                                                                      : ... Suggest use of always_latch for intentional latches
+  112 |   always @(acc, prevStr, prevTog, strobe, word, wordTog) begin
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1649:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatChecksum.v:112:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatChecksum.t_4' (not all control paths of combinational always assign a value)
+                                                                                                                      : ... Suggest use of always_latch for intentional latches
+  112 |   always @(acc, prevStr, prevTog, strobe, word, wordTog) begin
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1649:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatChecksum.v:112:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatChecksum.t_2' (not all control paths of combinational always assign a value)
+                                                                                                                      : ... Suggest use of always_latch for intentional latches
+  112 |   always @(acc, prevStr, prevTog, strobe, word, wordTog) begin
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1649:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatChecksum.v:112:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatChecksum.prevTog_next' (not all control paths of combinational always assign a value)
+                                                                                                                      : ... Suggest use of always_latch for intentional latches
+  112 |   always @(acc, prevStr, prevTog, strobe, word, wordTog) begin
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1649:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatChecksum.v:112:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatChecksum.chk_1' (not all control paths of combinational always assign a value)
+                                                                                                                      : ... Suggest use of always_latch for intentional latches
+  112 |   always @(acc, prevStr, prevTog, strobe, word, wordTog) begin
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1649:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatChecksum.v:112:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatChecksum.acc_next' (not all control paths of combinational always assign a value)
+                                                                                                                      : ... Suggest use of always_latch for intentional latches
+  112 |   always @(acc, prevStr, prevTog, strobe, word, wordTog) begin
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1649:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatProbe.v:164:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatProbe.t_2' (not all control paths of combinational always assign a value)
+                                                                                                                   : ... Suggest use of always_latch for intentional latches
+  164 |   always @(adcFor, cfcEst_1, chk, pktCnt, prevRst, prevStr, rec_r, rstcsCnt_1, runMax_1,
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1658:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatProbe.v:164:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatProbe.t_3' (not all control paths of combinational always assign a value)
+                                                                                                                   : ... Suggest use of always_latch for intentional latches
+  164 |   always @(adcFor, cfcEst_1, chk, pktCnt, prevRst, prevStr, rec_r, rstcsCnt_1, runMax_1,
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1658:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatProbe.v:164:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatProbe.t_4' (not all control paths of combinational always assign a value)
+                                                                                                                   : ... Suggest use of always_latch for intentional latches
+  164 |   always @(adcFor, cfcEst_1, chk, pktCnt, prevRst, prevStr, rec_r, rstcsCnt_1, runMax_1,
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1658:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatProbe.v:164:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatProbe.t_5' (not all control paths of combinational always assign a value)
+                                                                                                                   : ... Suggest use of always_latch for intentional latches
+  164 |   always @(adcFor, cfcEst_1, chk, pktCnt, prevRst, prevStr, rec_r, rstcsCnt_1, runMax_1,
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1658:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatProbe.v:164:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatProbe.rec_1' (not all control paths of combinational always assign a value)
+                                                                                                                   : ... Suggest use of always_latch for intentional latches
+  164 |   always @(adcFor, cfcEst_1, chk, pktCnt, prevRst, prevStr, rec_r, rstcsCnt_1, runMax_1,
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1658:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'
+%Warning-LATCH: /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/FrameStatProbe.v:164:3: Latch inferred for signal 'wrap_byte_sro.dut.u_FrameStatProbe.rec_r_next' (not all control paths of combinational always assign a value)
+                                                                                                                   : ... Suggest use of always_latch for intentional latches
+  164 |   always @(adcFor, cfcEst_1, chk, pktCnt, prevRst, prevStr, rec_r, rstcsCnt_1, runMax_1,
+      |   ^~~~~~
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/lintt_lintA/TxRxComposite.v:1658:1: ... note: In file included from 'TxRxComposite.v'
+                /mnt/onetb/scratch/qpsk-jupiter-modem/jupiter_240k5_byte/rtl_sim/wrap_byte_sro4e.v:165:1: ... note: In file included from 'wrap_byte_sro4e.v'

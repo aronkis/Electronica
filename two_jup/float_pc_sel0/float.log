@@ -1,0 +1,46 @@
+
+	Trial License -- for use to evaluate programs for possible purchase as an end-user only.
+
+[f1536] 1968451 complex samples (~40 frames)
+[Warning: The last 302928 sample(s) from this input are dropped as the output
+length exceeds the maximum allowable limit of 541325 symbol(s).] 
+[> In coder.internal.warning (line 8)
+In comm/SymbolSynchronizer/stepImpl (line 396)
+In float_baseline_f1536 (line 234)
+In float_tap_window (line 6)] 
+[f1536] preamble-refine 1860715 Hz IMPLAUSIBLE (bound 623 Hz) -> ignored
+[f1536] CFO breakdown: 4th-power=7 Hz + preamble-refine=0 Hz (raw 1860715 Hz, bound 623 Hz, search +-15000 Hz)
+[f1536] coarse CFO=7 Hz ; framed 52 candidates
+[f1536] preCorr accepted[min/med/max]=0.935/0.965/0.995  rejected[min/med/max]=0.462/0.518/0.697 (n=50)
+[f1536] mapping calibrated on 2 frame(s): winner err=12086, runner-up err=12122, margin=36
+[f1536] frames=2 bitErrors=12086 ber=4.916e-01 frameRecovery=0.0000 hyp.mapping=[3  0  1  2] hypStable=0 hypMargin=36
+FLOAT_WINDOW frames=2 bitErrors=12086 ber=0.492 frameRecovery=0.000 hypStable=0 cfoHz=7
+
+ans = 
+
+  struct with fields:
+
+                 cfoF4Hz: 7.3242
+          cfoRefineRawHz: 1.8607e+06
+            cfoAppliedHz: 7.3242
+           preCorrThresh: 0.8000
+               nRejected: 50
+         acceptedPreCorr: [2×1 double]
+         rejectedPreCorr: [50×1 double]
+            preCorrStats: [1×1 struct]
+                     hyp: [1×1 struct]
+              hypBestErr: 12086
+          hypRunnerUpErr: 12122
+               hypMargin: 36
+               hypStable: 0
+           errPosProfile: [0.0995 0.1004 0.0994 0.1023 0.1019 … ] (1×10 double)
+                snrEstDb: 7.9841
+                 nFrames: 2
+               bitErrors: 12086
+              bitsScored: 24584
+                     ber: 0.4916
+                perFrame: [2×5 table]
+           frameRecovery: 0
+             clippedFrac: 0.0153
+    validatedEsn0FloorDb: 10
+

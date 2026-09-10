@@ -1,0 +1,4 @@
+# role  file (relative to boot_known_good/)  md5  note   -- read by two_jup/deploy_image.sh <ip> A|B
+A BOOT.BIN.148.seqbist.a1ff3c876d91 a1ff3c876d91f1a0330254cf10902748 txfixF3 (2026-09-03 TX-stall fix) + SEQ-BIST instruments; on rig 148 since 2026-09-04
+B BOOT.BIN.146.seqbist.3378861d30bd 3378861d30bd3d85663b31cfdd9c6296 tmrfresh + txfixF3 vendh + SEQ-BIST instruments; on rig 146 since 2026-09-04
+# NOTE 2026-09-04 20:45: rig 148 now runs BOOT.BIN.148.rxfixr4b.9f13705d9fb0 (md5 9f13705d9fb0ea6ae6af3c4c1ab5e95d): role-A image + the RXFIX_R4B comb fix (forward PER 8.31 -> 0.22 %). It is NOT the default for a fresh pair because R4B assumes the receiver's oscillator is the faster one (negative sample-rate offset); measure the RX-LO residual sign first (two_jup/RXFIX_STATE.md 'Sign cross-check'), then deploy_image.sh <ip> /path/to/BOOT.BIN.148.rxfixr4b.9f13705d9fb0 on the fast-XO board only.

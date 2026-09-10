@@ -1,0 +1,17 @@
+================================================================
+ PACKET_K5 -- K=5 bit contract for the 240k/K5 link
+================================================================
+ trellis        = poly2trellis(5,[35 23])   TB=25  (term, hard)
+ message        = 'ADI Hello World' (120 bits, MSB-first per char)
+ PN pad         = 964 bits, rng(9002,'twister'), randi([0 1],964,1)
+ info/tail/coded= 1084 / 4 / 2176
+ interleave     = ROWS=136 COLS=16, read perm = r*COLS+c (legacy)
+ deinterleave   = perm = c*ROWS+r (exact inverse; grid 136x16=2176,
+                  fully gridded -- no ungridded tail)
+ filler         = 64-bit PN9 (x^9+x^5+1, seed ones; no DC dwell) -> payload 2240 bits = 70 uint32 words
+ frame geometry = 1120 payload sym + 13 Barker = 1133 sym (unchanged)
+ ROM packing    = word w = bits[32w..32w+31], MSB-first (bit 32w ->
+                  word bit 31); one-line uint32([...]) literal
+ CAP_OUT pack   = LSB-first 32-bit pack of first 32 decoded info bits
+ legacy gate    = K=7 bytes/words/CAP_OUT reproduced (0x04922282)
+ CAP_OUT_GOLDEN=0x04922282

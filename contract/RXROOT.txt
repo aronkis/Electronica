@@ -1,0 +1,599 @@
+# RXROOT.txt -- on-chip QPSK Rx no-lock root-cause via RTL replay of real air
+# Started 2026-07-02. Agent: rx-rtl-replay.
+# ANTI-LOOP LOG: every experiment gets ID, setup, verdict. Never repeat a failed approach.
+
+== ARCHITECTURE FACTS (read from generated RTL) ==
+- TxRxComposite (both kits): clk + clk_enable master rail. tc divides: enb (1/1),
+  enb_1_2_0/1 (1/2), enb_1_4_0/1 (1/4). QPSK_Rx runs ENTIRELY on enb_1_4_0 = 1.92 Msps
+  when clk_enable pulses at 7.68 MHz. 8 sps at 240 ksym.
+- ADC ingress: AdcCap (captures on enb && adc_validIn) -> AdcRT (enb_1_2_1) ->
+  AdcStab (enb_1_2_0) -> Receiver -> Downsample-by-2 (enb_1_4_1 pick) -> Delay(enb_1_4_0)
+  -> QPSK_Rx.dataIn sfix16_En14 (raw int16 bits REINTERPRETED, no scaling).
+  => feeding captured int16 I/Q raw is bit-exact what the chip sees. Capture mag mean
+  ~5600/16384=0.34 fs, max 8045 (no clip). AGC first block in QPSK_Rx.
+- Rx chain: AGC -> RRC(sfix16_En12 out) -> [SymbolSync(Gardner) -> CoarseFreqComp(CFC est+
+  NCO + CFO_step_change_detector -> rstCS out) -> CarrierSync -> PreambleDetector ->
+  PhaseAmbiguity -> PacketController] -> QPSK_Demod -> FEC(deint+Viterbi+descr+BIST).
+  NOTE: CFC sits AFTER symbol sync (symbol-rate estimator).
+- AXI map (word addr<<2): 0x10C iq_debug_mux, 0x110 rstCS, 0x114 rx_input_select,
+  0x118 tx_source_select, 0x11C skip_count. Arm seq: 0x0=1(IPCore reset), skip=0,
+  tx_source=0, rx_input_select=1, rstCS 1->sleep 0.3->0.
+- Kit deltas: zed vs jupiter modem RTL identical except version strings + zed Receiver
+  lacks iq_debug_mux tap + zed has byte* ports (bytetx). Modem core shared.
+
+== FINDING F1 (INSTRUMENTATION, both kits): rstcs register is MISWIRED ==
+Frequency_and_Time_Synchronizer.v: `assign rstcsDet = Coarse_Frequency_Compensator_validOut;`
+i.e. the 0x150 rstcs counter counts the CFC VALID strobe (= symbol strobes, 240 k/s),
+NOT the CFO-step-detector reset (Coarse_Frequency_Compensator_rstCS). The on-chip
+"rstCS storm ~80-90k/s" is a RED HERRING -- it is just symbol-rate valid edges
+(under-read due to AXI sampling). Present in BOTH kits (zed line 169, jupiter line 185).
+Fix later in taps overlay; does not affect datapath.
+
+== EXPERIMENT LOG ==
+[E1] iverilog TB (tb_rx_air.v) TxRxComposite replay of linkB_s4d.iq: COMPILES/RUNS but
+     ~260 clk/s -> unusable for 8M clks (timeout killed at beat 19.7k). Partial data:
+     Symbol sync strobes EVERY 8 samples (240 kHz) => Gardner/interp-control cadence
+     CORRECT for 8 sps. VERDICT: switch to Verilator (E2). Do not retry iverilog for
+     full-length composite runs.
+[E2] Verilator harness (rx_wrap.v + sim_rx_air.cpp, obj_rx/Vrx_wrap): full 2M-sample
+     (220-frame) replay of linkB_s4d.iq, adc_validIn 1-in-4 phase0, rx_input_select=1,
+     rstCS pulse 8000 clks then 0.
+     VERDICT: *** ON-CHIP FAILURE REPRODUCED IN RTL ***
+       packets=187/220, biterr=10989/22440 = 49.0% BER (on-chip zed: ~50%).
+       Symbol sync PERFECT (251244/251244 strobes spaced exactly 8; postSS 4th-power
+       lock 0.60-0.68). Frame syncs at exactly 1133-sym spacing.
+       postCS 4th-power lock = 0.000 in EVERY frame -> carrier-sync output constellation
+       uniformly rotating (matches jupiter post-CS flat-angle capture).
+       cfcEst wanders: mean +282 Hz, std 270 Hz, range -286..+869 Hz. cfcRst 28 pulses.
+       GROUND TRUTH: linkB true CFO = 26.85 Hz (offline soak) / ~0 Hz (z^4 FFT).
+       => the CFC applies a FALSE, WANDERING correction of hundreds of Hz.
+[E2b] CS internals probe (sim_cs_probe/sim_cs_beat): CS PLL alive (PED errors +-0.3 rad,
+     loop filter valid 1/symbol, DDS on unit circle). CS integrator mean -191.5 Hz ==
+     -(cfcEst mean +191.7 Hz) => post-CFC stream rotates at MINUS the applied est,
+     confirming true CFO ~ 0 and CFC as the rotation SOURCE. CS (Kp=98*2^-16, Ki=2^-16,
+     per-symbol) cannot chase 4096-sym-cadence est jumps of +-hundreds Hz.
+== ROOT CAUSE (datapath) ==
+Coarse_Frequency_Compensator: feedforward z^4-autocorr estimator (Integrator window
+4096 symbols, Reset_Generator count-to-4096; Extract_Frequency angle/2; /4 gain) jumps
+the CFC NCO frequency every 4096 syms (58/s). At real-air SNR the 4th-power-law angle
+noise gives sigma ~150-300 Hz per estimate (theory ~150 Hz @14 dB; measured 270 Hz).
+The carrier sync must re-acquire after every jump and never converges -> permanently
+rotating constellation -> preamble (differential Barker) still fires but payload ~50% BER.
+IN NOISELESS BIST LOOPBACK the z^4 estimator noise is ~0 -> failure is sim-invisible
+with synthetic stimulus; exactly matches "BIST passes, air fails" history on BOTH boards.
+On-chip evidence re-read: zed cfc_est -184+-88 Hz (= estimator noise, true offset
+unknown but small), jupiter +-30 kHz swings (same disease, worse conditions).
+[E2c] CORRECTION to E2: the "postCS lock4=0.000" numbers were an artifact (CS output is
+     pulse-gated 1-in-8 beats; sampled off-phase = zeros). Proper csV-sampled metric
+     (cs_probe.csv): postCS lock4/200sym mean 0.68 BUT per-200-sym residual rotation
+     swings -1840..+1834 Hz (std 570). CS output rotation rate flails around at the
+     est-update + hunting timescale. cfcEst updates EXACTLY every 4097 symbols, values
+     84..752 Hz (true CFO ~= 27 Hz). Root cause statement unchanged.
+[E3] Diagnostic: freeze CFC NCO inc = 0 (patched/Coarse_Frequency_Compensator.v,
+     passthrough CFC; step detector left active). Full 220-frame replay.
+     VERDICT: PARTIAL. packets 187->211/220 (sync better) but biterr 12263 = 49% BER
+     UNCHANGED. pcOut per-200-sym residual still swings +-600 Hz (std 665) and |z|
+     spread p5..p95 = 7.7k..27.9k (3.6x). CFC wander is real but NOT the primary killer.
+== ROOT CAUSE #2 (PRIMARY, datapath): SYMBOL SYNCHRONIZER STILL SIZED FOR 4 SPS ==
+Model source (zed kit commhdlQPSKTxRx.slx, confirmed by introspection):
+ - Symbol Synchronizer/Interpolation Control (MATLAB Function): hardcodes
+     counter = ... - fi(0.25,1,11,10)   (W = 1/4 = 4 sps!)
+     muReg = bitshift(x,2)              (mu = frac*4, i.e. /W with W=1/4)
+   At 8 sps these must be 0.125 and bitshift(,3). The loop only strobes every 8
+   samples because its loop filter absorbs a permanent -0.125 bias; the Gardner
+   error is then evaluated at a WRONG, drifting sampling phase.
+ - Gardner TED/GTED: fixed tap delays z-4 (one "symbol") and z-4 mid / z-2 pairing =
+   4-sps Gardner. At 8 sps it computes (x[n-6]-x[n-2])*x[n-4] = quarter/half-symbol
+   spacing -> invalid S-curve -> mis-locked timing.
+ - Gardner TED/Delay10 strobe align = 4 (must follow mid-tap distance).
+This explains postSS lock4 only 0.60 and 3.6x |z| spread (samples off symbol peaks),
+which in turn feeds garbage to CFC estimator (wander) and CS PED (flailing).
+rate_240k_overlay.m claimed "Gardner/PED constants derive from SamplesPerSymbol" --
+FALSE for these three hardcoded items (the 'find ALL the duplicated constants' trap).
+NOTE S2_GATE was only a Vivado timing/util gate; the 240k5 Rx was never functionally
+simulated (BIST loopback at 240k5 was never run in RTL either).
+[E4] SS fix in RTL replay (patched_ss/) with WRONG extra strobe-align change (4->6):
+     220/220 packets, deterministic 62/120 biterr per packet, cfcEst falsely 565+-80 Hz.
+     (Kept only as evidence of determinism.) DO NOT change Gardner_TED/Delay10.
+[E4b] SS fix CORRECT (patched_ss2/: Interpolation_Control 0.25->0.125 + mu <<2 -> <<3
+     (+sat-check >>8 -> >>7); GTED far tap z-4->z-8 (Delay2/3/6/7 1->3 in model terms),
+     mid tap z-4->z-6 (Delay8/11 2->4-deep); strobe align UNCHANGED=4), stock CFC.
+     VERDICT: SS + CFC FIXED COMPLETELY:
+       postSS lock4 = 1.000 every frame (was 0.60); cfcEst = -0.3 +- 0.1 Hz (true ~0,
+       was wandering +-270 Hz); 0 cfcRst; 220/220 frame sync, all spacing 1133;
+       *** DEMOD PAYLOAD BIT-PERFECT: 25/25 runs of exactly 1120 payload symbols match
+       the ROM reference 100.0% (segmented at the 14-symbol inter-frame demod gaps) ***
+       => with the SS fixed the CFC estimator noise collapses; NO CFC change needed.
+     REMAINING: BIST still 63/120 errors per packet, IDENTICAL every packet ->
+     deterministic defect in the FEC layer (perfect bits in, constant garbage out).
+== ROOT CAUSE #3 (FEC layer): VITERBI HAS NO VALID GATING -- FREE-RUNS ON HELD PAIRS ==
+FEC_Decoder_Wrapper: RxDeint emits coded pairs only on deintValid beats (2-of-8 cadence,
+holds hold0/hold1 between) but the generated Viterbi module has NO valid port and is
+enabled EVERY enb_1_4_0 beat -> consumes each held pair ~5-6x -> trellis path metrics
+poisoned -> deterministic wrong decode. PROOF (iverilog unit bench tb_vit/tb_vit2 on
+kit Viterbi RTL, K=5 [35 23] convenc vectors):
+  - 1 new pair EVERY beat: 99.8% decode match at latency 40  (Viterbi core CORRECT,
+    pair order (in_0,in_1)=(g1,g2), poly/trellis correct)
+  - REAL cadence (2 adjacent beats per 8, held between): best 59% = garbage.
+This bug exists in the Simulink model itself (Viterbi block consumes held signals at
+rail rate; fec_insert_overlay*_k5.m builds it that way) -- BIST-loopback-at-K7 history
+notwithstanding, at 240k5 the Rx FEC was never RTL-simulated (S2 gate was Vivado-only).
+Also explains why skip_count sweeps (E5a, skips 0..134, ungated) never found golden:
+capout shifted nibble-wise with skip (RxAlign alignment mechanism works) but the
+decoded stream itself was garbage.
+[E5] Fix: gate Viterbi clock-enable with deintValid
+     (patched_ss2/FEC_Decoder_Wrapper.v: .enb_1_4_0(enb_1_4_0 & deintValid)) + sweep
+     runtime skip_count around the measured latency.
+     VERDICT: *** GOLDEN ***
+     skip sweep (13-frame runs): capout shifts exactly 1 bit per skip step;
+     skip=37 -> capout = 0x04922282 = GOLDEN CAP_OUT.
+     FULL 220-frame linkB replay, all three fixes (SS 8-sps + gated Viterbi) +
+     skip=37: packets=220/220, biterr=89/26400 = 0.34% total. First 12 frames carry
+     51 of those (frame 1 = deint ping-pong garbage bank + acquisition; architectural,
+     offline decoder has no such frame-1) + tail-of-capture truncation; steady-state
+     ~0. cap_out golden. Per-packet breakdown in rx_trace_e5.csv.
+     Viterbi output latency measured 40 beats free-running / effective RxAlign skip
+     37 deintValid beats with gating -- BAKED into RxAlign (skip=sc+37) so the
+     deployed 0x11C=0 arm value is correct as-is.
+[E6] linkA (jupiter kit RTL + same fixes, skip=37): 220/220 frame sync but biterr 55%.
+     NOT an Rx defect: linkA_dcfix decodes 0/220 golden OFFLINE too (soak codedBER
+     40.6%, CFO 179 Hz) -- the linkA AIR/Tx side is bad (out of Rx scope; zed Tx).
+     The fixed Rx RTL now MATCHES offline-decoder behavior on BOTH captures.
+[E5-full] Full-length traced run (rx_trace_e5.csv): biterr FROZEN at 51 from ~frame 2
+     through frame 219 (218 consecutive ZERO-ERROR frames); +38 at the very end =
+     capture ends mid-frame (truncated final frame, no more input). cap_out register
+     reads GOLDEN 0x04922282 on 240,672 of ~251k trace rows (whole steady run).
+     cfcEst settled -2..-4 Hz. => contract gate PASSED: >=30 real-air frames,
+     BIST-equivalent 0 errors steady-state, golden CAP_OUT.
+
+== FIX INVENTORY (applied to BOTH kits; models/overlays modified) ==
+1. ss8_fix_overlay.m (NEW, zed+jupiter; called from assemble_* Phase 0b2, and already
+   APPLIED+SAVED to both kits' source commhdlQPSKTxRx.slx):
+   - Interpolation Control MATLAB Fn: fi(0.25)->fi(0.125), bitshift(,2)->bitshift(,3)
+   - GTED Delay2/3/6/7: 1->3 (one-symbol tap z-8), Delay8/11: 2->4 (mid tap z-6)
+   - Gardner TED/Delay10 strobe align asserted UNCHANGED at 4.
+2. fec_insert_overlay_rxonly_k5.m (zed+jupiter): Viterbi Decoder wrapped in ENABLED
+   subsystem 'VitGate' (enable = RxDeint deintValid); RxAlign skip = sc + 37 (baked
+   gated-Viterbi latency; deployed 0x11C/skip reg stays 0).
+3. fec_capture_overlay.m (zed+jupiter): CAP_OUT tap 'Viterbi/1' -> 'VitGate/1'.
+4. taps_240k5_overlay.m (zed+jupiter): rstcsDet source CFC/3 (validOut, WRONG) ->
+   CFC/2 (rstCS) -- fixes the 0x150 "rstcs storm" diagnostics miswire (F1).
+5. assemble_zed_240k5.m / assemble_jupiter_240k5.m: call ss8_fix_overlay() after
+   rate_240k_overlay().
+NO CFC datapath change: with correct symbol timing the z^4 estimator noise collapses
+(measured -0.3+-0.1 Hz on linkB); estimator+step-detector left stock.
+[E7] checkhdl gates re-run on both kits with all fixes (regenerates s1_rtl).
+     Attempt 1 (zed): failed in fec_capture_overlay ('Viterbi/1' rename) -> fixed (item 3).
+     Attempt 2 (both): checkhdl itself = 0 errors / 0 warnings on BOTH kits, but
+     makehdl failed at delay balancing: "extra 16 cycles of latency introduced in the
+     conditional subsystem [VitGate] cannot be absorbed" (the Viterbi's internal
+     pipeline runs in the gated-enable domain; parent-level free-running delays cannot
+     balance it). FIX: hdlset_param(VitGate,'BalanceDelays','off') in
+     fec_insert_overlay_rxonly_k5.m -- correct because RxAlign's skip alignment absorbs
+     ALL decoder latency by construction (the baked +37 was measured END-TO-END on
+     exactly this gated configuration). Attempt 3 launched. VERDICT: pending.
+     ANTI-LOOP: do NOT try to delay-balance VitGate with design delays; skip-absorption
+     is the intended mechanism.
+     Attempt 3: checkhdl 0 errors / 1 warning (the warning IS the intentional
+     BalanceDelays-off notice on VitGate -- benign, documented) on BOTH kits;
+     MAKEHDL_DONE both; constant proofs pass (thr3277 present, rxfix absent, ROM ok).
+[E7b] Regenerated-RTL replay (all fixes from model, skip reg=0): packets 220/220 but
+     biterr 44%, capout junk. postSS/demod still PERFECT (payload bits 100.0%),
+     pair stream INTO Viterbi == contract deint EXACTLY (1.0000), python-Viterbi on
+     the captured pairs == golden info (1.0000), and the in-system Viterbi OUTPUT
+     stream == the unit-bench gated Viterbi EXACTLY (match 1.0000 at 1-beat sampling
+     skew) and decodes golden. THE DECODER IS FINE. The failure moved to SAMPLING:
+== ROOT CAUSE #3b (regen-build artifact): VitGate output-hold + coder delayMatch skew ==
+HDL Coder models the enabled subsystem's OUTPUT HOLD register as 1 beat of latency and
+delay-balances RxAlign's OTHER inputs (deintValid/frameStart/frameEnd got delayMatch
+registers; decBit did not). With deintValid pulses on ADJACENT beats (2 bits/symbol on
+consecutive enb beats), the skewed RxAlign samples decOut at beats (n+1, n+2); at n+2
+VitGate is disabled and its hold register still shows the PREVIOUS bit -> every 2nd
+decoded bit DUPLICATED (measured: all errors at odd bit positions; FEC out 77% = evens
+right, odds 50%). The hand-gated E5 RTL didn't have the coder's delayMatches, hence
+worked at skip 37.
+[E8] ARCHITECTURAL FIX (robust to any balancer skew): make deint reads ISOLATED --
+     RxDeint reads ONE pair per TWO validIn beats (rdGate toggle; 2240 validIn beats
+     >= 2*1088 so all pairs drain in-frame). With isolated 1-of-8 deintValid pulses,
+     hold-based sampling tolerates +-several beats of control/data skew.
+     RTL prototype on regen build (patched_rd/RxDeint.v): skip sweep ->
+     *** total skip 41 (reg=4): biterr = 0 (ZERO) over 11 packets ***.
+     Overlay updates: fecRxDeint_src rdGate toggle; fecRxAlign_src skip = sc+41;
+     fec_capture_overlay CAP_OUT re-tapped to RxAlign dataOut gated by validOut
+     (8th FecCapture input) = exactly the BIST stream, alignment-independent,
+     golden expectation 0x04922282 unchanged.
+[E9] Gates attempt 4 (E8 overlays, both kits): checkhdl 0 errors / 1 intentional
+     warning BOTH kits; MAKEHDL_DONE both. BUT regen replay: packets=0!
+     CAUSE: overlay rdGate ordering differed from the proven RTL prototype --
+     'rdGate=false' at startIn put reads on ODD validIn beats, so deintValid never
+     coincides with frameStart and RxAlign never arms (frameStart is only examined
+     under deintValid). The prototype's toggle effectively read on the startIn beat.
+     FIX: 'rdGate=true' at startIn (frame pair0 read coincides with frameStart).
+[E8b] One-line fix validated by hand-patching the attempt-4 REGENERATED RxDeint.v
+     (patched_rg/, rdGate_temp=1 at startIn) -- everything else pure regen output:
+     skip reg=0 (all alignment baked): packets 12/12, biterr=51 (first frame only),
+     *** capout = 0x04922282 GOLDEN *** (CAP_OUT now tapped off RxAlign output).
+     skip reg=1 shifts capout as expected (alignment mechanism intact).
+[E10] E8b config FULL 220-frame replay (regen RTL + one-line rdGate=true, skip reg=0):
+     *** packets 220/220, biterr = 89 total = 51 (frame 1, deint warm-up bank) +
+     38 (final frame truncated at end of capture); 218 consecutive ZERO-ERROR frames;
+     CAP_OUT golden 0x04922282 (12-frame run; final-readback shows last truncated
+     frame's capture as expected). ***
+     Gates attempt 5 (rdGate=true baked into overlays, both kits): *** PASSED ***
+     zed: exit 0, CHECKHDL_ERRORS=0 (1 warning = intentional BalanceDelays-off notice),
+          MAKEHDL_DONE 134 files. jupiter: exit 0, CHECKHDL_ERRORS=0 (same 1 warning),
+          MAKEHDL_DONE 133 files. Regenerated RxDeint.v contains rdGate_temp=1'b1 and
+          RxAlign.v contains sc+16'd41 in BOTH kits.
+     FINAL PROOF on the PURE attempt-5 regenerated zed RTL (no hand patches), real
+     linkB air, ALL registers at deployed arm values (skip reg 0):
+       22-frame run:  packets 21/21, biterr=51 (first frame only), CAP_OUT=0x04922282
+       220-frame run (RTL-identical E8b build): packets 220/220, biterr 89 =
+       51(frame 1 warm-up) + 38(truncated final frame), 218 consecutive 0-error frames.
+
+== STATUS: DONE ==
+The on-chip Rx no-lock is fully root-caused and fixed at model/overlay level, proven
+by RTL replay of the exact captured air; checkhdl 0 errors on both kits; kits are
+ready for Vivado builds (coordinator sequences those).
+DEPLOY NOTES:
+ - No arm-script change required: 0x110/0x114/0x118 sequence unchanged; the skip
+   register default 0 is correct (decoder latency 41 is baked into RxAlign).
+ - 0x150 rstcs now counts REAL CFO-step resets (was symbol strobes); expect ~0/s
+   on a healthy link. 0x154 cfc_est should read near the true CFO (linkB: ~0 Hz).
+ - 0x144 CAP_OUT now samples the BIST-aligned output stream; golden 0x04922282.
+ - linkA still fails OFFLINE (0/220 golden, coded BER 40.6%) -- that is a ZedBoard
+   TX/air problem, out of Rx scope; fix Tx before expecting linkA to pass.
+
+=== COORDINATOR CORRECTION (2026-07-02, post-hoc) ===
+The 'linkA fails offline too -> ZedBoard Tx problem' conclusion is RETRACTED. A python probe
+validated on linkB_s4d.iq as control (0.0000% BER) decodes linkA_dcfix.iq at 0.0000% BER as
+well, using per-50-symbol data-aided phase tracking. linkA air = golden waveform + ~180 Hz
+linear CFO ramp (vs 27 Hz on linkB), |rho|~0.97 per segment across the whole frame. BOTH
+directions' air is clean. The offline soak_decode_k5 has a link-A-specific defect (phantom
++108.8 kHz preamble-refine; still fails at correct fCoarse) -- instrument bug, not Tx.
+Any RTL replay of linkA that reads ~40% should be re-examined against this: the fixed Rx
+RTL is expected to track 180 Hz trivially. On-HW v3 BIST is the arbiter.
+
+=== CADENCE SECTION (2026-07-02, post-v3-silicon) ===
+== TRUE PER-BOARD VALID CADENCE (from qpsk_rate_mode_config.m + vivado_insert_ip.tcl
+   + deployed hdl_prj_* sources; both v3 ipcores dated 2026-07-02) ==
+- IPCORE_CLK = axi_adrv9001 adc_1_clk on BOTH boards; clk_enable = write_axi_enable
+  = CONSTANT 1 (TxRxCompo_ip_dut.v: enb = dut_enable). TC divides clk by /1,/2,/4.
+- ZED (CMOS RD): adc_1_clk = 30.72 MHz -> QPSK_Rx rail (enb_1_4_0) = 7.68M beats/s
+  = *** 4 rail-beats per 1.92M sample *** (AdcCap->Stab chain repeats each sample 4x,
+  Receiver validIn = RxValidConst = 1).
+- JUPITER (LVDS RD, lvds_1p92 profile): adc_1_clk = 15.36 MHz -> rail 3.84M
+  = *** 2 rail-beats per sample ***. (Confirmed by the old v2 960-kHz post-CS tap:
+  stock W=1/4 strobes rail/4 = 960 kHz at 3.84M rail.)
+- My entire replay campaign drove 1 beat/sample (adc_validIn 1-in-4 with clk=4x rail):
+  the modem internals (Interp Control, Gardner taps, CFC lag/window, CS pipelines) are
+  RAIL-clocked, NOT valid-gated, so beats-per-sample silently rescales every loop.
+== REPRODUCTION (deployed attempt-5 RTL, linkB air, 27 frames) ==
+  period=4  (1 beat/sample):  27/27 packets, golden      (my old validation point)
+  period=8  (2 beats/sample): 0 packets, cfc_est=+26.5 kHz garbage, rstcs ticking
+            -> REPRODUCES jupiter v3 (+-20 kHz cfc_est swings, low packet rate)
+  period=16 (4 beats/sample): 0 packets, cfc_est=495 Hz 'sane', biterr 0
+            -> REPRODUCES zed v3 (zero packets, sane-looking cfc_est)
+  Jupiter's 17 pkt/s (vs my 0 at period 8): its doubled-symbol stream still trips the
+  Barker correlator occasionally on the linkA channel; the discriminating signatures
+  (cfc garbage magnitude, rstcs rate, sync collapse) all match per-cadence.
+  v2->v3 zed regression explained: stock W=1/4 at 32 beats/symbol accidentally gave
+  8-beat strobes (2 per SAMPLE-pair) -> rare syncs; my W=1/8 fix (calibrated at 1
+  beat/sample) made it 4 strobes/symbol -> none.
+== FIX (E11, cadence-agnostic): ONE-BEAT-PER-SAMPLE STROBE GATING ==
+A 1-bit toggle transitions on each adc_validIn and is mirrored through the IDENTICAL
+ingress registers as the data (AdcCap->AdcRT->AdcStab->delayMatch->Downsample2->
+Delay3->Delay), then change-detected on the QPSK rail: newSample = one enb_1_4_0 beat
+per NEW sample regardless of cadence (uniform 1/2/4/52.08 beats-per-sample or bursty).
+QPSK_Rx and Capture_Data_Bits enables gated by it (loopback: free toggle -> gate=1
+every beat, BIST unchanged). At 1 beat/sample the gate is constantly 1 = the exact
+proven configuration. Tx path untouched (air proven golden).
+[E11a] RTL prototype (patched_cad/TxRxComposite.v+Receiver.v), linkB 33 frames each:
+       period=4:        31/31 packets, biterr=51 (frame-1 warm-up), CAP_OUT 04922282
+       period=8:        IDENTICAL (bit-for-bit)
+       period=16:       IDENTICAL
+       period=16 BURSTY (groups of 4 samples at 4-clk spacing + gap): IDENTICAL
+       period=52:       IDENTICAL (31/31, biterr=51, CAP_OUT 04922282)
+       => the gated domain sees the same sample sequence at every cadence, as designed.
+[E11b] Model implementation: cadence_strobe_overlay.m (both kits) -- CadTog MATLAB Fn
+       (toggle per adc_validIn) -> AdcRTT/AdcStabT (mirroring AdcRTI/AdcStabI) ->
+       MUX_RxT (loopback = LbTog free toggle at the 15.36e6-model rail) -> RT_RxT ->
+       Receiver/dataInT -> DS_T(/2)+DelayT1/T2 -> XOR change detector -> 'RxCore'
+       enabled subsystem (QPSK Rx + Capture Data Bits moved in via
+       Simulink.BlockDiagram.createSubsystem; BalanceDelays off, same rationale as
+       VitGate; RxAlign skip absorbs latency; +-1-beat enable/data skew tolerated
+       because inputs hold >= beats-per-sample and 1-beat/sample = all-enabled).
+       Hooked into assemble_*_240k5.m as Phase 2.12.
+       Gate attempt 6: Update Diagram failed -- QPSK Rx contains synchronous-semantics
+       blocks; a conditional parent needs synchronous semantics. FIX: State Control
+       (Synchronous) block cloned into RxCore.
+       Gate attempt 7: Update Diagram failed -- under synchronous semantics, MATLAB
+       Function outputs may not depend on persistents written in the same step. The
+       STOCK modem functions are already compliant (authored for sync contexts); only
+       the KIT-authored ones violated it.
+[E11c] Rewrote all kit MATLAB Functions inside RxCore to the compliant
+       read-locals-first / outputs-from-locals / persist-last form (BIT-IDENTICAL
+       semantics; RxDeint's deferred RAM write targets the opposite bank of all reads):
+       RstCsCounter (taps overlay), FecCounters (counters overlay), FecCapture +
+       FecCaptureCadence (capture overlay), fecRxDeint + fecRxAlign (fec_insert
+       overlay). Also VitGate gets its own Synchronous State Control (nested
+       conditional under the sync RxCore domain). Attempt 8 launched. VERDICT: pending.
+== ANOMALY EXPLANATIONS (coordinator item 4) ==
+- jupiter 17 pkt/s (vs 212 expected): at 2 beats/sample the SS strobes every 8 rail
+  beats = 2 'symbols' per true symbol; the Barker correlator sees a doubled-symbol
+  stream and only occasionally crosses threshold (channel/CFO-ramp dependent). My
+  linkB replay at period 8 shows the same collapse (0 syncs in 110 frames) with the
+  identical cfc_est garbage signature (+27.2 kHz vs jupiter's +-20 kHz) and rstcs
+  ticking; each synced packet decodes ~garbage (44% BER on silicon).
+- zed +50 errors/15 s with 0 packets: at 4 beats/sample frame sync (nearly) never
+  fires; rare noise-triggered preamble hits open BIST windows that accrue errors
+  without completing packets. Reproduction shows exactly 0 packets/0 errors over
+  1.04 s of golden linkB air (silicon integrates 15 s of real RF).
+
+== E11 RESOLUTION (2026-07-02): CADENCE FIX = POST-CODEGEN RTL TRANSFORM ==
+The enabled-subsystem MODEL surgery was ABANDONED after proving it is structurally
+incompatible with the stock example: QPSK Rx's datapath uses MathWorks "*_Synchronous"
+HDL idioms that each carry a State Control. Wrapping them in an enabled RxCore fails
+three ways in sequence (all reproduced, all in RXROOT log):
+  - sync region nested in another sync region -> unsupported;
+  - classic RxCore with the idioms' State Controls stripped -> algebraic loop in
+    Preamble Detector / Peak Search;
+  - classic RxCore keeping them -> "sync nested in classic" unsupported;
+  - plus the atomic subsystem created a ctrl-bus self-loop (fixed by pulling the Bus
+    Selector inside) and the kit MATLAB Functions needed sync-compliant rewrites.
+DECISION: apply the PROVEN gating (enb_1_4_0 & newSample on QPSK_Rx + Capture_Data_Bits,
+newSample = change-detected 1-bit sample token) as a deterministic POST-CODEGEN RTL
+transform -- cadence_rtl_patch.m (both kits). The kits already integrate at the
+generated-HDL level (patch_hdlworkflow_*, ipcore taps), so this is in-idiom. The MODEL
+stays 100% stock-compatible and checkhdl-clean; the transform edits TxRxComposite.v +
+Receiver.v (handles both s1_rtl and TxRxCompo_ip_src_* ipcore naming). Idempotent.
+[E11-final] cadence_rtl_patch applied to FRESHLY makehdl'd clean RTL (not the prototype),
+     Verilator replay of real linkB air:
+       period 4  (zed 1x pre-fix / design):  31/31 packets, biterr 51, CAP_OUT 04922282
+       period 8  (jupiter true cadence):     IDENTICAL bit-for-bit
+       period 16 (zed true cadence):         IDENTICAL
+       period 16 BURSTY:                     IDENTICAL
+       period 52.08 (~100 MHz PL rail):      IDENTICAL
+     *** cadence-agnostic: every beats-per-sample -> same golden result ***
+     Wired into checkhdl_gate_zed_240k5.m + checkhdl_gate_240k5.m right after makehdl.
+COORDINATOR BUILD NOTE: the DEPLOYED image uses the IP-core RTL (hdl_prj_*/hdlsrc/.../
+  TxRxCompo_ip_src_TxRxComposite.v + _Receiver.v), generated by hdlworkflow_*.m's single
+  runWorkflow (RTL+IPCore -> CreateProject -> BuildBitstream). cadence_rtl_patch must run
+  on that ipcore hdlsrc dir AFTER the 'Generate RTL Code and IP Core' task and BEFORE
+  Vivado synthesis. Two integration options (coordinator's choice, Vivado not run here):
+   (a) split hdlworkflow's runWorkflow into two calls (RunTaskGenerateRTLCodeAndIPCore
+       only; patch; then CreateProject+SoftwareInterface+BuildBitstream), or
+   (b) call cadence_rtl_patch('<proj>/hdlsrc/commhdlQPSKTxRxLoopback') between the IP-core
+       gen and project build steps of the existing flow.
+  The transform auto-detects the ipcore module names. VERIFY on HW: zed BER->~0 with
+  packets advancing at full rate, jupiter cfc_est settles near true CFO (~180 Hz),
+  0x150 rstcs ~0/s, CAP_OUT 0x04922282, both boards.
+
+== E12 (2026-07-02): v4 BUILD INTEGRATION + CONFIRMATORY RUNS ==
+Confirmatory (all PASS):
+ - FULL 220-frame replay at the ZED TRUE cadence (period 16): 219/219 packets,
+   biterr = 51 TOTAL (first-frame deint warm-up only; steady state ZERO),
+   CAP_OUT 0x04922282. period-52 also golden.
+ - Both kits' wired checkhdl gates: exit 0, CHECKHDL_ERRORS=0 (1 intentional
+   BalanceDelays warning), cadence_rtl_patch auto-applied post-makehdl.
+Build-flow integration (constraint lifted, Vivado authorized):
+ - cadence_patch_ipcore.m (both kits): patches <proj>/hdlsrc AND the PACKAGED
+   ipcore zip (unzip -> cadence_rtl_patch -> re-zip -> re-unzip verify), which is
+   what vivado_insert_ip.tcl feeds update_ip_catalog. HARD VERIFY: errors out
+   (build aborts) unless markers ('CADENCE FIX (RXROOT E11)', enb_1_4_0_smp,
+   MUX_RxT_out1) are present in hdlsrc and inside the re-packed zip.
+ - hdlworkflow_zed.m / hdlworkflow_loopback.m: runWorkflow SPLIT into
+   Stage 1 (RunTaskGenerateRTLCodeAndIPCore only) -> cadence_patch_ipcore ->
+   Stage 2 (CreateProject + SoftwareInterface + BuildBitstream).
+v4 builds launched detached, zed first (build_env_zed.sh), jupiter chained after.
+Gate criteria per kit (S2_GATE_v4.txt): placement PASS; functional timing MET
+(zed clk_fpga_0 + adc_clk_div_s; jupiter clk_pl_0); patched markers present in
+the SYNTHESIZED project sources; constant proofs 3277 present / 26214 absent /
+ROM word0 1204691830; BOOT.BIN md5.
+
+== E12b: v4 BUILD-FLOW DEBUG TRAIL (zed) ==
+- Attempt 1: stage-1 OK; cadence_patch_ipcore FAILED LOUDLY as designed (zip glob
+  missed ipcore/<comp>/<comp>.zip one level down). Fixed: recursive zip search.
+- Attempt 2: patch OK (markers verified INSIDE the re-packed zip); stage-2
+  CreateProject failed: update_ip_catalog got './ipcore' with only the nested zip
+  present -- the workflow driver rediscovers the packaged IP from
+  <proj>/ipcore/*.zip at TOP level. Fixed: cadence_patch_ipcore now MIRRORS the
+  patched zip to <proj>/ipcore/<comp>.zip.
+- Resume attempts (fresh MATLAB sessions, stage 2 only): copyfile self-copy
+  (abs-vs-rel path compare -- fixed), then ClockModuleIP 'dot indexing' --
+  generateInsertIPTcl needs IN-SESSION state from the RTL task. => stage 2 must
+  run in the SAME session as stage 1 (the split within one hdlworkflow run is
+  fine; cross-session resume of stage 2 alone is NOT supported).
+- Evidence the seam is correct: resume-3's CreateProject (before its crash)
+  EXTRACTED the PATCHED component into vivado_ip_prj/ipcore (markers present in
+  vivado_ip_prj/ipcore/hdl/TxRxCompo_ip_src_{TxRxComposite,Receiver}.v) and the
+  BD validated with the patched IP.
+- Attempt 3 (clean full build, all fixes): running.
+
+== E12c: v4 zed build attempts 4-7 (split-workflow insert-IP quirk chased down) ==
+- Attempt 4 (pre-extract hdl_prj/ipcore): CreateProject still failed -- the task
+  copies ONLY the zip into vivado_ip_prj/ipcore and the state-lossy insert tcl
+  says '-add_ip {./ipcore}' (no component.xml there -> 19-1666 abort).
+- Attempt 5 (pre-seed vivado_ip_prj/ipcore in patch step + 5s-poll sidecar):
+  task WIPES vivado_ip_prj at CreateProject start; zip lands ~14s before vivado
+  sources the tcl; sidecar missed by 1s.
+- Attempt 6 (0.2s sidecar: in-place unzip + tcl rewrite): tcl rewrite landed,
+  insert vivado ran BUT pre-extracted copies made DUPLICATE catalog entries
+  ('user.org:ip:TxRxCompo_ip:1.0' x2) -> get_ipdefs returned 2 defs ->
+  create_bd_cell silently skipped -> Build FPGA Bitstream failed at the kit's
+  dds_only sanity check: 'stock cell TxRxCompo_ip_0 MISSING'. (Good gate!)
+- Attempt 7 (RUNNING): NO pre-extraction anywhere (add_ip <zip> unzips itself;
+  single catalog entry, v3-proven); patch step mirrors the PATCHED zip to
+  hdl_prj/ipcore top level (what the task copies); sidecar keeps ONLY the tcl
+  rewrite '-add_ip {./ipcore}' -> '-add_ip {./ipcore/TxRxCompo_ip_v1_0.zip}'.
+
+== E12d: ZED v4 BUILD COMPLETE + GATED (PASS) ==
+Build 7 (single-session split workflow + sidecar tcl repair) succeeded:
+IP Packager / Create Project / Build FPGA Bitstream all successful.
+Insert-IP root causes nailed: (a) '-add_ip {./ipcore}' state-lossy path ->
+sidecar rewrites to the PATCHED zip (proven: BD carries TxRxCompo_ip_0, 49 refs);
+(b) duplicate-catalog trap from pre-extraction (attempt 6) -> removed (add_ip
+unzips the zip itself).
+Timing: first impl missed adc_clk_div_s -0.385ns (Tx REP pipe, run variance);
+retry impl (Performance_ExplorePostRoutePhysOpt) MET: adc_clk_div_s +0.073,
+clk_fpga_0 +0.788, hold clean. BOOT.BIN re-packaged via bootgen.
+S2_GATE_v4 zed: PASS. BOOT.BIN md5 3b187c339fd9a1ab4ca074dcc8c1be2f (4671352 B).
+Constants on modem RTL (digit-boundary): 3277 present(4), 26214 absent(0),
+ROM word0 1204691830 present(4). Markers in synthesized ipshared + sim_netlist.
+Jupiter: attempt 1's insert tcl ALSO degraded -- its rigid
+'connect_bd_net -net [get_bd_nets ...]' joins abort on the byte-DMA wiring's
+intentionally-dangling sync pins -> BD saved WITHOUT the modem (Create Project
+still 'successful': silent!). Fix: sidecar v2 additionally rewrites those joins
+into net-or-pin conditional connects (tcl_connect_fix.py). Attempt 2 running.
+
+== E12e: jupiter insert-tcl truncation fully diagnosed ==
+The state-lossy generation TRUNCATES jupiter's vivado_insert_ip.tcl to a
+31-line prefix: present = AXI4_Lite ACLK/ARESETN/intf/addr-seg + rx-side data
+connects; MISSING = tx data connects (dut_data_out/in_*_tx), IPCORE_CLK,
+IPCORE_RESETN, add_files system_top.v, update_compile_order,
+validate/save/constraints/close/exit. Attempt 1: script ran to EOF (empty
+'-net {}' joins are tolerated), but NO SAVE -> BD discarded silently. Attempt 4
+(with save appended): validate_bd_design failed on unconnected
+/TxRxCompo_ip_0/IPCORE_CLK -> abort before save.
+FIX (attempt 5, running): canonical insert tcl recovered from the v3-era
+sibling build fec_jupiter_dbg8 (verified drop-in: identical header vars
+inputs4/bits16/valids1/multiple1, identical 14 dut pins + IPCORE_CLK/RESETN on
+the freshly packaged IP, same TxRxCompo_ip_0 name and 0x9D000000 seg); sidecar
+v3 replaces the truncated tcl wholesale with this template
+(vivado_insert_ip_TEMPLATE.tcl) before the insert vivado sources it.
+NOTE: zed did not need this -- its degraded tcl was complete except the add_ip
+path (different RD integration; only the catalog path was state-lossy there).
+
+== E13 (v5 REWORK): zed v4 froze on silicon -- strobe starvation root cause ==
+Silicon: v4 zed (md5 3b187c...) BIST frozen: packets=0 errors=0 cap=0 cfc=0,
+unchanged during active iio_readdev capture.
+ZED BD VALID CHAIN (documented from hdl_prj_zed_composite system.bd):
+  axi_adrv9001/adc_1_valid_i0 -> util_valid_regularizer/in_valid
+  (depth-4 skid FIFO; out_valid = pop, gated 1-in-2 by 'phase', only when
+   fill!=0; OUTPUT DATA REGISTERS HOLD BETWEEN POPS)
+  -> sync_input/data_valid_in_rx_0 (plain delay) -> TxRxCompo_ip_0/
+  dut_data_valid_in_rx = the composite's adc_validIn.
+Starvation: adc_1_valid_i0 evidently never pulses in the deployed zed profile
+(frozen even during capture), so the v4 change-detect token never toggled and
+the gated Rx enable never fired.
+V5 FIX (cadence_rtl_patch v5): NO BD-signal dependence. Fixed rail:sample ratio
+per board (zed enb_1_4_0=7.68M / 1.92M = N=4; jupiter 3.84M / 1.92M = N=2).
+Free-running mod-N counter on enb_1_4_0; newSample = (cadCnt==0) | cadBypass;
+cadBypass=(rx_input_select==0) keeps loopback BIST at 1 sample/beat.
+DATA-HOLD ASSUMPTION VERIFIED BOTH BOARDS: the modem's dataIn comes through
+util_valid_regularizer whose FIFO output registers hold the popped sample until
+the next pop, then sync_input (delay only) -- so each 1.92M sample is held for
+all N rail beats on zed AND jupiter (same ingress structure in both BDs);
+phase of the counter is therefore irrelevant. (Also matches E11 empirical
+evidence: silicon signatures reproduced in replay with held data at period 16/8.)
+Markers v5: 'CADENCE FIX v5 (RXROOT E13)', 'enb_1_4_0_smp', 'cadCnt'.
+Call sites updated: checkhdl gates + cadence_patch_ipcore(proj,N) + workflows
+(zed N=4, jupiter N=2). Jupiter v4 build killed (superseded).
+E13 REPLAY PROOF (real air linkB_s4d.iq, 300k samples, skip reg 0):
+  zed  config (N=4, period-16): packets=31/31 frames, biterr=51 (frame-1
+    warm-up only), rstcs=0, cfc=-3, CAP_OUT=04922282  -- GOLDEN
+  jup  config (N=2, period-8):  packets=32/32 frames, biterr=51, rstcs=0,
+    cfc=-3, CAP_OUT=04922282  -- GOLDEN
+Both checkhdl gates: 0 errors / 1 benign warning; patch v5 auto-applied.
+
+== E13 ZED v5 BUILD: GATED PASS ==
+BOOT.BIN md5 1d9f3a1c50b67054ac90a0d8ba9455e4 (4671352 B) @
+zed_240k5/hdl_prj_zed_composite/vivado_ip_prj/boot/BOOT.BIN.
+Insert-tcl truncation ALSO hit zed this run (nondeterministic truncation point:
+ended at create_bd_cell, no connects/save) -> repaired surgically with the
+canonical template from sibling kit fec_zed (identical header vars, dut pins,
+TxRxCompo_ip_0 @ 0x43C00000; joins made net-or-pin conditional); BD saved with
+49 modem refs; constraints (system_constr + zed_system_constr) registered;
+bitstream via the project's own vivado_build.tcl (dds_only strip + adi_build).
+Timing: -2.049 -> re-synth (Flow_PerfOptimized_high) + Explore impl -> -0.549
+-> post-route phys_opt AggressiveExplore x2 -> +0.006 MET (adc_clk_div_s),
+clk_fpga_0 +0.600 MET, hold clean. Gate: markers (cadCnt/enb_1_4_0_smp) in
+synthesized ipshared + sim_netlist; constants 3277(4)/26214(0)/ROMword0(4).
+
+== E13 JUPITER v5 BUILD: GATED PASS -- v5 TASK COMPLETE ==
+BOOT.BIN md5 9491c0ad0ea141dd99f8880be5604be6 (7203552 B) @
+jupiter_240k5/hdl_prj_jupiter_composite/vivado_ip_prj/boot/BOOT.BIN.
+CreateProject succeeded on attempt 2 of v5 via sidecar v4 (unconditional
+template enforcement -- the truncation point of the generated insert tcl is
+NONDETERMINISTIC, so conditional detection was insufficient; cmp-based
+replace with the fec_jupiter_dbg8 canonical template, conditional net-joins).
+BD modem refs=35; all three workflow tasks successful; clk_pl_0 WNS +4.145 MET;
+markers cadCnt (mod-2, wraps 2'd1) + enb_1_4_0_smp in synthesized ipshared +
+sim_netlist; constants 3277(5)/26214(0)/ROMword0(5). Historical benign
+over-constrained axi_adrv9001_adc_1_clk (-13.3 @ 125MHz worst-case XDC vs
+15.36MHz deployed) unchanged from the v3 baseline that ran on silicon.
+
+v5 DELIVERABLES SUMMARY:
+  zed     BOOT.BIN md5 1d9f3a1c50b67054ac90a0d8ba9455e4  (mod-4 strobe, all
+          functional clocks MET after re-synth + post-route phys_opt)
+  jupiter BOOT.BIN md5 9491c0ad0ea141dd99f8880be5604be6  (mod-2 strobe,
+          clk_pl_0 MET in one shot)
+Both gated S2_GATE_v5 PASS; both replay-proven >=30 frames golden on real air
+at true silicon cadence; strobe requires NO BD valid signal (E13 fix for the
+v4 zed freeze caused by adc_1_valid_i0 starvation through
+util_valid_regularizer -> sync_input -> dut_data_valid_in_rx).
+
+== E14 (v6): two silicon defects root-caused ==
+ZED v5 SILICON: BIST DECODED ON CHIP -- CAP_OUT 0x04922282 GOLDEN, BER 0.025%,
+rstcs=0, cfc ~ -0.5 Hz. v5 Rx datapath CORRECT on zed.
+
+DEFECT 1 (zed spontaneous reset ~1/min):
+BD trace: TxRxCompo_ip_0/IPCORE_RESETN (and AXI4_Lite_ARESETN -- same net)
+= rx_rstn_inverter/Res = NOT(axi_adrv9001/adc_1_rst). adc_1_rst is the ADI rx
+core reset, re-asserted on SSI resync events; ADRV9001 runtime tracking
+calibrations (~1/min cadence) interrupt the SSI -> adc_1_rst pulse -> modem
+full reset. RTL check: the BIST counters (FecCounters.v) clear ONLY on the
+async top reset -- no self-clear paths (frame-sync-loss etc.) exist. So the
+mid-run zeroing (673->24 with continuous uptime) is exactly reset pulses.
+Timing marginality RULED OUT as the resetter: clean periodic zeroing is a
+reset signature (timing corruption would raise BER, not zero counters), and
+the 0.025% BER between pulses shows the +0.006 STA closure holds on silicon.
+FIX: STICKY RESET in the IP top (TxRxCompo_ip.v): reset_cm =
+(~IPCORE_RESETN) & ~rstDone, rstDone latched at first release. AXI soft reset
+(reset_internal) unchanged -> host keeps a deliberate reset. Also protects
+the AXI regfile (skip/input-select) from reverting to defaults mid-run.
+
+DEFECT 2 (jupiter Rx ~46%):
+Clock picture reconciled: axi_adrv9001 s_axi_aclk = sys_cpu_clk = clk_pl_0 =
+100 MHz (BD-verified), so CLK_FREQ 0x9D4 = 2516/65536 x 100M = 3.84 MHz =
+adc_1_clk = IPCORE_CLK, CLK_RATIO 4 -> dclk 15.36 MHz (LVDS DDR at 1.92 Msps).
+The 3.84 MHz IPCORE is DESIGN-CORRECT for Tx: REP_TxI/Q are x2 POLYPHASE
+INTERPOLATORS clocked on enb_1_2_0 (mod-2 phase counter selecting coefficient
+banks), so Tx out = clk/2 = 1.92 Msps -> the measured 240-ksym air is exactly
+right. The Rx breaks because its ingress DECIMATES: Downsample2/3 pass input
+through only on enb_1_4_1 beats; with the /2 rail equal to the stream rate
+(1 ingress beat per TRUE sample) this discards every other sample -> QPSK Rx
+ran at 4 sps against the SS8-tuned design -> ~46% BER. (v5's N=2 on the /4
+rail made it 2 sps -- consistent with 'slightly worse than v3'.)
+TRUE jupiter rail:sample ratio: enb_1_2_0 = 1.92 MHz = EXACTLY 1 beat/sample
+(N=1 on the /2 rail; the /4 rail is 0.5 beats/sample and can never work).
+FIX (RX_DIV2_RETIME): Downsample2/3 passthrough retimed enb_1_4_1->enb_1_2_1
+(no decimation), Delay3/Delay ingress regs enb_1_4_0->enb_1_2_0, and
+QPSK_Rx + Capture_Data_Bits enabled by enb_1_2_0 directly (every beat = one
+true sample; also correct for loopback BIST whose internal Tx emits one
+sample per /2 beat). Deterministic; a self-measuring change-detect strobe was
+considered but is unnecessary (the /2 rail:stream ratio is pinned to the SSI
+divider config) and cannot help on the /4 rail (rail < stream).
+Patch = cadence_rtl_patch v6 (mode 'zed' | 'jupiter'); call sites updated.
+
+E14 REPLAY PROOFS (v6 patch, jupiter kit RTL, true cadence period-2):
+  LOOPBACK BIST (rx_input_select=0): packets=33/33, biterr=51 (frame-1 warm-up
+    only), CAP_OUT=0x04922282 GOLDEN -- bit-exact with the zed v5 silicon
+    baseline. (In loopback the Rx consumes the x2-interpolated REP stream at
+    the /4 cadence, reproducing the original Downsample-by-2 behavior; enable
+    muxed by cadBypass: loopback->enb_1_4_0, ADC->enb_1_2_0.)
+  AIR (linkB_s4d.iq, full 220 frames): packets=220/220, biterr=89 (all in the
+    frame-1 acquisition; steady-state BER 0; v5 /4-rail acquisition was 51),
+    rstcs=0, cfc=-4, CAP_OUT=0xCF045842 -- frame-locked and deterministic but
+    WINDOW-SHIFTED vs the /4-rail pipeline: skip-register sweep proves the
+    value slides bitwise with skip (skip1 -> 0x67822C21 = >>1 etc.), i.e. the
+    same golden bitstream with the capture window offset by the retimed
+    ingress latency. Expected jupiter OTA CAP_OUT = 0xCF045842 (skip reg 0);
+    BIST/loopback CAP_OUT remains the canonical 0x04922282.
+DEBUG TRAIL (for the record): first retime attempt referenced the nonexistent
+Receiver port enb_1_2_1 (compile error); second attempt threaded the port but
+the composite injection guard false-positived on the REP instances' natural
+'.enb_1_2_1(enb_1_2_1)' string and skipped u_Receiver -> port floated to 0 ->
+ingress frozen (inert loopback). Guard now checks within the u_Receiver
+instance segment. checkhdl 0 errors after regen.
+Sticky reset marker 'STICKY RESET (RXROOT E14)' applies at ipcore packaging
+(TxRxCompo_ip.v reset_cm gate); not present in s1_rtl replay trees by design.

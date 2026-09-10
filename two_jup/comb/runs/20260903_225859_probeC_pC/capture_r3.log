@@ -1,0 +1,42 @@
+=== capture_r3 A (fwd): R3/f1536 link, 600s traffic, Tap-A 4000000 samp on 10.0.0.148 -> /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_225859_probeC_pC/cap ===
+  10.0.0.146 build: BUILD_OK
+  10.0.0.148: preserving deployed NAK-stat instrumentation (-DQPSK_ARQ_NAKSTAT)
+  10.0.0.148 build: BUILD_OK
+  10.0.0.148: NAK-stat counter VERIFIED present after rebuild
+--- bringup_r2r3.sh r3 (logger on) ---
+=== r3 bring-up: lvds_61p44_fdd_jupiter, -r 15360, gate >= 1120 f/s ===
+10.0.0.148 armed ROM (lvds_61p44_fdd_jupiter)
+10.0.0.146 armed ROM (lvds_61p44_fdd_jupiter)
+146: ssi-fix VERIFIED: tx0=c3d4 rx0 preserved (2/4) (rearmed, 0x114=1)
+148: ssi-fix VERIFIED: tx0=c5d3 rx0 preserved (0/4) (rearmed, 0x114=1)
+gate try 1: 148 rx=996 f/s  146 rx=1247 f/s (need >= 1120)
+gate try 2: 148 rx=996 f/s  146 rx=1247 f/s (need >= 1120)
+gate try 3: 148 rx=1246 f/s  146 rx=1247 f/s (need >= 1120)
+ARM GATE PASS (try 3)
+10.0.0.146 daemon up (ROM still selected)
+10.0.0.148 daemon up (ROM still selected)
+byte re-arm done
+byte re-arm done
+byte re-arm done
+byte re-arm done
+10.0.0.146 watchdog: ALIVE pid=10493 [wd] === STARTING 04:01:32 pid=10493 ===
+10.0.0.148 watchdog: ALIVE pid=288503 [wd] === STARTING 23:01:35 pid=288503 ===
+=== r3 BRING-UP COMPLETE (byte source live both ends, stream-first + double-tap order) ===
+10.0.0.146 wd stopped
+10.0.0.148 wd stopped
+  traffic: 10.0.0.146 -> 10.66.0.2 (qpsk_perf -b 15Mbit -l 1400 -t 740), settling 4s ...
+  health try 1: rev 0% fwd 100% (need >= 50%)  rate 0 f/s (need >= 300)
+  !! DELIVERY FLATLINE (0 f/s) -- this is the wedge crc-health cannot see
+  wedged/degraded -> byte double-tap re-arm (both boards)
+  health try 2: rev 0% fwd 100% (need >= 50%)  rate 0 f/s (need >= 300)
+  !! DELIVERY FLATLINE (0 f/s) -- this is the wedge crc-health cannot see
+  wedged/degraded -> byte double-tap re-arm (both boards)
+  health try 3: rev 0% fwd 100% (need >= 50%)  rate 0 f/s (need >= 300)
+  !! DELIVERY FLATLINE (0 f/s) -- this is the wedge crc-health cannot see
+  wedged/degraded -> byte double-tap re-arm (both boards)
+  health try 4: rev 0% fwd 100% (need >= 50%)  rate 0 f/s (need >= 300)
+  !! DELIVERY FLATLINE (0 f/s) -- this is the wedge crc-health cannot see
+  wedged/degraded -> byte double-tap re-arm (both boards)
+  wedge verdict: WEDGED delivery=0f/s (crc=0%) after 4 re-arms -- NOT usable data
+CAPTURE_ABORTED_WEDGED: delivery 0 f/s < 300 after 4 re-arms
+  (not banking empty data; re-run or clear the wedge first)

@@ -1,0 +1,27 @@
+2026-09-03T19:29:44-04:00 gate: log=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_192933_legA_a2/capture_r3.log wait_s=120 sel=6 out=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_192933_legA_a2/ddrcap_sel6
+2026-09-03T19:31:48-04:00 CAP_START epoch=1788478307.612054057
+2026-09-03T19:31:48-04:00 CAP_END seen
+2026-09-03T19:31:48-04:00 waiting 119s to reach CAP_START+120s
+2026-09-03T19:31:53-04:00 waiting 114s to reach CAP_START+120s
+2026-09-03T19:31:58-04:00 waiting 109s to reach CAP_START+120s
+2026-09-03T19:32:03-04:00 waiting 104s to reach CAP_START+120s
+2026-09-03T19:32:09-04:00 waiting 98s to reach CAP_START+120s
+2026-09-03T19:32:14-04:00 waiting 93s to reach CAP_START+120s
+2026-09-03T19:32:19-04:00 waiting 88s to reach CAP_START+120s
+2026-09-03T19:32:24-04:00 waiting 83s to reach CAP_START+120s
+2026-09-03T19:32:29-04:00 waiting 78s to reach CAP_START+120s
+2026-09-03T19:32:34-04:00 waiting 73s to reach CAP_START+120s
+2026-09-03T19:32:39-04:00 waiting 68s to reach CAP_START+120s
+2026-09-03T19:32:44-04:00 waiting 63s to reach CAP_START+120s
+2026-09-03T19:32:49-04:00 waiting 58s to reach CAP_START+120s
+2026-09-03T19:32:54-04:00 waiting 53s to reach CAP_START+120s
+2026-09-03T19:32:59-04:00 waiting 48s to reach CAP_START+120s
+2026-09-03T19:33:04-04:00 waiting 43s to reach CAP_START+120s
+2026-09-03T19:33:09-04:00 waiting 38s to reach CAP_START+120s
+2026-09-03T19:33:14-04:00 waiting 33s to reach CAP_START+120s
+2026-09-03T19:33:19-04:00 waiting 28s to reach CAP_START+120s
+2026-09-03T19:33:24-04:00 waiting 23s to reach CAP_START+120s
+2026-09-03T19:33:29-04:00 waiting 18s to reach CAP_START+120s
+2026-09-03T19:33:34-04:00 waiting 13s to reach CAP_START+120s
+2026-09-03T19:33:39-04:00 waiting 8s to reach CAP_START+120s
+2026-09-03T19:33:44-04:00 waiting 3s to reach CAP_START+120s

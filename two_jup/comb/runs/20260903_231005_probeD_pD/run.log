@@ -1,0 +1,12 @@
+2026-09-03T23:10:05-04:00 probe=D leg=A dir=fwd rx=10.0.0.148 peer=10.0.0.146 dur=600 dry=0
+2026-09-03T23:10:05-04:00 poke on 10.0.0.146 via PEER_ATTR_POKE: in_voltage0_gain_control_mode=spi in_voltage0_hardwaregain=@keep in_voltage0_agc_tracking_en=0 in_voltage0_bbdc_rejection_tracking_en=0 in_voltage0_rfdc_tracking_en=0 in_voltage0_rssi_tracking_en=0 in_voltage0_quadrature_fic_tracking_en=0
+2026-09-03T23:10:05-04:00 orig(step1 fallback): in_voltage0_quadrature_fic_tracking_en=1 in_voltage0_rssi_tracking_en=1 in_voltage0_rfdc_tracking_en=1 in_voltage0_bbdc_rejection_tracking_en=1 in_voltage0_agc_tracking_en=1 in_voltage0_hardwaregain=34 in_voltage0_gain_control_mode=automatic
+2026-09-03T23:13:02-04:00 RESTORE (attr_poke.txt) on 10.0.0.146: in_voltage0_quadrature_fic_tracking_en=1 in_voltage0_rssi_tracking_en=1 in_voltage0_rfdc_tracking_en=1 in_voltage0_bbdc_rejection_tracking_en=1 in_voltage0_agc_tracking_en=1 in_voltage0_hardwaregain=34.000000 in_voltage0_gain_control_mode=automatic 
+  ATTR_RESTORE in_voltage0_quadrature_fic_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_rssi_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_rfdc_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_bbdc_rejection_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_agc_tracking_en want='1' write=ok after='1'
+  ATTR_RESTORE in_voltage0_hardwaregain want='34.000000' write=ok after='34.000000 dB'
+  ATTR_RESTORE in_voltage0_gain_control_mode want='automatic' write=ok after='automatic'
+2026-09-03T23:13:04-04:00 RESTORE VERIFIED: all attributes back to their before-values

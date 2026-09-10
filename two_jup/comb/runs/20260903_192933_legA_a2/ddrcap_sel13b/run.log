@@ -1,0 +1,5 @@
+2026-09-03T19:33:44-04:00 sel=13 offset_s=0 out=/mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_192933_legA_a2/ddrcap_sel13b dry=0
+19:33:48 NOTE: SKIP_GOLD=1 pre capTAP 0xF78C3553 (credit decided by bytes + positive control)
+BOARD 536870912
+19:34:00 sel13_leg sel13 bytes=536870912 pre=0xF78C3553 post=0x93883153
+19:34:00 WARN: post capTAP not golden -- capture not credited

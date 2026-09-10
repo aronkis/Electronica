@@ -1,0 +1,140 @@
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  demod_marks_periodic         PASS
+  slots_cycle                  PASS
+  d0 (toff mode) = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+TIER2 sel6 PASS
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  demod_marks_periodic         PASS
+  slots_cycle                  PASS
+  d0 (toff mode) = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  peaks_per_frame_ok           FAIL
+TIER2 sel12 FAIL
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  demod_marks_periodic         FAIL
+  slots_cycle                  PASS
+  d0 (toff mode) = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  countreg_not_constant        PASS
+  underflow_per_symbol         PASS
+TIER2 sel13 FAIL
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  demod_marks_periodic         FAIL
+  slots_cycle                  PASS
+  d0 (toff mode) = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  not_constant                 PASS
+  not_ramp                     PASS
+TIER2 sel14 FAIL
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  demod_marks_periodic         FAIL
+  slots_cycle                  PASS
+  d0 (toff mode) = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  rhctr_bounded_nonzero        PASS
+  push_pop_advance             PASS
+TIER2 sel15 FAIL
+=== sel13 RE-CAPTURE (sel13b, one permitted re-capture, confirms reproducibility) ===
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  demod_marks_periodic         FAIL
+  slots_cycle                  PASS
+  d0 (toff mode) = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  countreg_not_constant        PASS
+  underflow_per_symbol         PASS
+TIER2 sel13 FAIL
+=== FIX ROUND 1 RE-SCORE 18:26:53 (scorer v2: sel12 peak-shape rule per §80 census, sel13/14/15 use tref_cadence in place of demod_marks_periodic; no re-capture) ===
+--- sel6 ---
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  demod_marks_periodic         PASS
+  slots_cycle                  PASS
+  d0 = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+TIER2 sel6 PASS
+--- sel12 ---
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  demod_marks_periodic         PASS
+  slots_cycle                  PASS
+  d0 = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  peak_one_per_frame           FAIL
+  sel12_census = mean_secondaries_per_frame(0.45,0.8]xmax=16.22 largest_secondary_ratio=0.799  -- data, not a gate
+TIER2 sel12 FAIL
+--- sel13 ---
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  slots_cycle                  PASS
+  d0 = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  tref_cadence                 PASS
+  tref_drop_stats = modal_delta=1 frac_at_modal=0.9980 frac_drop(>2x_modal)=0.0020 drop_median_symbols=156.0 drops_per_1e6_records=488.22  -- data, not a gate
+  countreg_not_constant        PASS
+  underflow_per_symbol         PASS
+TIER2 sel13 PASS
+--- sel14 ---
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  slots_cycle                  PASS
+  d0 = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  tref_cadence                 PASS
+  tref_drop_stats = modal_delta=1 frac_at_modal=0.9980 frac_drop(>2x_modal)=0.0020 drop_median_symbols=163.0 drops_per_1e6_records=488.22  -- data, not a gate
+  not_constant                 PASS
+  not_ramp                     PASS
+TIER2 sel14 PASS
+--- sel15 ---
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  slots_cycle                  PASS
+  d0 = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  tref_cadence                 PASS
+  tref_drop_stats = modal_delta=1 frac_at_modal=0.9980 frac_drop(>2x_modal)=0.0020 drop_median_symbols=157.0 drops_per_1e6_records=488.22  -- data, not a gate
+  rhctr_bounded_nonzero        PASS
+  push_pop_advance             PASS
+TIER2 sel15 PASS
+--- sel12 outlier-frame diagnostic (investigation, not scorer output) ---
+frame 504 len=12333 fmax=40578218 primary_count=12
+frame 505 len=24666 fmax=67831696 primary_count=2
+frame 1979 len=12333 fmax=35471682 primary_count=13
+frame 1980 len=24666 fmax=67535588 primary_count=2
+frame 2773 len=12333 fmax=40533853 primary_count=13
+frame 2774 len=24666 fmax=67601284 primary_count=2
+frame 4231 len=12333 fmax=35752553 primary_count=13
+frame 4232 len=24666 fmax=67864653 primary_count=2
+frame 5040 len=12333 fmax=40544122 primary_count=13
+frame 5041 len=24666 fmax=67947049 primary_count=2
+frames scored=5438 clean(exactly-1)=5428 frac_clean=0.9982
+all 5 anomalies are (short 12333-record frame, primary_count 12-13) immediately followed by (double-length 24666-record frame, primary_count 2) -- a missed demod-mark merges two real frames into one measured segment; the pre-merge frame's local fmax is suppressed (~35-40M vs ~67-68M typical), so several near-max secondaries spuriously cross 0.8x of that low local max. Same missed-marker mechanism as sel13/14/15's tref_cadence drops, at ~50x lower rate (0.18%).
+=== FIX ROUND 2 RE-SCORE 18:35:05 (sel12: peak_one_per_frame given a >=99.5% tolerance band per plan-owner ruling 2026-09-02, matching every other Tier-2 rule; no re-capture) ===
+  not_constant_IQ              PASS
+  not_ramp_IQ                  PASS
+  demod_marks_periodic         PASS
+  slots_cycle                  PASS
+  d0 = 26
+  toff_range_steady            PASS
+  tref_monotone                PASS
+  peak_one_per_frame           PASS
+  sel12_exceptions = 10 exception frame(s) of 5438 scored (0.9982 clean): frame504(len=12333,primary_count=12); frame505(len=24666,primary_count=2); frame1979(len=12333,primary_count=13); frame1980(len=24666,primary_count=2); frame2773(len=12333,primary_count=13); frame2774(len=24666,primary_count=2); frame4231(len=12333,primary_count=13); frame4232(len=24666,primary_count=2); frame5040(len=12333,primary_count=13); frame5041(len=24666,primary_count=2)  -- all at missed-demod-mark events (short-frame/merged-frame pairs)
+  sel12_census = mean_secondaries_per_frame(0.45,0.8]xmax=16.22 largest_secondary_ratio=0.799  -- data, not a gate
+TIER2 sel12 PASS

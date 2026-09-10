@@ -1,0 +1,3 @@
+TXFIX_GATE_LAUNCH id=G12 variant=F1 bin=obj_txkick_F1/Vtxkick args=8 3 nearfull beat_runs/g12_nearfull_F1 0 6
+TXKICK sel=nearfull SEL=6 NF=8 K=3 k=0 packets=22 biterr=51 rstcs=0 txFrameStartPulses=24 txFrameIdx=23
+TXFIX_GATE_RUN_EXIT=0

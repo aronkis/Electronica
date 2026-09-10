@@ -1,0 +1,3 @@
+[wd] === STARTING 00:12:18 pid=30932 ===
+[wd 00:12:18] watchdog up: MW=iio:device0 TXD=iio:device5 PERIOD=5s PKT_MIN=50 FAIL_N=2 HOLDOFF=10s BIST_GATE=0
+[wd 00:12:24] LOCKED (drstcs=0 dpkts=6243 lvl=12)

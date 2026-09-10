@@ -1,0 +1,67 @@
+=== capture_r3 A (fwd): R3/f1536 link, 600s traffic, Tap-A 4000000 samp on 10.0.0.148 -> /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_222141_probeA_pAr2/cap ===
+  10.0.0.146 build: BUILD_OK
+  10.0.0.148: preserving deployed NAK-stat instrumentation (-DQPSK_ARQ_NAKSTAT)
+  10.0.0.148 build: BUILD_OK
+  10.0.0.148: NAK-stat counter VERIFIED present after rebuild
+--- bringup_r2r3.sh r3 (logger on) ---
+=== r3 bring-up: lvds_61p44_fdd_jupiter, -r 15360, gate >= 1120 f/s ===
+10.0.0.146 armed ROM (lvds_61p44_fdd_jupiter)
+10.0.0.148 armed ROM (lvds_61p44_fdd_jupiter)
+146: ssi-fix VERIFIED: tx0=c3d4 rx0 preserved (2/4) (rearmed, 0x114=1)
+148: ssi-fix VERIFIED: tx0=c5d3 rx0 preserved (0/4) (rearmed, 0x114=1)
+gate try 1: 148 rx=1244 f/s  146 rx=1246 f/s (need >= 1120)
+ARM GATE PASS (try 1)
+10.0.0.146 daemon up (ROM still selected)
+10.0.0.148 daemon up (ROM still selected)
+byte re-arm done
+byte re-arm done
+byte re-arm done
+byte re-arm done
+10.0.0.146 watchdog: ALIVE pid=24351 [wd] === STARTING 03:23:33 pid=24351 ===
+10.0.0.148 watchdog: ALIVE pid=265544 [wd] === STARTING 22:23:38 pid=265544 ===
+=== r3 BRING-UP COMPLETE (byte source live both ends, stream-first + double-tap order) ===
+10.0.0.146 wd stopped
+10.0.0.148 wd stopped
+  traffic: 10.0.0.146 -> 10.66.0.2 (qpsk_perf -b 15Mbit -l 1400 -t 740), settling 4s ...
+  health try 1: rev 92% fwd 100% (need >= 50%)  rate 949 f/s (need >= 300)
+  link healthy: CRC 92% AND delivering 949 f/s
+  wedge verdict: healthy crc=92% rate=949f/s
+  RX_ATTR_POKE on 10.0.0.148: in_voltage0_gain_control_mode=spi in_voltage0_hardwaregain=@keep
+  phy=/sys/bus/iio/devices/iio:device2
+  ATTR_PRE_GAIN t1 gain='34.000000 dB' mode='automatic' rssi='27.312 dB'
+  ATTR_PRE_GAIN t2 gain='34.000000 dB' mode='automatic' rssi='27.449 dB'
+  ATTR_PRE_GAIN t3 gain='34.000000 dB' mode='automatic' rssi='27.400 dB'
+  ATTR_PRE_GAIN t4 gain='34.000000 dB' mode='automatic' rssi='27.493 dB'
+  ATTR_PRE_GAIN t5 gain='34.000000 dB' mode='automatic' rssi='27.531 dB'
+  ATTR_POKE in_voltage0_gain_control_mode before='automatic' want='spi' write=ok after='spi'
+  ATTR_POKE in_voltage0_hardwaregain before='34.000000 dB' want='34.000000' write=ok after='34.000000 dB'
+  ATTR_POST_GAIN t1 gain='34.000000 dB' mode='spi' rssi='27.301 dB'
+  ATTR_POST_GAIN t2 gain='34.000000 dB' mode='spi' rssi='27.368 dB'
+  ATTR_POST_GAIN t3 gain='34.000000 dB' mode='spi' rssi='27.386 dB'
+CAP_START t=1788488669.398091045 pkts=0x11C0A biterr=0x3E90CE rstcs=0x0 cfc=0xFFFFF1C9
+CAP_END   t=1788488669.527152031 pkts=0x11CA8 biterr=0x3EB4EF rstcs=0x0 cfc=0xFFFFF2B3
+-rw-r--r-- 1 root root 16000000 Sep  3 22:24 /dev/shm/pair.iq
+  580s traffic remaining (stall watchdog: abort after 12s flatline) ...
+    !! delivery stalled 4s (+0 frames in 4s)
+    !! delivery stalled 4s (+0 frames in 4s)
+    !! delivery stalled 8s (+0 frames in 4s)
+    !! delivery stalled 12s (+0 frames in 4s)
+CAPTURE_ABORTED_WEDGED: MID_CAPTURE_WEDGE after 540s (delivery flatlined 12s) -- NOT usable data
+t=1788489388.394429187 pkts=0xEBB1C biterr=0x3546C24 rstcs=0x0 cfc=0xFFFFF2BA fx=0x0
+CAPTURE_HEALTH /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_222141_probeA_pAr2/cap/pair.iq
+  occupied BW      =   2.88 MHz   [15.0..30.0] -> FAIL   (good ref 22.16, wedged 2.88)
+  env periodicity  = 0.9994 at lag   256   < 0.9 -> FAIL   (good ref 0.52, wedged 0.9994)
+  VERDICT: DEGENERATE -- DO NOT draw conclusions from this capture.
+  A near-unity envelope autocorrelation at lag 256 is the #48 stale-DDR-replay signature: the DMA is returning a stale buffer.
+  Recovery for that class is REBOOT-ONLY -- a full bring-up restore does not clear it (verified 2026-08-24).
+  Bandwidth far from the expected ~23 MHz means the tap is not carrying the f1536 signal at all.
+  *** CAPTURE HEALTH FAILED -- pair.iq is DEGENERATE. Do NOT draw IQ-based
+  *** conclusions from this run. frames.bin / host-side counters are unaffected.
+10.0.0.146 quiesced
+10.0.0.148 quiesced
+--- frames.bin summary ---
+frames.bin: 883422 records
+NEXT: python3 /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/frame_taxonomy.py /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_222141_probeA_pAr2/cap/frames.bin --frame-period-s 0.000803
+      python3 /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/align_frames.py /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_222141_probeA_pAr2/cap/frames.bin /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_222141_probeA_pAr2/cap/regs_cap.txt --spf 49332 --pair /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_222141_probeA_pAr2/cap/pair.iq -o /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_222141_probeA_pAr2/cap
+CAPTURE_R3_WEDGED /mnt/onetb/scratch/qpsk-jupiter-modem/two_jup/comb/runs/20260903_222141_probeA_pAr2/cap  -- MID_CAPTURE_WEDGE after 540s (delivery flatlined 12s) -- NOT usable data
+  run flagged; callers should discard it (exit 3)
