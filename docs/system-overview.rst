@@ -20,20 +20,51 @@ AGC/RRC/symbol-sync/carrier-sync/demod chain), dropped into an
 ADI/MathWorks TransceiverToolbox reference design that adds the
 platform plumbing: byte-stream DMA engines, the register file, and the
 IIO/RF integration. A single-binary host daemon,
-``host_app_k5/qpsk_tun.c``, exposes the link as a Linux TUN network
+``host/qpsk_tun.c``, exposes the link as a Linux TUN network
 interface on each board.
+
+The two boards work an FDD pair surveyed for this bench: forward
+146 → 148 at **2.00 GHz**, reverse 148 → 146 at **1.90 GHz**, chosen to
+dodge board 148's 2.10 GHz TX-LO leakage. That plan is a property of
+these two units, not of the design — a different pair re-surveys it
+(:doc:`bringup`).
 
 .. raw:: html
    :file: _static/images/link-block-diagram.svg
 
+The signal chain, end to end
+----------------------------
+
+**Transmit (host → air).** The host daemon frames each payload (magic,
+length, sequence number, CRC-32, PN-filled pad) and pushes it over the
+TX byte DMA as 64-bit AXI-stream words. In fabric the ``ByteWordBuffer``
+accepts the DMA beats, the ``ByteBitShifter`` serializes bytes to bits,
+the K5 encoder codes them at rate 1/2, the block interleaver spreads
+them, the result is π/4-Gray QPSK mapped, pulse-shaped by the sqrt-RRC
+interpolator, and streamed to the ADRV9002 DAC. A 13-symbol Barker
+preamble precedes every frame. **There is no scrambler** — both the TX
+scrambler and the RX descrambler are bypassed, so the air contract is
+un-whitened and the *host* applies the payload whitener instead
+(``QPSK_WHITEN=1``, both ends; see :doc:`bringup`).
+
+**Receive (air → host).** The ADRV9002 delivers baseband IQ and the
+modem runs AGC → Coarse Frequency Compensator → Symbol Synchronizer
+(Gardner) → Carrier Synchronizer (PLL with an NCO/DDS derotator) →
+phase-ambiguity resolver → QPSK demodulator → deinterleaver → K5
+Viterbi decoder (traceback 25) → ByteSerializer → byte RX DMA, from
+which the host reassembles the payload. Each of those stages is a
+register-visible or tap-visible boundary; :doc:`debug-instruments`
+catalogues what can be observed where.
+
 Frame geometry: R3 = f1536
 --------------------------
 
-The link runs at the 240 kSym-class operating point the project calls
-**R3**, with the **f1536** frame format (named for its 1536-byte host
-slot class; the K5 format at 1024 B preceded it). Everything below is
-measured, not nominal — the sources are
-``two_jup/LAYERB_RUN_RESULT.md`` and ``two_jup/SINGLES_REPLAY.md``:
+The link runs at the rate rung the project calls **r3** — 61.44 MSPS
+LVDS, 4 samples per symbol, 15.36 Msym/s — with the **f1536** frame
+format (named for its 1536-byte host slot class; the K5 format at
+1024 B preceded it). Everything below is measured, not nominal — the
+sources are ``docs/evidence/LAYERB_RUN_RESULT.md`` and
+``docs/evidence/SINGLES_REPLAY.md``:
 
 .. list-table::
    :header-rows: 1
@@ -67,15 +98,15 @@ can optionally run) is disabled for the acceptance measurement so that
 the raw link quality is what is scored.
 
 The goal is credible because of one anchoring fact
-(``two_jup/HANDOFF_20260812.md``): floating-point MATLAB simulation
+(``docs/evidence/HANDOFF_20260812.md``): floating-point MATLAB simulation
 decodes the same captured air samples near-perfectly, and the
-fixed-point budget analysis (``two_jup/FLOAT_GAP_BUDGET.md``) shows the
+fixed-point budget analysis (``docs/evidence/FLOAT_GAP_BUDGET.md``) shows the
 fixed-point datapath already *meets* float on healthy captures (median
 gap −1.18 pp EVM, fixed better). Every residual loss is therefore an
 implementation artifact — something in the fabric byte plane, the DMA
 path, the host daemon, or the TX feeder — and the campaign's method is
 to find each artifact, name its mechanism with an instrument, and kill
-it. The running score-keeping lives in ``two_jup/LOSS_LEDGER.md``,
+it. The running score-keeping lives in ``docs/evidence/LOSS_LEDGER.md``,
 which classifies every lost frame in ~600 k frames of banked logs into
 named classes with an enumerated (not summarized) "unnamed" remainder.
 
@@ -86,8 +117,7 @@ The ledgers use a compact vocabulary. First-use definitions:
 
 * **f1536 / R3** — the frame format and rate class defined above.
 * **K5** — the earlier 240k5 frame geometry (1024 B slots); much of the
-  directory naming (``host_app_k5``, ``jupiter_240k5_byte``) predates
-  f1536 and is kept.
+  file naming (``*_240k5_*``, ``*_k5.*``) predates f1536 and is kept.
 * **byte plane** — everything between the demodulator's decoded bits
   and the host's DMA buffer: ByteSerializer, platform byte FIFO,
   ``rx_byte_dma`` (and the TX mirror). See :doc:`byte-plane`.
@@ -110,13 +140,52 @@ The ledgers use a compact vocabulary. First-use definitions:
   banking is deliberately separate from flashing. See
   :doc:`build-and-flash`.
 
+Where the source lives
+----------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 78
+
+   * - Path
+     - Role
+   * - ``modem/``
+     - **Canonical modem source.** ``commhdlQPSKTxRxLoopback.slx`` (the
+       model, DUT ``TxRxComposite``), the assemble script that applies
+       the donor phases and every overlay, the overlay ``.m`` files, the
+       gate scripts and their stamps, and the image build scripts. See
+       :doc:`build-and-flash`.
+   * - ``contract/``
+     - The bit/packet contract (``PACKET_K5.txt``), the ideal float
+       receiver (``decode_ref_k5.m``), the golden BIST payload
+       (``golden_k5.mat``) and the K5 AWGN BER curve.
+   * - ``host/``
+     - The host userspace data plane — ``qpsk_tun.c`` and its
+       companions, the register-map header ``qpsk_hw.h``, the
+       ``modem_status`` TUI, and the C unit tests. See
+       :doc:`host-software`.
+   * - ``ops/``
+     - The operator kit: board access, flash and provision tools,
+       bring-up, health probes, capture and analysis scripts, the LVDS
+       profiles under ``ops/profiles/``, and the netlist fix kit under
+       ``ops/skidfix/``.
+   * - ``images/``
+     - The banked boot images plus the kernel ``Image`` and device
+       trees, with ``CURRENT.txt`` naming the current role-A and role-B
+       images. See :doc:`setup-prebuilt` and :doc:`provenance`.
+   * - ``tests/``
+     - The MATLAB ``unittest`` suite (L1 host-pure, L2 gates, L3
+       hardware-in-the-loop). See :doc:`testing`.
+
 Where the evidence lives
 ------------------------
 
 The project's ground truth is the set of investigation ledgers under
-``two_jup/`` — dated, self-contained markdown documents, each anchoring
-one question to measurements (``HANDOFF_*.md`` for session state,
-``*_ROOT_CAUSE.md`` / ``*_TEST.md`` / ``*_LEDGER.md`` for verdicts).
-These pages cite them by filename; read the cited file before acting on
-any claim here. The measurement habits that make those ledgers
-trustworthy are the subject of :doc:`measurement-discipline`.
+``docs/evidence/`` — dated, self-contained markdown documents, each
+anchoring one question to measurements (``HANDOFF_*.md`` for session
+state, ``*_ROOT_CAUSE.md`` / ``*_TEST.md`` / ``*_LEDGER.md`` for
+verdicts). These pages cite them by path; read the cited file before
+acting on any claim here, and note that paths *inside* a ledger refer to
+the tree at tag ``archive/pre-cleanup-2026-09-09``. The measurement
+habits that make those ledgers trustworthy are the subject of
+:doc:`measurement-discipline`.

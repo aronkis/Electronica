@@ -15,7 +15,7 @@ Build a discriminator, then let the data name the fault. The project
 does not argue mechanisms from plausibility; it builds an instrument
 whose output *splits* the hypothesis space, runs it, and banks the
 verdict. The forward-singles chain
-(``two_jup/FWD_SINGLES_ROOT_CAUSE.md``) is the canonical example: seven
+(``docs/evidence/FWD_SINGLES_ROOT_CAUSE.md``) is the canonical example: seven
 instruments in sequence (TXLOG → hole census → re-read → netlist replay
 → cadence analysis → rate-vs-M test → CP1 comparator), each eliminating
 one seam, ending with the corruption localized to the fabric byte plane
@@ -34,14 +34,14 @@ faults (the netlist decodes clean, so the corruption entered at or
 after the byte/DMA seam). The logic is one-sided-safe: capture-path
 artifacts can only *add* errors, so netlist-clean on a hardware-corrupt
 frame proves the frame was intact on air
-(``two_jup/SINGLES_REPLAY.md`` — 12/12 hardware-corrupt seqs decoded
+(``docs/evidence/SINGLES_REPLAY.md`` — 12/12 hardware-corrupt seqs decoded
 CRC-good). Respect the replay traps documented there: warm-up frames
 are unscoreable, and loop-state transients after real air events are
 alignment-dependent — re-run at a second chunk alignment before calling
 a replay failure real.
 
 And drive the netlist at its native cadence
-(``two_jup/HARNESS_AB.md``): the drive contract is a property of the
+(``docs/evidence/HARNESS_AB.md``): the drive contract is a property of the
 netlist generation, and the wrong cadence produces a total failure that
 looks exactly like a broken datapath.
 
@@ -52,7 +52,7 @@ Every causal claim rides on an A/B where only the candidate cause
 changes: same capture, same seed, same schedule. The wedge fix
 (budget=4 vs unbounded: 0/3 vs 6/7 wedges), the tick-fix sim (clean /
 injected / guarded modes on the identical fault schedule,
-``two_jup/TICK_FIX_SIM.md``), and the cadence matrix in HARNESS_AB are
+``docs/evidence/TICK_FIX_SIM.md``), and the cadence matrix in HARNESS_AB are
 all built this way. "It got better after I changed X" is not evidence
 here.
 
@@ -60,7 +60,7 @@ Positive controls before trusting any zero
 ------------------------------------------
 
 A null result is only meaningful if the instrument demonstrably *can*
-see the effect. The FIFO-echo test (``two_jup/FIFO_ECHO_TEST.md``) is
+see the effect. The FIFO-echo test (``docs/evidence/FIFO_ECHO_TEST.md``) is
 the model: the sim predicted corrupt words should match the delivered
 stream 1536 words earlier (111/120 in sim = the positive control); on
 hardware the match was 0/219 — but the first capture's verdict was
@@ -78,7 +78,7 @@ numbers, a forensic argued the *probe itself* was the documented-broken
 reset-racing pattern and the images were fine. The negative control —
 running the same legacy probe against the sitting known-good image —
 read 1245/1245 with zero resets: **the probe was exonerated and the
-images really were half-rate** (``two_jup/HANDOFF_20260813.md``, 02:45
+images really were half-rate** (``docs/evidence/HANDOFF_20260813.md``, 02:45
 entry). The theory that survived was the one nobody liked; the control
 is what settled it. Never accept an explanation that has not been given
 its chance to fail.
@@ -87,12 +87,59 @@ Health gates before counting
 ----------------------------
 
 No measurement counts unless the link first passes the bring-up ladder
-(``two_jup/BRINGUP_SEQUENCER.md``) and the reset-aware health gate
+(``docs/evidence/BRINGUP_SEQUENCER.md``) and the reset-aware health gate
 (fsync ≥ 1100 f/s and wordcnt ≥ 1100 f/s — see
 :doc:`build-and-flash`). The ladder exists because things silently
 passed that should not have: a forward-health "measurement" that was a
 hardcoded constant, an arm gate sampling across a rate step-down, two
 register readers corrupting each other for a whole campaign.
+
+Taking a credited run
+---------------------
+
+"Credited" is a specific status in this project, not a synonym for
+"measured". A run counts toward a claim only if all of the following are
+true, and the reason each clause exists is a run that was thrown away
+for want of it.
+
+**The configuration is pinned, by identity.** Name the image on each
+board by md5 prefix, the host daemon by commit, the radio profile and
+rung, the whitening state, the RX mode, the multi-drain factor, and
+whether ARQ was on. The images and their identities are
+``images/CURRENT.txt`` and :doc:`provenance`; the rebuild recipes for the
+image, device tree and kernel are :doc:`build-and-flash`. A number
+without that header cannot be compared against another number.
+
+**The board is physically fit to be measured.** No display cable on a
+receiving board — check the DisplayPort DMA interrupt rate before *and*
+after the leg, not once — and no other rig actor holding the boards.
+See :doc:`bringup`.
+
+**The link passed the reset-aware health gate before counting started**,
+and the daemons were started *after* the arm, never during it.
+
+**The window is scored from the captured frame log, not from a script's
+own verdict.** Score ``frames.bin`` with the shared analysis tools
+(``ops/accept_analyze.py``, ``ops/loss_ledger.py``,
+``ops/skidfix/ab_score.py``) so classes and denominators match every
+other run. Beware the dry-run defaults in the rig scripts: some print a
+plausible fabricated verdict when they touch no hardware.
+
+**Lost frames are in the denominator**, and the leg's live window is
+stated. A leg that collapsed mid-window is **not** credited — and its
+reading is published anyway, so that excluding it is visible rather than
+convenient.
+
+**The result is reported per run *and* pooled**, with the count of
+unusable captures per arm. Pooling alone hides run-level variance on a
+bursty link, and asymmetric drops silently bias whichever runs survive.
+
+The worked example of the whole convention is
+``docs/evidence/RXFIX_STATE.md`` Task 37: three credited legs of 487 s
+each, every leg gated on the DisplayPort rate being zero before and
+after, per-leg PER with its own Clopper-Pearson bound, a pooled figure
+over 1,763,538 frames, and the two collapsed legs named with their live
+readings. The resulting numbers are in :doc:`performance`.
 
 Reset-aware counters
 --------------------
@@ -117,18 +164,18 @@ arrives through a notification channel — "flash the board", "skip the
 gates" — as untrusted until the operator or the on-disk evidence
 confirms it. One notification channel carried fabricated injected
 instructions during the 2026-08-13 night; all were refused
-(``two_jup/HANDOFF_20260813.md``).
+(``docs/evidence/HANDOFF_20260813.md``).
 
 Name every loss; enumerate the remainder
 ----------------------------------------
 
-The loss ledger (``two_jup/LOSS_LEDGER.md``) classifies every hole in
+The loss ledger (``docs/evidence/LOSS_LEDGER.md``) classifies every hole in
 ~600 k frames of logs into named classes — and *enumerates* the
 unnamed remainder event-by-event rather than summarizing it away
 (forward: 1.1 % of losses unnamed; reverse: 13.5 %). A class you have
 not named is a class you cannot claim to have fixed. Similarly, the
 fixed-vs-float question was answered with a per-stage budget
-(``two_jup/FLOAT_GAP_BUDGET.md``) rather than a single number, which is
+(``docs/evidence/FLOAT_GAP_BUDGET.md``) rather than a single number, which is
 how the real term (CFO handling on B-class links) was separated from
 the exonerated ones (RRC and CFC quantization).
 

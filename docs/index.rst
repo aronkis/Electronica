@@ -8,22 +8,24 @@ Two Jupiter boards (10.0.0.146 and 10.0.0.148) each carry an FPGA image
 generated from the ``commhdlQPSKTxRxLoopback`` HDL Coder model plus a
 platform byte-DMA plane, and exchange 1528-byte frames over the air at
 roughly 1245 frames per second in each direction. A single-binary host
-daemon (``host_app_k5/qpsk_tun.c``) turns the link into a Linux TUN
-network interface. The campaign goal is delivered packet-error rate
-below 1 % in both directions with ARQ off — floating-point simulation
-decodes the same air captures near-perfectly, so every residual loss is
-an implementation artifact to be found and named.
+daemon (``host/qpsk_tun.c``) turns the link into a Linux TUN
+network interface. The campaign goal — delivered packet-error rate
+below 1 % in both directions with ARQ off — **is met**, at 0.070–0.079 %
+forward and 0.191 % reverse with lost frames in the denominator
+(:doc:`performance`). It was reached by treating every residual loss as
+an implementation artifact to be found and named, which floating-point
+simulation licensed: it decodes the same air captures near-perfectly.
 
 This documentation is written for a competent SDR/FPGA engineer who has
 never seen this repository. It is the *map*: the authoritative evidence
-lives in the ``two_jup/*.md`` investigation ledgers that each page
+lives in the ``docs/evidence/*.md`` investigation ledgers that each page
 cites. When a page and a ledger disagree, the ledger wins.
 
 Where to start
 --------------
 
 * **Just want a running link?** :doc:`setup-prebuilt` deploys the
-  banked pre-built boot images (``boot_known_good/``) and the host
+  banked pre-built boot images (``images/``) and the host
   daemon with no MATLAB or Vivado involved.
 * **New to the project?** Read :doc:`system-overview` first — it defines
   the link, the frame geometry, and the vocabulary every other page
@@ -56,3 +58,8 @@ Where to start
    measurement-discipline
    debug-instruments
    current-state
+   bringup
+   provenance
+   testing
+   performance
+   glossary

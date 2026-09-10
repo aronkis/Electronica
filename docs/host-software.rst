@@ -2,7 +2,7 @@ Host software
 =============
 
 You are reading this because you need to modify, instrument, or reason
-about ``host_app_k5/qpsk_tun.c`` — the single-binary daemon that turns
+about ``host/qpsk_tun.c`` — the single-binary daemon that turns
 the FPGA byte link into a Linux network interface. This page explains
 its structure, the environment-gated instruments built into it, and —
 as the worked example of how this project debugs — the RX-drain wedge
@@ -46,7 +46,7 @@ check before its data was trusted.
      - Appends one 48-byte record per scored slice (wall clock,
        host_seq, CRC verdict, and raw reads of 0x104/0x108/0x150/
        0x154/0x15C) to a file. This log is the substrate of every loss
-       ledger and cadence analysis (``two_jup/LOSS_LEDGER.md``).
+       ledger and cadence analysis (``docs/evidence/LOSS_LEDGER.md``).
    * - ``QPSK_TXLOG``
      - Ring of the last N TX submits with timestamps, inflight depth,
        and DMA spin counts. This is the instrument that proved the TX
@@ -57,7 +57,7 @@ check before its data was trusted.
        buffer (CP2) and after the carve→host copy (CP3), sampled every
        Nth slice. CP2==CP3 with zero mismatches across 7/7 wedge
        reproductions exonerated the RX seam
-       (``two_jup/WEDGE_ROOT_CAUSE.md``).
+       (``docs/evidence/WEDGE_ROOT_CAUSE.md``).
    * - ``QPSK_FSLOG``
      - The CP1 comparator: per drained slice, reads a framestat record
        (0x1D0 lo non-popping, 0x1D4 hi, then **pop by writing a
@@ -82,7 +82,52 @@ check before its data was trusted.
    * - ``QPSK_RXQ_REREAD``
      - Re-reads a CRC-failed slice from the DMA buffer to test for torn
        reads. 0/23,740 re-reads ever rescued a frame — the corruption
-       is stable in the buffer (``two_jup/FWD_SINGLES_ROOT_CAUSE.md``).
+       is stable in the buffer (``docs/evidence/FWD_SINGLES_ROOT_CAUSE.md``).
+   * - ``QPSK_TX_QUEUED``
+     - Batches **idle keepalive** frames N air frames per MM2S transfer
+       instead of one, so a single latched transfer covers N frames of
+       air. N = 5 is the maximum at f1536 (5 × 3080 B per 16 KB
+       stride); 0 or 1 is the legacy per-frame behaviour. Data frames
+       are still sent per-frame, but wait up to N frame periods (~4 ms
+       at N = 5) for the queue — acceptable for a PER experiment, not
+       free for latency.
+
+The TX-gap witness and idle batching
+------------------------------------
+
+One instrument is **always on**: after every ``qpsk_tun stats:`` line
+(which is byte-for-byte unchanged) the daemon prints a ``txgap:`` line
+counting TX submits, submits that found the DMA queue empty, and
+estimated silences over 20 / 50 / 200 µs with max, p99 and mean. The
+silence is estimated host-side — when a submit finds the queue empty
+after reaping, the fabric has been idle since the previous submit plus
+its frames' air time — so it is a **lower bound**, not a measurement of
+the fabric's own idleness.
+
+It exists because of a hardware constraint worth knowing before
+optimising anything on this path: the ``axi_dmac`` latches exactly
+**one** request ahead (a submit while one is latched overwrites it), so
+``max_inflight = 2`` is the hardware maximum and the TX slack is at most
+one transfer of air — about 0.8 ms per f1536 frame. Any event-loop
+iteration longer than the remaining latched air starves the fabric's
+TX word buffer and costs exactly one air frame; the recurring offender
+is the S2MM-boundary drain, which is the same mechanism as the wedge
+below, at lower severity. ``QPSK_TX_QUEUED=N`` raises the slack to N
+frames for idle traffic, and ``QPSK_RX_DRAIN_BUDGET`` bounds the other
+side of the same loop.
+
+How to read the pair: with batching off, this board's ``gt20us`` count
+should track the **peer's** bad-magic count for frames this board
+transmitted. If ``gt20us`` is near zero while the peer's bad-magic
+count stays high, the silence is not host-side and batching will not
+help — say so and stop rather than enabling it anyway.
+
+One risk to watch. Batching changes the transfer size the fabric sees
+(N × 3080 B under one TLAST); the bit shifter re-aligns on the
+first-word flag per transfer and frames 2…N stay aligned by the
+385-word cadence, but that has been verified in the netlist only for
+per-frame transfers. Watch the checker's short/orphan counts. Do not
+enable it during a bring-up arm.
 
 The worked example: the wedge
 -----------------------------
@@ -90,7 +135,7 @@ The worked example: the wedge
 The **wedge** was the project's most dramatic failure mode: the link
 would collapse into a self-sustaining state delivering ~254 junk
 slices/s with framesync lost, recoverable only by restart. The root
-cause (``two_jup/WEDGE_ROOT_CAUSE.md``, causally confirmed in loopback
+cause (``docs/evidence/WEDGE_ROOT_CAUSE.md``, causally confirmed in loopback
 2026-08-12) is a starvation loop inside the single-threaded daemon:
 
 1. ``rx_pump_queued()`` historically drained **all 32 slices** of a
@@ -106,7 +151,7 @@ cause (``two_jup/WEDGE_ROOT_CAUSE.md``, causally confirmed in loopback
 The evidence chain is a model of the project's method: CP2/CP3
 checkpoints exonerated the RX seam; PN-correlation analysis classified
 the junk as demod noise, not stale or shifted frames
-(``two_jup/WEDGE_JUNK_CLASS.md``); TXLOG caught the feeder gaps with
+(``docs/evidence/WEDGE_JUNK_CLASS.md``); TXLOG caught the feeder gaps with
 ``inflight_after=0`` and ``spins=0`` (fabric TX path exonerated —
 the DMA never lacked capacity); and the causal A/B —
 ``QPSK_RX_DRAIN_BUDGET=4`` vs unbounded — produced **0/3 wedges versus
@@ -129,6 +174,40 @@ with the instrument on and off and show the loop timing is unchanged
 An instrument that perturbs the loop it measures manufactures its own
 signal — see :doc:`measurement-discipline` for the general rule and
 its most expensive violations.
+
+Live status: ``modem_status`` (on-board TUI)
+--------------------------------------------
+
+``host/modem_status/modem_status`` is a ``jesd_status``-style full-screen readout of
+one board's view of the data link: the modem RX-pipeline counters with per-second
+deltas, the byte plane and census words, both axi_dmac engines, the ADRV9002
+(rssi, gains, ENSM), the ``qpsk_tun`` stats line and the lock watchdog verdict,
+each with its age and a health colour. The full-screen view is ncurses (panels
+with box-drawing dividers; ``libncurses-dev`` is on both boards, installed on 148
+2026-09-09); ``--plain`` is a libc VT100 fallback. Build **on each board** (148 is
+arm64, 146 is armhf); ``/usr/local/bin/modem_status`` is the installed copy::
+
+   make -C /root/host_app_k5 modem_status
+   ssh -t root@10.0.0.148 /root/host_app_k5/modem_status      # TUI: q r p 1 2 3
+   /root/host_app_k5/modem_status --once                        # two samples, plain text
+   /root/host_app_k5/modem_status --json                        # one JSON object
+   /root/host_app_k5/modem_status --no-regs --once              # file-sourced fields only
+
+Safety contract (``modem_status.h``): it never writes a register, never opens
+``direct_reg_access`` (it reads the modem BAR through a ``PROT_READ`` mmap like
+the campaign's own stage poller (``stage_poll.c`` at tag
+``archive/pre-cleanup-2026-09-09``), so it adds no latch reader), polls at a fixed 1 s, and
+pauses register reads while a ``profile_config``/``stream_config`` write is in a
+process cmdline, while the ENSM mode is not ``rf_enabled``, or while
+``/dev/shm/modem_status.pause`` exists. The residual race is one batched read per
+second; do not run it during a scripted bring-up, or ``touch`` the pause file first.
+
+Reading it: ``crc`` is the daemon's per-window delivered ratio (the sentinel's
+``crc=`` column), not a PER. ``cap_out``/``biterr`` are scored only with ``--bist``
+(``tx_data_source`` is write-only, so the mode cannot be read back). The R4 word is
+keyed on the boot-image md5 (``9acbe2ebe1db`` on 146 reads 0x234/0x238 swapped);
+an unknown image shows the raw words with ``img?``. Host tests: ``make
+test_modem_status`` in ``host/`` (228 checks against a fake source).
 
 See also
 --------

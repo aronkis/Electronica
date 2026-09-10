@@ -145,7 +145,7 @@
   <text x="550" y="461" class="box-text" text-anchor="middle">FrameStat record (64-bit, one per RX frame, 64-deep FIFO)</text>
   <text x="550" y="481" class="box-desc" text-anchor="middle">[63:48] payload_checksum (16-bit byte-sum of delivered words) &#183; [47:32] cfc snapshot &#183; [31:24] agc_level (0 in LEAN) &#183; [23:16] corr_strength</text>
   <text x="550" y="497" class="box-desc" text-anchor="middle">[11] sync_low_margin &#183; [10] txur_in_frame &#183; [9] stall_in_frame &#183; [8] cs_reset_in_frame &#183; [7:0] frame_seq = packets_out &amp; 0xFF (host frame-align tag)</text>
-  <text x="550" y="513" class="note-text" text-anchor="middle">Full spec: jupiter_240k5_byte/FRAMESTAT_NOTES.md — the layout here is a summary, not the contract</text>
+  <text x="550" y="513" class="note-text" text-anchor="middle">Full spec: docs/evidence/FRAMESTAT_NOTES.md — the layout here is a summary, not the contract</text>
 
   <text x="550" y="565" class="note-text" text-anchor="middle">DRA (direct_reg_access) is a SINGLE address latch — two concurrent readers corrupt each other. Stop the lock watchdog before any manual register session.</text>
 </svg>

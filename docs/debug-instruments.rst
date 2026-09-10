@@ -10,7 +10,110 @@ instrument without perturbing the production image, the RTL simulation
 harness family, and the offline analysis tooling.
 
 :doc:`measurement-discipline` says *why* to instrument before theorising.
-This page says *with what*.
+This page says *with what* — starting with the triage table, because most
+of the time the instrument you need already exists and the question is
+only which one.
+
+Triage: symptom → cause → action
+--------------------------------
+
+Start here when a live link looks wrong. Run the acceptance ladder first
+(:doc:`testing`) to localize *where* in the chain the problem is; this
+table is for interpreting what you then see. The one-screen live view of
+a board is ``host/modem_status/modem_status``, built and installed
+on-board — it shows the register deltas, the byte plane, both DMA
+engines, the radio, the daemon and the watchdog verdict without opening
+``direct_reg_access`` at all (:doc:`host-software`).
+
+What healthy looks like: ``cap_out`` (0x144) = ``0x04922282`` under
+BIST; ``packets_out`` (0x104) advancing, with the reset-aware probe
+reading ``fsync≈1245 wcnt≈1245``; ``rstcs`` (0x150) delta ≈ 0 over the
+run; and each of the four ``0x10C`` tap modes showing non-zero RMS under
+``ops/tap_smoke.sh``.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 26 50
+
+   * - Symptom
+     - Likely cause
+     - Action
+   * - Never locks — ``frames_scored=0``, ``packets_out`` flat
+     - Acquisition wedge, or the peer is not radiating
+     - Run the verified-lock loop (:doc:`bringup`): watchdog → probe →
+       on zero aligned, pulse carrier-sync reset 0x110 1 → 0, re-arm the
+       byte DMA, retry three times. Confirm the peer is actually
+       transmitting — a parked peer airs idle filler and every frame
+       lands PHASE. About one cold arm in three needs a retry;
+       ``ops/exp_forward.sh`` already automates it.
+   * - All frames PHASE or ROTATED
+     - Quadrant mis-lock, or tracking calibrations mis-converged
+     - Redo verified lock. Confirm you did **not** enable the ADRV9002
+       ``quadrature_w_poly`` / ``fic`` / ``rfdc`` tracking calibrations
+       at arm time — they scramble the constellation past the resolver's
+       one-time lock.
+   * - ``rstcs`` (0x150) growing fast
+     - CFO-step reset storm — a pre-``rxfix`` image
+     - You are not on a shipped image. Reflash from ``images/`` with
+       ``ops/deploy_image.sh``, then ``ops/provision.sh``.
+   * - ``cap_out`` ≠ ``0x04922282`` under BIST
+     - Wrong image, or not locked to the ROM source
+     - Confirm ``tx_data_source`` (0x158) = 0 for BIST, then check the
+       image against :doc:`provenance`. A *stable* wrong value is the
+       historic pre-resolver quadrant bug — a pre-``8033363`` image.
+   * - Delivery flatlines mid-window and the receiver will not leave a
+       carrier-reset storm
+     - The open mid-window wedge class
+     - Not root-caused. It starts clean, runs normally, then flatlines
+       for ~16 s at a spread-out onset, roughly 3 legs in 10
+       (``docs/evidence/RXFIX_STATE.md`` Task 37). Do not credit the
+       leg; the sentinel loop recovers the link.
+   * - One direction degraded, no image or configuration change
+     - An antenna or cable on that leg
+     - Compare that receiver's rssi against its own history at the same
+       LO and gain before any DSP work, then sweep and swap one element
+       — the fifteen-minute procedure in :doc:`bringup`. This has
+       produced a full set of DSP-looking symptoms twice.
+   * - PER 1–3 % on one receive leg, bad-magic frames rather than CRC
+       failures
+     - A display cable plugged into that board
+     - Unplug it and re-measure; check with the DisplayPort DMA
+       interrupt count (:doc:`bringup`).
+   * - Link up but ``tun0`` traffic fails
+     - Whitener mismatch, or MTU/route
+     - ``QPSK_WHITEN`` must be set the **same** at both ends — the
+       bring-up default is on. Judge link quality by the scorers, not by
+       ping: ping payloads are low-entropy.
+   * - Tap dead — ``tap_smoke`` RMS = 0
+     - LEAN image, or the tap block-design step was skipped
+     - LEAN images keep the ``0x10C`` mux modes but **strip** the
+       state-pairs at 0x160–0x16C; that is expected. If the mux modes
+       are dead too, the dual-DMA tap step was skipped in the build.
+   * - RX S2MM capture wedges the board
+     - A modem-S2MM capture over 512 KB
+     - Never do that. Use the Tap-A ``iio_readdev`` path for captures.
+       Recovery is a power cycle, and the boards have no remote power.
+   * - Board unreachable after a flash
+     - Boot in progress, or a bad image
+     - Wait ~30 s. Past 5 minutes it needs a physical power cycle. If
+       the board boots but the image is bad, restore the on-board
+       ``.bak`` rollback named in ``images/CURRENT.txt``, sync, reboot.
+
+For the case histories behind these rows — every failure mode the
+campaign saw, with its silicon signature — read
+``docs/evidence/ERROR_TAXONOMY.md``, which organises them as classes 1
+to 4 (tick episodes, between-episode scatter, rare frame mangling,
+acquisition wedge). The device-side tick itself is
+``docs/evidence/ESCALATION_ADI.md``: it is a per-unit ADRV9002
+calibration artifact on board 148, not a fabric bug, and it must not be
+chased with HDL.
+
+Offline forensics, when the live view is not enough: capture with
+``ops/capture_paired.sh``, replay bit-true through the netlist with
+``modem/rtl_sim/replay_capture.sh``, and decode the same capture with
+the ideal float receiver ``contract/decode_ref_k5.m`` — whose ±15 kHz
+CFO search must never be re-narrowed, because the nominal LOs drift
+several kHz.
 
 Read the blind-spot warnings first
 ----------------------------------
@@ -41,8 +144,8 @@ not be quoted as a measurement.
 the single most expensive harness trap in the project. See the drive
 contract below.
 
-Host-side instruments (``host_app_k5/qpsk_tun.c``)
---------------------------------------------------
+Host-side instruments (``host/qpsk_tun.c``)
+-------------------------------------------
 
 Instruments are gated by an environment variable; unset, the hooks are
 no-ops and the daemon behaves identically to an uninstrumented build.
@@ -127,7 +230,7 @@ is where you can *put* a new instrument and where you must not.
 * **Occupied range**: 0x100–0x204 across all image lineages. The
   highest-addressed claimant in the tree is ``loop_tune_axi_overlay``
   at **0x1F0–0x204**.
-* **Free space**: no overlay in ``jupiter_240k5_byte/`` claims any
+* **Free space**: no overlay in ``modem/`` claims any
   offset at **0x208 or above**. That is the natural home for a new
   telemetry register — confirm with a fresh grep before you take it,
   because this map has been re-cut repeatedly.
@@ -155,7 +258,7 @@ Adding a fabric instrument: the overlay-gating idioms
 ------------------------------------------------------
 
 Fabric instruments are added by MATLAB **overlay** functions in
-``jupiter_240k5_byte/``, applied late in
+``modem/``, applied late in
 ``assemble_jupiter_240k5_byte.m``. The contract every overlay must
 honour is *G0 preservation*: with the instrument off, the assembled
 model must be **byte-identical** to the uninstrumented one. Three
@@ -195,8 +298,8 @@ production-needed part.
 set, rather than quietly producing an image whose register map does not
 match its documentation.
 
-RTL simulation harnesses (``jupiter_240k5_byte/rtl_sim/``)
------------------------------------------------------------
+RTL simulation harnesses (``modem/rtl_sim/``)
+---------------------------------------------
 
 A family of Verilator drivers replays captured IQ through the bit-true
 HDL netlist. This is the project's sharpest knife: it splits
@@ -259,12 +362,12 @@ harness:
 Getting this wrong yields zero CRC-good frames and looks exactly like a
 broken datapath. It cost the campaign a full false alarm — a netlist
 was believed broken for a day when only the harness's drive contract
-was stale (``two_jup/HARNESS_AB.md``). Note the corollary for the
+was stale (``docs/evidence/HARNESS_AB.md``). Note the corollary for the
 backpressure refutation: it was run on ``obj_byte_dip_f1536_jul25``,
 i.e. the **cadence-4 generation**, not the flashed one — which is why
 :doc:`current-state` marks that refutation provisional.
 
-Also in the family: ``tb_dma_contract.v`` under ``two_jup/skidfix/tb/``
+Also in the family: ``tb_dma_contract.v`` under ``ops/skidfix/tb/``
 — an Icarus testbench modelling the DUT↔``axi_dmac`` handshake
 (descriptor gaps, the 5-beat SOF prime with held-beat replication,
 ``SYNC_TRANSFER_START`` semantics). It reproduced the skid v1 silicon
@@ -272,8 +375,8 @@ deadlock as a positive control. Its limit is instructive: it modelled
 TLAST/TUSER framing that the production stream does not carry, so a
 design that passed it bit-exactly still regressed on silicon.
 
-Offline analysis tooling (``two_jup/``)
-----------------------------------------
+Offline analysis tooling (``ops/``)
+-----------------------------------
 
 * **``accept_analyze.py``** — wedge-aware acceptance analysis of one or
   more ``frames.bin`` captures. It finds the live-link window (a
@@ -285,7 +388,7 @@ Offline analysis tooling (``two_jup/``)
   at the end. Its wedge policy is stated in the docstring rather than
   hidden.
 * **``loss_ledger.py``** — the class accounting behind
-  ``two_jup/LOSS_LEDGER.md``. It classifies **every** hole in the
+  ``docs/evidence/LOSS_LEDGER.md``. It classifies **every** hole in the
   clean-sequence ladder into named classes in a stated priority order
   (startup-burst, burst-frozen, boundary-single/-double on the ~8-frame
   comb, tx-underrun-comb, tx-mute-candidate, feeder-gap, mid-gap), and

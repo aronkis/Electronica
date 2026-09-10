@@ -11,8 +11,8 @@ the ledger that holds the evidence, and the ledger is authoritative.
 
    This page's numbers are the 2026-08-15 snapshot and several
    conclusions have since been superseded. The headline changes, with
-   evidence in ``two_jup/SINGLES_CAMPAIGN.md`` (dated sections) and the
-   live open-questions inventory ``two_jup/KNOWN_HOLES.md``:
+   evidence in ``docs/evidence/SINGLES_CAMPAIGN.md`` (dated sections) and the
+   live open-questions inventory ``docs/evidence/KNOWN_HOLES.md``:
 
    * The forward "singles comb" is **not** a 146 TX / byte-plane fault.
      It requires cross-board clocks (real XO sample-rate offset), is
@@ -24,10 +24,26 @@ the ledger that holds the evidence, and the ledger is authoritative.
      (``bringup_r2r3.sh``), halving the standing forward loss ~13 % → ~6 %.
    * TX egress verified clean end-to-end by 1-ft self-reception on both
      boards (steady 0.25–0.3 % — the fabric-loopback floor).
-   * The pre-built image bank moved to ``boot_known_good/`` (see
+   * The pre-built image bank moved to ``images/`` (see
      :doc:`setup-prebuilt`); 146 currently carries ``4be9286ca111``,
      148 carries BEATFIX ``fe5bd8a4fe19``.
-   * Campaign gate (< 1 % both directions, ARQ off): **still NOT MET**.
+   * Campaign gate (< 1 % both directions, ARQ off): **still NOT MET**
+     as of this 2026-08-26 update.
+
+.. admonition:: Update — 2026-09-09: the gate is MET
+   :class: important
+
+   Everything below this line is campaign history. The gate the page
+   says is unmet was met in the 2026-09 comb campaign: credited
+   **forward 0.070–0.079 %** and **reverse 0.191 % pooled**, both with
+   lost frames in the denominator, on the image pair in
+   ``images/CURRENT.txt`` with payload whitening on at both ends
+   (``docs/evidence/RXFIX_STATE.md`` Task 37). The numbers, their
+   sample counts and their caveats are :doc:`performance`; the fault
+   classes named and killed on the way are ``RXFIX_STATE.md`` and
+   ``docs/evidence/comb/``. Read this page for the *refuted-hypotheses
+   ledger*, which is still the most valuable thing on it, not for the
+   current score.
 
 It is deliberately organised as an **index of open issues plus a
 refuted-hypotheses ledger**. The refuted list is the most valuable part
@@ -38,9 +54,12 @@ the constraint set below.
 Where the goal stands
 ---------------------
 
-Goal: delivered PER < 1 % both directions, ARQ off. Neither direction
-meets it. The measurements below are the end-state of the overnight
-2026-08-14/15 campaign (``two_jup/HANDOFF_20260815.md``).
+Goal: delivered PER < 1 % both directions, ARQ off. **As of this
+snapshot neither direction met it; both do now** — see the 2026-09-09
+banner above and :doc:`performance`. The measurements below are the
+end-state of the overnight 2026-08-14/15 campaign
+(``docs/evidence/HANDOFF_20260815.md``) and are kept because the
+refuted-hypotheses ledger below is scored against them.
 
 **Configuration for every number in this table.** 148 = skid3 v3
 witness-wire image ``6c06ecb7e888`` (datapath production-equivalent to
@@ -97,7 +116,7 @@ Honesty caveats — state these whenever the numbers are quoted
   first baseline attempts of the night wedged on exactly the old class
   without the drain budget, and did not with it.
 * CP95 upper bounds assume independent Bernoulli trials. This link's
-  losses are bursty; see ``two_jup/paired_report.py``'s docstring and
+  losses are bursty; see ``ops/paired_report.py``'s docstring and
   :doc:`measurement-discipline` for why the **run**, not the frame, is
   the unit of analysis.
 
@@ -106,7 +125,7 @@ Shipped this cycle
 
 **``rx_drain_budget`` default 4** (commit ``bf2398a``). The wedge fix
 was causally proven in loopback back on 2026-08-12 (0/3 vs 6/7 wedges,
-``two_jup/WEDGE_ROOT_CAUSE.md``) but had only ever been **env-gated**
+``docs/evidence/WEDGE_ROOT_CAUSE.md``) but had only ever been **env-gated**
 — it never reached production bring-up, so every production run since
 then carried the unbounded drain. Both first baseline attempts of the
 overnight campaign wedged on exactly the old class. Making 4 the
@@ -118,7 +137,7 @@ Solved (mechanism named, fix in production)
 
 **The wedge.** Single-threaded RX drain starves the TX feeder; junk
 makes the drain slower; the loop self-sustains. Budget = 4 ends it.
-``two_jup/WEDGE_ROOT_CAUSE.md``.
+``docs/evidence/WEDGE_ROOT_CAUSE.md``.
 
 **TX zero-fill / "phase step".** The periodic zero-payload frames
 (30/33/34-frame limit cycles) and the "11.7° phase step" are short
@@ -129,15 +148,15 @@ lower severity. Same ledger.
 on healthy captures (median −1.18 pp, fixed better); the internal stage
 budget totals ≤ 0.65 pp EVM; RRC and CFC quantization exonerated. The
 one real term is CFO handling on B-class links (~2.4 dB).
-``two_jup/FLOAT_GAP_BUDGET.md``. The runtime poke that was proposed for
+``docs/evidence/FLOAT_GAP_BUDGET.md``. The runtime poke that was proposed for
 it is now refuted on the current images — see the ledger below.
 
 The open forward class (the ~8.3 %)
 -----------------------------------
 
 The forward killer is the **air-singles class**: pairs of corrupt
-frames on a comb, fully fingerprinted in ``two_jup/PAIR_RECURRENCE.md``
-and ``two_jup/FWD_SINGLES_ROOT_CAUSE.md``. No mechanism is currently
+frames on a comb, fully fingerprinted in ``docs/evidence/PAIR_RECURRENCE.md``
+and ``docs/evidence/FWD_SINGLES_ROOT_CAUSE.md``. No mechanism is currently
 validated for it. Every candidate mechanism must satisfy **all** of
 these measured constraints:
 
@@ -151,7 +170,7 @@ these measured constraints:
   each frame boundary.
 * **Replay-clean from reset.** The same captured IQ driven through the
   bit-true netlist decodes CRC-good 12/12
-  (``two_jup/SINGLES_REPLAY.md``).
+  (``docs/evidence/SINGLES_REPLAY.md``).
 * **~8-frame comb, 32-frame pair recurrence** in fabric units.
 * **Invariant to ``-M``** (the host multi-drain factor).
 
@@ -191,9 +210,9 @@ it. *Discriminator:* the image was built and flashed — the silicon
 **deadlocked**, fsync = 1252 with ``wcnt = 0`` (zero byte words
 accepted over 12 s while the modem ran at full line rate). The
 deadlock was then **reproduced** in the DMA-contract testbench
-(``two_jup/skidfix/tb/tb_dma_contract.v``): a frozen ``tuser = 0``
+(``ops/skidfix/tb/tb_dma_contract.v``): a frozen ``tuser = 0``
 beat at the DMA input blocks ``SYNC_TRANSFER_START`` forever.
-``two_jup/skidfix/SKID_BUILD.md``.
+``docs/evidence/SKID_BUILD.md``.
 
 **2. Skid v2 (guard-preserving).** The redesign that passed the
 contract testbench bit-exactly in sim. *Discriminator:* on silicon it
@@ -217,7 +236,7 @@ generation from the flashed image (post-Jul-29, cadence 2). The
 ledger states the conclusion flatly; the honest scope is "refuted on
 the Jul-25 generation". **It must be re-run against the flashed
 generation** before the backpressure class is closed. See
-``two_jup/HARNESS_AB.md`` and :doc:`debug-instruments` for the cadence
+``docs/evidence/HARNESS_AB.md`` and :doc:`debug-instruments` for the cadence
 contract.
 
 **4. Gated-clock / LUT-glitch on the byte-plane enable rail.**
@@ -279,7 +298,7 @@ Other open threads
   critical path — the glitch/rail altitude was tested directly on
   skid3's own DCP and refuted (ledger item 4) — but the wit4 build
   would still settle the half-rate question itself.
-  ``two_jup/HANDOFF_20260813.md`` (03:15 entry).
+  ``docs/evidence/HANDOFF_20260813.md`` (03:15 entry).
 * **Cyclic RX on air.** ``RXCYC_A=1`` engages correctly at runtime, but
   the air capture wedges within 12 s; the cyclic reader has only ever
   been validated on loopback. A gap, not a lever.
@@ -288,9 +307,9 @@ Other open threads
   class. Watch for recurrence; single observation, uncharacterised.
 * Replay-gate threshold re-anchoring (73 vs 74/78 — the one-frame
   generation gap; needs a wider ``win_*`` replay set,
-  ``two_jup/HARNESS_AB.md``).
+  ``docs/evidence/HARNESS_AB.md``).
 * Forward mid-gap and mute-candidate classes (~0.6 pp combined,
-  ``two_jup/LOSS_LEDGER.md``) — below the singles class in priority.
+  ``docs/evidence/LOSS_LEDGER.md``) — below the singles class in priority.
 
 What is unmeasured
 ------------------

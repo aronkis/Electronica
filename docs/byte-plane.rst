@@ -19,7 +19,7 @@ The dataflow, stage by stage
 its packing at every frame boundary — a property that matters for fault
 morphology: a disturbance downstream of it self-heals at the next frame
 boundary, which is exactly what the air-singles class does
-(``two_jup/PAIR_RECURRENCE.md``). The netlist also contains its own
+(``docs/evidence/PAIR_RECURRENCE.md``). The netlist also contains its own
 small ``ByteRxFifo`` (64 deep); do not confuse it with the platform
 FIFO below.
 
@@ -27,9 +27,9 @@ FIFO below.
 DMA sits a platform-side FIFO of **1536 words = 8 × 192** — one wrap ≈
 8.04 payload frames. It is *outside* the HDL netlist, which is why
 faults located here replay clean when the same IQ is driven through the
-netlist alone (``two_jup/SINGLES_REPLAY.md``). It was long the
+netlist alone (``docs/evidence/SINGLES_REPLAY.md``). It was long the
 prime-suspect site for the air-singles generator, and the site of the
-proposed skid-buffer fix (``two_jup/TICK_FIX_SIM.md``). **That
+proposed skid-buffer fix (``docs/evidence/TICK_FIX_SIM.md``). **That
 mechanism is refuted as of 2026-08-15**: both skid images failed on
 silicon (v1 deadlocked the byte plane; v2 cost +5.6 pp forward), and a
 ready-dip replay showed the netlist's own 64-deep ``ByteRxFifo``
@@ -40,7 +40,7 @@ for the refuted-hypotheses ledger before building on anything here.
 (S2MM, ``DMA_TYPE_SRC 1 / DMA_TYPE_DEST 0``). It is *not* instantiated
 anywhere in this repository — it comes from the TransceiverToolbox
 reference-design script ``matlab_processors.tcl`` (line 1061 in the
-checkout documented in ``two_jup/DMAC_IDENTIFIED.md``), gated on the
+checkout documented in ``docs/evidence/DMAC_IDENTIFIED.md``), gated on the
 HDL Coder plugin parameter ``byte_dma``. Its siblings:
 ``tx_byte_dma`` at 0x9D100000, ``byte_ctrl_gpio`` at 0x9D300000, and
 the modem register file at 0x9D000000. Newer images carry
@@ -49,9 +49,48 @@ the modem register file at 0x9D000000. Newer images carry
 completion — see :doc:`host-software`.
 
 **DDR carve.** The DMA rings live in a reserved-memory region the
-daemon mmaps directly (``host_app_k5/qpsk_hw.h``; deployed layout: top
+daemon mmaps directly (``host/qpsk_hw.h``; deployed layout: top
 1 MB at 0x7FF00000, with a 2 MB variant for 1536 B frames behind
 ``-DQPSK_CARVE_2MB``).
+
+The TX mirror
+-------------
+
+The transmit side runs the same plane backwards, and three of its
+properties explain fault shapes you will meet on the RX side.
+
+**The chain.** Host DMA beats land in the ``ByteWordBuffer`` (two deep,
+registered ``tready``), the ``ByteBitShifter`` serializes them to bits,
+and the K5 transmit encoder codes them: a gate block frames the beats
+and tags the information bits with ``infoValid``, the convolutional
+encoder advances its shift register **only on ``infoValid``** — the
+anti-zero-stuff gate — and the block interleaver writes the current
+frame while reading the previous one. A multiplexer then selects between
+the encoded byte branch and the in-fabric pre-coded ROM, under
+``tx_data_source`` (0x158).
+
+**The encoder resets, then advances.** At each frame start the encoder
+state is zeroed *before* the first bit is shifted in, which makes the
+per-frame encoding bit-exact to a reference ``convenc`` for **arbitrary**
+payloads and self-heals any state corruption at every frame boundary. The
+donor's clear-instead-of-shift form was bit-exact only by accident of the
+golden vector's leading bit.
+
+**The interleaver costs exactly one frame of latency.** Air frame N
+carries the encode of byte frame N−1. This is a causal necessity, not a
+choice: the interleaver's first read needs a coded bit that is not
+produced until late in the same frame's write pass, so a same-frame read
+is impossible and the ping-pong schedule is kept. The practical
+consequences are that the first frame after any (re)start is garbage,
+and that frame-indexed analyses of TX-side events are off by one against
+the byte stream that produced them.
+
+**TX and RX transfer sizes are not the same number.** On f1536 the host
+pushes 3080 B per frame and receives 191 × 64-bit words = 1528 B. The
+asymmetry is structural — the transmit side carries the whole coded air
+frame, the receive side carries the decoded payload — and using one size
+for both was a real host bug once, producing misframed air with a
+perfectly healthy fabric.
 
 Modem register map
 ------------------
@@ -63,12 +102,12 @@ Two hard-won caveats first:
 * **DRA is a single address latch.** Any two concurrent readers corrupt
   each other's reads with arithmetically-impossible values — this
   silently voided a full soak campaign
-  (``two_jup/BRINGUP_SEQUENCER.md``). Stop the lock watchdog before any
+  (``docs/evidence/BRINGUP_SEQUENCER.md``). Stop the lock watchdog before any
   manual DRA session, and restart it afterwards.
 * **0x104 is reset by rstCS and by the watchdog's 0x000 soft reset**,
   every ~5–7 s on a healthy link. Naive delta-over-window rate probes
   under-read a healthy link by ~2×; use the reset-aware probes
-  (``two_jup/rate_probe.sh``, ``health_probe_reset_aware.sh``).
+  (``ops/rate_probe.sh``, ``health_probe_reset_aware.sh``).
 
 .. list-table::
    :header-rows: 1
@@ -86,18 +125,24 @@ Two hard-won caveats first:
    * - 0x108
      - biterr
      - Cumulative BIST bit-error counter.
+   * - 0x10C
+     - iq_debug_mux
+     - Tap selector — 0 AGC output, 1 post-symbol-sync, 2 post-carrier-sync, 3 constellation. Tap-enabled images only; the selected stream rides the second RX DMA channel. Write-only.
    * - 0x110
      - rstCS
      - Carrier-sync reset pulse (write 1 then 0 during bring-up).
    * - 0x114
      - rx_input_select
-     - 1 = air (ADC), 0 = internal loopback. Write-only readback: always reads 0 (``two_jup/mux_test.sh``).
+     - 1 = air (ADC), 0 = internal loopback. Write-only readback: always reads 0 (``ops/mux_test.sh``).
    * - 0x118
      - tx_source_select
      - TX source select (write-only readback, like 0x114).
+   * - 0x144
+     - cap_out
+     - BIST golden readback. ``0x04922282`` is a correct decode of the ROM vector, and is how an image's identity is checked (md5 is not reproducible across Vivado rebuilds).
    * - 0x158
      - tx_data_source
-     - 1 = DMA bytes, 0 = in-fabric generator. K5/f1536 images moved this from the legacy 0x11C; a write to 0x11C on these images is silently meaningless (``qpsk_hw.h``).
+     - 1 = DMA bytes, 0 = in-fabric generator. K5/f1536 images moved this from the legacy 0x11C, because 0x11C is this kit's debug sentinel and would have collided; a write to 0x11C on these images is silently meaningless (``qpsk_hw.h``).
    * - 0x150
      - rstcs_count
      - Cumulative carrier-sync reset count.
@@ -107,6 +152,20 @@ Two hard-won caveats first:
    * - 0x15C
      - adcforensic
      - ADC level/duty/gap snapshot — debug builds only; stripped in LEAN.
+   * - 0x160 – 0x16C
+     - loop-state pairs
+     - AGC in/out and CS in/out, packed I/Q. Tap-enabled debug images only; stripped in LEAN.
+   * - 0x170 – 0x1A0
+     - canary / loop gains
+     - **Meaning depends on the build.** Canary/shadow instrumentation in debug builds; the six runtime ``loop_gain_axi`` registers (0x170–0x184) in LEAN images. See the offset-collision warning below.
+
+Three access notes that are not offsets. The byte DMA is armed by
+writing 1 to the ``byte_ctrl_gpio`` at ``0x9D300000`` (``devmem
+0x9D300000 32 0x1``); the front-end ``agpio4-7`` writes made during the
+arm are **load-bearing for lock**, not cosmetic; and the arm sequence
+also pokes ADRV9002 *chip* registers, which are not part of this
+register file. The canonical, do-not-paraphrase arm sequence lives in
+``ops/link_test.sh`` and ``ops/bringup_r2r3.sh``.
 
 Framestat block (instrument images)
 -----------------------------------
@@ -114,7 +173,7 @@ Framestat block (instrument images)
 The **framestat** overlay (LEAN instrument images, e.g. e49c011b and
 later) adds a per-frame 64-bit telemetry record latched at the frame
 strobe into a 64-deep side FIFO, plus three free-running counters. The
-full contract is ``jupiter_240k5_byte/FRAMESTAT_NOTES.md``; the summary:
+full contract is ``docs/evidence/FRAMESTAT_NOTES.md``; the summary:
 
 .. list-table::
    :header-rows: 1
@@ -154,7 +213,7 @@ LEAN).
 
 Why CP1 matters: on paired CRC-fail slices the fabric checksum matched
 the host's checksum of the corrupt bytes **107/117 (91.4 %)**
-(``two_jup/FWD_SINGLES_ROOT_CAUSE.md``) — the fabric byte plane
+(``docs/evidence/FWD_SINGLES_ROOT_CAUSE.md``) — the fabric byte plane
 *emitted* the corrupt frame; the DMA/bus/host transport downstream was
 faithful. That single measurement moved the entire singles
 investigation upstream of the DMA.
@@ -166,10 +225,72 @@ Register offsets are reused across image generations. 0x1C0–0x1C8
 collide with the ``p1b`` census in non-LEAN debug builds (framestat
 builds must be LEAN; the overlay hard-asserts this), and the
 0x170–0x184 range means T8.5 canary/shadow registers in debug builds
-but the six ``loop_gain_axi`` runtime gain registers
-(``cs/ss prop/integ``, ``agc_loop_gain``, ``cfo_threshold``) in LEAN
-images (``two_jup/FLOAT_GAP_BUDGET.md``). Always confirm which image an
+but the six ``loop_gain_axi`` runtime gain registers in LEAN
+images (``docs/evidence/FLOAT_GAP_BUDGET.md``). Always confirm which image an
 offset table was written against before poking anything.
+
+The runtime loop gains (LEAN only)
+----------------------------------
+
+Those six registers make the receiver's loop constants writable at
+runtime, so an on-air tuning sweep needs no bitstream rebuild. They are
+**write** registers, and the semantics are worth stating exactly:
+**value 0 means the compiled default is used, bit for bit** — the
+original constant stays on the multiplexer's ``reg == 0`` path, so a
+reset image is provably unchanged and the added datapath is dead until
+written. A non-zero write is interpreted as the **stored integer** of
+the desired fixed-point value in that register's own type, i.e.
+``round(value · 2^F)`` in the low *W* bits.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 12 24 34 30
+
+   * - Offset
+     - Register
+     - Loop constant
+     - Type (compiled stored integer)
+   * - 0x170
+     - ``cs_prop_gain``
+     - carrier-sync loop filter, proportional
+     - ``ufix16_En16`` (98)
+   * - 0x174
+     - ``cs_integ_gain``
+     - carrier-sync loop filter, integral
+     - ``ufix16_En16`` (1)
+   * - 0x178
+     - ``ss_prop_gain``
+     - symbol-sync loop filter K1
+     - ``sfix24_En24`` (−163506)
+   * - 0x17C
+     - ``ss_integ_gain``
+     - symbol-sync loop filter K2
+     - ``sfix24_En24`` (−2180)
+   * - 0x180
+     - ``agc_loop_gain``
+     - AGC loop filter gain
+     - ``ufix32_En31`` (4294967) — see the exception below
+   * - 0x184
+     - ``cfo_threshold``
+     - CFO step-change detector, ±threshold
+     - ``sfix22_En21`` (±26214)
+
+**The AGC register is the exception.** Its compiled parameter is a
+*double* literal, so there is no native fixed-point constant to match;
+the runtime type is a chosen representation. Writing the nominal stored
+integer to 0x180 is therefore **not** guaranteed bit-identical to
+leaving it at zero — it is a tunable knob, not a passthrough. The other
+five are exact stored-integer passthroughs of their native types.
+
+Two practical warnings. The overlay is applied **only in LEAN images**
+and asserts rather than silently skipping, because in non-LEAN builds
+these offsets are the canary registers — which is how a 0x184
+CFO-threshold experiment once wrote into nothing and produced a null
+result that meant only "wrong image lineage" (:doc:`current-state`). And
+the gate that proves the threading is correct is not the decode oracle:
+a decode locks golden at zero, at the compiled value and at twice it
+alike, so only a poke test that reads the coefficient signal *inside*
+the DUT can catch a mis-threaded register or a wrong fraction length.
 
 See also
 --------
