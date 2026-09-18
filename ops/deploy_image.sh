@@ -62,11 +62,11 @@ FREE=$($W "$IP" "df -k /boot | awk 'NR==2{print \$4}'" 2>/dev/null || echo 0)
 [ "${FREE:-0}" -gt 10000 ] || { echo "FATAL: /boot free ${FREE}KB < 10MB -- no room for backup"; exit 1; }
 echo "  /boot free: ${FREE}KB"
 # backup current /boot/BOOT.BIN (only if it is a sane size)
-echo "  backup: $($W "$IP" "CB=\$(stat -c %s /boot/BOOT.BIN 2>/dev/null||echo 0); if [ \"\$CB\" -gt 6000000 ]; then cp -f /boot/BOOT.BIN /boot/BOOT.BIN$SUFFIX && sync && echo \"OK current=\$CB -> /boot/BOOT.BIN$SUFFIX\"; else echo \"REFUSE current size=\$CB\"; fi" 2>/dev/null)"
+echo "  backup: $($W "$IP" "CB=\$(stat -c %s /boot/BOOT.BIN 2>/dev/null||echo 0); if [ \"\$CB\" -gt 5000000 ]; then cp -f /boot/BOOT.BIN /boot/BOOT.BIN$SUFFIX && sync && echo \"OK current=\$CB -> /boot/BOOT.BIN$SUFFIX\"; else echo \"REFUSE current size=\$CB\"; fi" 2>/dev/null)"
 $W "$IP" "test -f /boot/BOOT.BIN$SUFFIX" 2>/dev/null || { echo "FATAL: backup not present -- aborting before overwrite"; exit 1; }
 # push new image to /root, verify size, THEN overwrite /boot
 scpput "$BOOT" root@"$IP":/root/BOOT.BIN.staged
-FL=$($W "$IP" 'NB=$(stat -c %s /root/BOOT.BIN.staged 2>/dev/null||echo 0); if [ "$NB" -gt 6000000 ]; then cp -f /root/BOOT.BIN.staged /boot/BOOT.BIN && sync && echo "FLASHED size=$NB md5=$(md5sum /boot/BOOT.BIN|cut -c1-12)"; else echo "ABORT staged size=$NB"; fi' 2>/dev/null)
+FL=$($W "$IP" 'NB=$(stat -c %s /root/BOOT.BIN.staged 2>/dev/null||echo 0); if [ "$NB" -gt 5000000 ]; then cp -f /root/BOOT.BIN.staged /boot/BOOT.BIN && sync && echo "FLASHED size=$NB md5=$(md5sum /boot/BOOT.BIN|cut -c1-12)"; else echo "ABORT staged size=$NB"; fi' 2>/dev/null)
 echo "  flash: $FL"
 echo "$FL" | grep -q FLASHED || { echo "FATAL: flash did not complete -- /boot untouched or rollback with /boot/BOOT.BIN$SUFFIX"; exit 1; }
 # reboot and wait for the board back (bounded)

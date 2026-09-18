@@ -45,7 +45,7 @@ $W "$IP" 'echo up' 2>/dev/null | grep -q up || { echo "FATAL: $IP unreachable vi
 # sanity: the master files must exist on the host
 PROFILES="lvds_61p44_fdd_jupiter lvds_30p72_fdd_jupiter lvds_1p92_mhz"
 for f in "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_ber.c" \
-         "$SRC/qpsk_seq.c" "$SRC/qpsk_uio.c" "$SRC/qpsk_perf.c" "$D/lock_watchdog.sh" \
+         "$SRC/qpsk_seq.c" "$SRC/qpsk_uio.c" "$SRC/qpsk_perf.c" "$SRC/qpsk_join.h" "$D/lock_watchdog.sh" \
          $(for pr in $PROFILES; do echo "$D/profiles/$pr.bin $D/profiles/$pr.json"; done); do
   [ -f "$f" ] || { echo "FATAL: master file missing on host: $f"; exit 1; }
 done
@@ -68,7 +68,7 @@ echo "-- host/ sources -> board; build qpsk_tun (on-board gcc) --"
 $W "$IP" 'mkdir -p /root/host_app_k5' 2>/dev/null
 scpput "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_ber.c" "$SRC/qpsk_seq.c" \
        "$SRC/qpsk_uio.c" "$SRC/qpsk_frame.h" "$SRC/qpsk_ber.h" "$SRC/qpsk_seq.h" \
-       "$SRC/qpsk_uio.h" "$SRC/qpsk_hw.h" "$SRC/qpsk_perf.c" root@"$IP":/root/host_app_k5/
+       "$SRC/qpsk_uio.h" "$SRC/qpsk_hw.h" "$SRC/qpsk_join.h" "$SRC/qpsk_perf.c" root@"$IP":/root/host_app_k5/
 [ -n "$CARVE_DEF" ] && echo "   (2 MB carve build: $CARVE_DEF -- f1536; needs the 2 MB qpsk dtb deployed)"
 SSH_T=300 $W "$IP" "cd /root/host_app_k5 && gcc -O2 -Wall $CARVE_DEF -o qpsk_tun qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c 2>&1 | tail -3
   [ -x qpsk_tun ] && echo \"  qpsk_tun built OK\" || echo \"  qpsk_tun BUILD FAILED\"

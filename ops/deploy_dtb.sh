@@ -148,7 +148,7 @@ do_deploy(){
   echo "  rebooting $ip ..."; $W "$ip" 'sync; (sleep 1; reboot) &' 2>/dev/null
   until ! ping -c1 -W1 "$ip" >/dev/null 2>&1; do sleep 2; done
   local t=0; until ping -c1 -W2 "$ip" >/dev/null 2>&1; do sleep 3; t=$((t+3)); [ "$t" -gt 180 ] && { echo "WARN: $ip not back after 180s -- check console"; break; }; done
-  sleep 20
+  read -r -p "Press Enter to continue post-reboot verification... " _
   echo "=== $ip back up: $($W "$ip" 'head -c4 /boot/system.dtb|od -An -tx1|tr -d " "' 2>/dev/null) (want d00dfeed) ==="
   verify_board "$ip"
 }
