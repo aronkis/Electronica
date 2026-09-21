@@ -360,6 +360,18 @@ rm -f $LOGDIR/tx.pid $LOGDIR/tx_ff.pid $LOGDIR/tx.state $LOGDIR/latprobe_tx.pid;
   [ -n "$P" ] && { kill -TERM -"$P" 2>/dev/null; kill -TERM "$P" 2>/dev/null; }
   rm -f "$LOGDIR/pc.pid"
   pkill -f "[r]elay.fifo" 2>/dev/null
+  # Fallback for a MISSING or STALE pc.pid: the group kill above then hits nothing
+  # and the three `bash pc.sh` shells (session leader + the puller and player
+  # restart loops) survive to respawn ffmpeg/ffplay. Anchored on the full path from
+  # $LOGDIR rather than a bare substring, per the header rule -- this script's own
+  # argv is "bash .../ops/stream_board2pc.sh" and cannot match it, and pgrep never
+  # returns itself. Skipping $$ as well costs nothing and documents the intent.
+  local p
+  for p in $(pgrep -f "$LOGDIR/pc\.sh" 2>/dev/null); do
+    [ "$p" = "$$" ] && continue
+    kill -TERM "-$p" 2>/dev/null   # pc.sh is a session leader: take the group
+    kill -TERM "$p"  2>/dev/null
+  done
   rm -f "$FIFO"
   true
 }
@@ -461,7 +473,23 @@ fi
 
 if [ "$CHECK_ONLY" = 1 ]; then echo "== --check passed; hardware and hop are ready =="; exit 0; fi
 
-trap 'echo; echo "== stopping =="; stop_all; echo "   done"; exit 0' INT TERM
+# Teardown has to survive EVERY exit path, not just Ctrl-C. pc.sh is launched under
+# setsid, so it is its own session leader (pid == pgid, different from this script's
+# pgid) and a terminal SIGHUP never reaches it. With only INT/TERM trapped, closing
+# the terminal killed this script silently while pc.sh lived on with its restart
+# loops intact, respawning ffmpeg/ffplay -- the handful of leftover processes that
+# all match "stream" and have to be killed by hand before the next run. HUP covers
+# that; EXIT covers die(), an unhandled error, and a normal fall-through.
+# EXIT traps do not fire in subshells or command substitution (measured), so the
+# only overlap to guard is INT/TERM and EXIT both firing on one teardown.
+CLEANED=0
+cleanup_once(){
+  if [ "${CLEANED:-0}" = 1 ]; then return 0; fi
+  CLEANED=1
+  echo; echo "== stopping =="; stop_all; echo "   done"
+}
+trap 'cleanup_once; exit 0' INT TERM HUP
+trap 'cleanup_once' EXIT
 
 # -------------------------------------------------------------- relay (146) --
 # Started FIRST so the TCP listener is up before the PC tries to connect, and

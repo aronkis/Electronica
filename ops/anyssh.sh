@@ -5,5 +5,6 @@ IP="$1"; shift
 D=$(cd "$(dirname "$0")" && pwd)
 SSH_ASKPASS="$D/askpass.sh" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 \
   setsid -w ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 \
+  -o ServerAliveInterval=5 -o ServerAliveCountMax=3 \
   -o PreferredAuthentications=password -o PubkeyAuthentication=no \
   root@"$IP" "$@" < /dev/null
