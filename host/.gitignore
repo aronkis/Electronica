@@ -14,3 +14,14 @@ test_qsim
 test_txlog
 test_txq
 test_rxresync
+
+# ---- added 2026-09-25: Makefile targets that had no rule here, so their
+#      binaries showed up as untracked in `git status` alongside the genuinely
+#      missing sources. All are outputs of `make` / `make test` (host/Makefile).
+test_fec
+test_fecglue
+qpsk_tun_2mb
+xvc_server
+ms_safety_check
+modem_status/modem_status
+modem_status/test_modem_status

@@ -1,0 +1,62 @@
+# Per-board watchdog overrides for 10.0.0.148 (role A -- TX / camera board).
+# Installed to /root/watchdog.conf by ops/provision.sh. lock_watchdog.sh sources
+# it at :34 with `[ -r /root/watchdog.conf ] && . /root/watchdog.conf`, BEFORE
+# every knob below it, using unconditional assignment -- so whatever is
+# uncommented here beats the launch environment and survives a bring-up
+# (bringup_r2r3.sh hardcodes the watchdog's launch env, so an env-only override
+# is silently lost on the next bring-up).
+#
+# EVERY KNOB HERE IS COMMENTED OUT ON PURPOSE. 148 has never had a
+# /root/watchdog.conf, so it has always run lock_watchdog.sh's built-in
+# defaults; this file reproduces that exactly (a fully commented file is
+# behaviourally identical to no file) while giving the board somewhere to put a
+# measured value. Uncomment a line only when you have a measurement for THIS
+# board -- do not copy 146's numbers over, see the warning under RXPIN.
+#
+# Contrast ops/watchdog.conf.146, which is a byte-exact copy of the measured
+# tuning live on 146 and overrides five of these.
+
+# --- rx0 SSI delay: "clk i q strobe", re-asserted by pin_rx0() after every re-arm.
+# PER-BOARD. 146's proven row is "5 4 4 4" and it is NOT transferable: the eye is
+# one tap wide and the sweep that found it was run on 146's rx0 only. 148 has been
+# left unpinned in every bring-up to date (bringup_r2r3.sh RXPIN_A defaults empty),
+# so the driver auto-tune result stands. Sweep 148 before setting anything here.
+# Note the commit rejects clk 8-15 with EIO.
+#RXPIN="5 4 4 4"
+
+# --- BYTE-PLANE detector (0x1C0/0x1C4/0x1C8 byte-word counters). Default 1.
+# 146 must set 0 because its pre-fsv2 bitstream does not implement 0x1C0. 148 runs
+# a different image (images/CURRENT.txt role A) and has always run with the
+# detector ON. Leave commented unless you confirm 0x1C0 reads back as unimplemented.
+#BYTE_WD=1
+
+# --- PAYLOAD-plane adjudicator. Defaults: FAIL_N=3, MAX_TRY=3, BACKOFF=120, FASTRETRY=0.
+# 146 runs FAIL_N=2 / BACKOFF=15 / FASTRETRY=1 on the strength of an n=39 outage
+# census taken on 146 under video load. That census does not describe this board:
+# 148 is the TX end and does not see the same PAYLOAD-WEDGE. Measure first.
+#PAYLOAD_FAIL_N=3
+#PAYLOAD_MAX_TRY=3
+#PAYLOAD_BACKOFF=120
+#PAYLOAD_FASTRETRY=0
+
+# --- acquisition / lock gate. Defaults shown.
+#PERIOD=5
+#FAIL_N=2
+#HOLDOFF=10
+#PKT_MIN=50
+#LEVEL_THRESH=12
+
+# --- CARRIER-WEDGE and reset-STORM detectors. Defaults shown.
+#WEDGE_WD=1
+#WEDGE_FAIL_N=4
+#WEDGE_MAX_TRY=3
+#WEDGE_BACKOFF=300
+#STORM_THRESH=100
+#STORM_MAX_TRY=3
+#STORM_BACKOFF=120
+
+# --- ROM/BIST mode only. BITERR_MAX is meaningless in payload traffic
+# (a healthy payload capture measures ~337k biterr/5 s window).
+#BIST_GATE=0
+#GOLDEN=0x04922282
+#BITERR_MAX=8000

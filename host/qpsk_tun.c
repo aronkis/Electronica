@@ -81,6 +81,7 @@
                           * on-disk ABI + the pure qpsk_fail_class() parser.
                           * MUST be deployed alongside this file. */
 
+#include "qpsk_fec.h"   /* systematic Cauchy-RS erasure FEC (QPSK_FEC=K) */
 #include "qpsk_hw.h"     /* board-configurable base addresses (-DQPSK_BOARD_ZED) */
 #define TX_DMA_BASE  QPSK_TX_DMA_BASE
 #define RX_DMA_BASE  QPSK_RX_DMA_BASE
@@ -250,6 +251,193 @@ static void txgap_dump(void);
  * above gives. */
 static void rxresync_dump(void);
 
+/* ===================== erasure FEC glue (QPSK_FEC=K, default OFF) ==========
+ * The channel presents ERASURES, not bit errors: qpsk_frame_decode's CRC
+ * already drops every corrupt frame, so the receiver knows exactly WHICH
+ * frames are missing.  That halves the parity a code needs, so the module is
+ * an erasure code (qpsk_fec.c), not an error-correcting one.
+ *
+ * Measured on 146 2026-09-24, and the rate is NOT one number -- it tracks how
+ * much the camera sees moving, which is precisely the reported symptom:
+ *   quiet         115 seq_gap / 2708 delivered per 5 s -> 4.07%, 633 idle f/s
+ *   under motion  342 seq_gap / 5203 delivered per 8 s -> 6.17%, 769 idle f/s
+ * Idle frames do not consume tx_seq, so seq_gap counts lost PAYLOAD frames
+ * directly; idle is pure filler, so parity displaces IT, not video, and costs
+ * no air time at all.  Host e2e (tests/test_fec.c prints both tables):
+ *   at 4.07%   K=8 R=2 -> 0.21% (19x)    K=8 R=3 -> 0.00%   K=16 R=3 -> 37.6x
+ *   at 6.17%   K=8 R=2 -> 0.55% (11x)    K=8 R=3 -> 0.24% (25x)  K=16 R=3 -> 8.0x
+ *
+ * R=3 and K=8 are the defaults, sized on the MOTION row because that is the
+ * case the user complains about.  Note the reversal between the two rows: at
+ * 4.07% the big group wins (K=16 R=3 = 37.6x beats K=8 R=2 = 19x for HALF the
+ * air), but at 6.17% it collapses to 8.0x.  A K=16 group spans 19 frames and
+ * dies past 3 losses; at p=6.17% that tail is no longer negligible.  So do not
+ * "optimise" K upward on the quiet measurement -- it fails exactly when needed.
+ * R=3 costs 244 parity f/s of the 769 f/s of filler available under motion.
+ *
+ * MEASURED IN DEPLOYMENT (146, 2026-09-24, in-run 15 s delta with FEC live):
+ *   8799 data packets expected, 639 lost = 7.26%, recovered 497, unrecov 142
+ *   -> residual 1.61%, gain 4.5x.  par_drop=0 unprot=0 par_bad=0 overflow=0
+ *      late=1, so hold=40ms is long enough and nothing was buffer-dropped.
+ * That is 4.5x, NOT the 25x the table above predicts, and the gap is the whole
+ * story: those tables assume INDEPENDENT loss and this channel is BURSTY.
+ * The proof is one number -- 22.2% of lost packets were unrecoverable, where
+ * iid at p=7.26% over n=11 gives 3.1% (P(>3 of 11) = 0.61%, residual 0.23%).
+ * Measured residual is 7.1x the iid prediction.
+ *
+ * So do NOT answer a disappointing residual by raising R.  R=3 already spends
+ * 244 f/s and a burst that kills 4 consecutive packets defeats R=4/5/6 just as
+ * easily.  The lever for bursts is INTERLEAVING -- spread one group's 11
+ * members over a wider time window so a burst hits at most one member per
+ * group.  That is a change to group assembly only and costs no extra air.
+ *
+ * Note also the layer gap: FEC-layer PACKET loss (7.26%) runs higher than
+ * frame-layer loss (seq_gap/dma_rx_ok = 4.38% in the same window) because one
+ * video slice spans ~2 frames.  Size FEC on the packet number, not the frame
+ * number; the 4.07%/6.17% figures above are frame-layer and so read low.
+ *
+ * WIRE: a parity frame is an ORDINARY qpsk_frame whose payload happens to be
+ * a 0xFE 0xC1 container.  Nothing in the frame header, CRC, whitener,
+ * re-anchor or DMA carve changes, and a peer without this code simply writes
+ * the container to tun0 as a malformed packet the IP stack drops.
+ *
+ * SCOPE: this fixes the residual few-percent loss the user sees as glitching
+ * on motion.  It does NOT fix the PAYLOAD-WEDGE (100% CRC failure for ~15 s):
+ * during a wedge every frame of every group is lost and no finite-rate code
+ * recovers that.  FEC and the wedge watchdog are complementary. */
+static int    fec_k = 0;                /* 0 = OFF; else data frames/group  */
+static int    fec_r = 3;                /* sized on the 6.17% motion row */
+static double fec_hold_s  = 0.040;      /* reorder-buffer release deadline  */
+static double fec_flush_s = 0.025;      /* close a partial group after this */
+static qpsk_fec_enc *fec_e;
+static qpsk_fec_dec *fec_d;
+
+/* Parity containers waiting for a TX credit.  Holds container PAYLOADS, not
+ * encoded frames: tx_seq is assigned at send time, so the frame cannot be
+ * built until the credit matures. */
+/* Two groups' worth: at R=RMAX one group's parity would otherwise exactly
+ * fill the queue, so a group closing before the previous burst drained would
+ * lose all its parity.  Draining takes ~R frame periods (~3 ms at R3), groups
+ * close every K payload frames (~15 ms at K=8), so this never fills in
+ * practice -- but the cost of proving it is 12 kB. */
+#define FECQ_MAX (2 * QPSK_FEC_RMAX)
+static unsigned char fecq_buf[FECQ_MAX][QPSK_PKT_BYTES_MAX];
+static int      fecq_len[FECQ_MAX];
+static int      fecq_head, fecq_n;
+static double   fec_group_t0;
+static int      fec_group_open;
+static uint64_t fec_par_tx, fec_par_drop, fec_unprot;
+
+/* Build this group's R parity containers into the pending queue and reset. */
+static void fec_close_group(void)
+{
+    int j;
+    if (!fec_e) { fec_group_open = 0; return; }
+    if (qpsk_fec_enc_pending(fec_e) <= 0) { fec_group_open = 0; return; }
+    for (j = 0; j < fec_r; j++) {
+        int slot, n;
+        if (fecq_n >= FECQ_MAX) { fec_par_drop++; continue; }
+        slot = (fecq_head + fecq_n) % FECQ_MAX;
+        n = qpsk_fec_enc_parity(fec_e, j, fecq_buf[slot],
+                                (int)sizeof fecq_buf[slot]);
+        if (n <= 0) { fec_par_drop++; continue; }
+        fecq_len[slot] = n;
+        fecq_n++;
+    }
+    qpsk_fec_enc_reset(fec_e);
+    fec_group_open = 0;
+}
+
+/* Feed a payload that was just handed to the DMA.  Called with the seq the
+ * frame actually went out under, only on a successful tx_send. */
+static void fec_tx_note(uint32_t seq, const unsigned char *p, int len, double now)
+{
+    int rc;
+    if (!fec_e) return;
+    if (!fec_group_open) { fec_group_t0 = now; fec_group_open = 1; }
+    rc = qpsk_fec_enc_add(fec_e, seq, p, len);
+    if (rc < 0) {
+        /* Over the protected-length cap, or the group's seq span outgrew the
+         * 16-bit delta table.  Close what we have, then retry on a fresh
+         * group; a payload that is simply too long stays unprotected. */
+        fec_close_group();
+        rc = qpsk_fec_enc_add(fec_e, seq, p, len);
+        if (rc < 0) { fec_unprot++; return; }
+        fec_group_t0 = now; fec_group_open = 1;
+    }
+    if (rc == 1) fec_close_group();
+}
+
+static void fec_tx_tick(double now)
+{
+    if (fec_group_open && now - fec_group_t0 >= fec_flush_s)
+        fec_close_group();
+}
+
+static void fec_dump(void)
+{
+    const struct qpsk_fec_stats *s;
+    if (!fec_d) return;
+    s = qpsk_fec_dec_stats(fec_d);
+    /* separate line, like txgap/rxresync: the stats line above is a
+     * byte-for-byte contract for the watchdog and stream-script parsers */
+    fprintf(stderr, "qpsk_tun fec: K=%d R=%d par_tx=%llu par_drop=%llu unprot=%llu "
+            "data_in=%llu par_in=%llu par_bad=%llu recovered=%llu "
+            "unrecov=%llu late=%llu released=%llu dups=%llu overflow=%llu\n",
+            fec_k, fec_r,
+            (unsigned long long)fec_par_tx, (unsigned long long)fec_par_drop,
+            (unsigned long long)fec_unprot,
+            (unsigned long long)s->data_in, (unsigned long long)s->parity_in,
+            (unsigned long long)s->parity_bad, (unsigned long long)s->recovered,
+            (unsigned long long)s->unrecoverable, (unsigned long long)s->too_late,
+            (unsigned long long)s->released, (unsigned long long)s->dups,
+            (unsigned long long)s->overflow);
+}
+
+/* max_read is the frame payload cap; the container header eats into it. */
+static void fec_init_from_env(int max_read)
+{
+    const char *e = getenv("QPSK_FEC");
+    int lcap;
+    if (!e || atoi(e) <= 0) return;
+    fec_k = atoi(e);
+    if (fec_k > QPSK_FEC_KMAX) fec_k = QPSK_FEC_KMAX;
+    if ((e = getenv("QPSK_FEC_R")) && atoi(e) > 0) fec_r = atoi(e);
+    if (fec_r > QPSK_FEC_RMAX) fec_r = QPSK_FEC_RMAX;
+    if ((e = getenv("QPSK_FEC_HOLD_MS")) && atoi(e) > 0)
+        fec_hold_s = atoi(e) / 1000.0;
+    if ((e = getenv("QPSK_FEC_FLUSH_MS")) && atoi(e) > 0)
+        fec_flush_s = atoi(e) / 1000.0;
+    /* Both constructors take max_read, NOT a pre-reduced cap: qpsk_fec_enc_new
+     * subtracts the container header itself (its lcap = max_payload - HDR(K)),
+     * and the decoder's max_payload is a slot size that only has to be >= any
+     * L on the wire.  Subtracting HDR here too would silently halve the
+     * protected length and leave large packets unprotected. */
+    lcap = max_read - QPSK_FEC_HDR(fec_k);
+    if (lcap < 256) {
+        fprintf(stderr, "QPSK_FEC=%d leaves only %d B of protected payload -- FEC OFF\n",
+                fec_k, lcap);
+        fec_k = 0;
+        return;
+    }
+    qpsk_fec_init();
+    fec_e = qpsk_fec_enc_new(fec_k, fec_r, max_read);
+    fec_d = qpsk_fec_dec_new(128, max_read, fec_hold_s);
+    if (!fec_e || !fec_d) {
+        fprintf(stderr, "QPSK_FEC: allocation failed -- FEC OFF\n");
+        qpsk_fec_enc_free(fec_e); fec_e = NULL;
+        qpsk_fec_dec_free(fec_d); fec_d = NULL;
+        fec_k = 0;
+        return;
+    }
+    fprintf(stderr, "FEC ON: K=%d R=%d (+%d%% air, taken from idle filler) "
+            "protect<=%dB hold=%.0fms flush=%.0fms\n",
+            fec_k, fec_r, 100 * fec_r / fec_k, qpsk_fec_enc_maxprot(fec_e),
+            fec_hold_s * 1000.0, fec_flush_s * 1000.0);
+    fprintf(stderr, "FEC: parity rides as an ordinary frame payload; a peer "
+            "without FEC drops it as a malformed packet\n");
+}
+
 static void stats_dump(void)
 {
     fprintf(stderr,
@@ -282,6 +470,7 @@ static void stats_dump(void)
 #endif
     ckpt_stats_dump();  /* prints only when QPSK_CKPT is set */
     rxresync_dump();    /* separate line; the stats line above stays byte-identical */
+    fec_dump();         /* separate line; prints only when QPSK_FEC is set */
 }
 
 /* ---- per-frame telemetry logger (QPSK_FRAMELOG) --------------------------
@@ -1307,6 +1496,68 @@ static void (*rx_raw_tap)(const unsigned char *slice);
  * same binary, so the judge leg has a same-build A/B control. */
 static int rx_resync = 1;              /* QPSK_RX_RESYNC=0 disables the re-anchor */
 static int rx_dphase = 0;              /* drain cursor phase in bytes, 0 = aligned */
+/* QPSK_RX_DPHASE_CARRY (2026-09-24): carry the recovered byte phase ACROSS a
+ * transfer boundary instead of zeroing it.  RXFIX-26 zeroed it on the premise
+ * that "every transfer starts on a tuser frame sync".  Measured false on 146:
+ * the recovered offsets sit on a 96-byte lattice -- 376/760/952/1048/1144/1240,
+ * every one == 88 (mod 96), and pkt_bytes 1528 == 88 (mod 96) -- while the
+ * transfer itself is rx_multi*pkt_bytes = 24448 == 64 (mod 96), i.e. NOT a whole
+ * number of granules, so a boundary CANNOT restore granule phase.  Zeroing
+ * therefore throws away a correct phase 78x/s and forces a re-scan, and the
+ * frame straddling the boundary is then given up (rxr_tail ~0.48 per transfer
+ * ~= 3% of air frames).  NOTE: this comment used to call that "the visible
+ * video glitching" and imply the frame was recoverable.  It is not -- see the
+ * QPSK_RX_STITCH block below, which tried exactly that and measured +0.03%.  If an area really is
+ * aligned the carried phase simply fails slice 0 and rx_resync_try re-anchors,
+ * which is exactly today's cost, so this is bounded downside.
+ * Set QPSK_RX_DPHASE_CARRY=0 to restore RXFIX-26 behaviour bit-for-bit. */
+static int rx_dphase_carry = 1;
+static unsigned long long rxq_carry_kept = 0;  /* boundaries crossed with phase != 0 */
+static unsigned long long rxq_stranded  = 0;   /* partial drains recycled, not leaked */
+/* QPSK_RX_STITCH (2026-09-24): splice the frame that straddles a transfer
+ * boundary instead of discarding it.  The carry above keeps the byte PHASE
+ * across a boundary but not the straddling frame's BYTES: its head (the
+ * rx_dlimit - rx_doff bytes this transfer really wrote) was thrown away and
+ * its tail -- the first rx_dphase bytes of the next area -- is skipped by the
+ * carried phase, so the frame is lost twice over.  That is rxr_tail, measured
+ * 15-20/s = ~3% of offered air frames and named at the QPSK_RX_DPHASE_CARRY
+ * comment above as the visible video glitching.  Holding the head and
+ * prepending it to the next area reassembles the frame from the two halves
+ * the hardware actually delivered.  Bounded downside: if the two areas are
+ * not stream-adjacent (a re-arm between them) the splice fails CRC, which is
+ * exactly what discarding it already cost.
+ *
+ * MEASURED 2026-09-24 ON 146 -- IT RECOVERS NOTHING.  DEFAULT OFF.  Over a
+ * 320 s soak with video live: 12.2 straddles/s, 3.7/s spliced OK (30%), but
+ * 3.6/s of those were IDLE frames, whose CRC covers only the 12-byte header
+ * (qpsk_frame.c:166, len==0) -- the spliced tail is never validated, so an
+ * idle straddle passes for free and proves nothing.  Real payload frames won
+ * back: 0.16/s, +0.03% of delivered, and even that is BELOW the ~13% of
+ * payload straddles that pass trivially because a 1316 B video payload leaves
+ * ~200 B of CRC-uncovered padding at the tail.  Conclusion: the transfer
+ * boundary is NOT byte-adjacent -- the fabric drops bytes between transfers,
+ * so the straddling frame's middle is gone and no host-side reassembly can
+ * bring it back.  The original "what follows is stale carve" comment was
+ * right; the 96-byte lattice phase survives a boundary, the bytes do not.
+ *
+ * Left behind QPSK_RX_STITCH=1 for the record, but DO NOT enable it: besides
+ * being useless it adds ~3.6/s of 99%-padding frames to idle_rx, which is the
+ * watchdog's health plane, and burns a de-whiten + CRC over 1528 B per
+ * boundary in the drain path -- the same drain path whose CPU cost is
+ * implicated in the wedge.  rxr_tail is a SYMPTOM of boundary byte loss, not
+ * a host-side defect to be patched here. */
+static int rx_stitch_en = 0;
+static unsigned char rx_stitch[QPSK_PKT_BYTES_MAX];
+static int rx_stitch_len = 0;                  /* head bytes held, 0 = none held */
+static unsigned long long rxq_stitch_ok  = 0;  /* straddling frames reassembled  */
+static unsigned long long rxq_stitch_bad = 0;  /* spliced but failed CRC         */
+static unsigned long long rxq_stitch_idle = 0; /* of the ok ones, idle keepalives.
+                                                * Over half of all receptions are
+                                                * idle, so the PAYLOAD frames this
+                                                * change actually wins back are
+                                                * stitch_ok - stitch_idle, not
+                                                * stitch_ok.  Split so the gain is
+                                                * counted, not estimated. */
 static unsigned long long rxr_568;     /* re-anchors at exactly 568 B (the defect) */
 static unsigned long long rxr_other;   /* re-anchors at any other offset          */
 static unsigned long long rxr_fail;    /* scans that found no valid frame         */
@@ -1348,7 +1599,7 @@ static int rxr_off_last = -1;          /* last re-anchor offset, -1 = none yet *
 static unsigned long long rxr_fails_since;  /* failed scans since the last hit */
 static int rxr_log;                    /* QPSK_RX_RESYNC_LOG=1: per-hit lines  */
 /* SIGUSR2 baseline: 568, other, fail, recovered, tail -- in that order. */
-static unsigned long long rxr_base[5];
+static unsigned long long rxr_base[8];
 
 /* Called from framelog_service() on the SIGUSR2 rotate.  Snapshots only; it
  * must never clear a cumulative counter (see (b) above). */
@@ -1359,6 +1610,9 @@ static void rxresync_rotate(void)
     rxr_base[2] = rxr_fail;
     rxr_base[3] = rxr_recovered;
     rxr_base[4] = rxr_tail;
+    rxr_base[5] = rxq_stitch_ok;
+    rxr_base[6] = rxq_stitch_bad;
+    rxr_base[7] = rxq_stitch_idle;
 }
 
 static void rxresync_dump(void)
@@ -1389,14 +1643,22 @@ static void rxresync_dump(void)
     if (ntop) { mode = top[0] * QPSK_RESYNC_STEP; mode_n = rxr_hist[top[0]]; }
     fprintf(stderr, "qpsk_tun rxresync2: win_568=%llu win_other=%llu "
             "win_fail=%llu win_recovered=%llu win_tail=%llu "
+            "win_stitch=%llu win_sbad=%llu win_sidle=%llu "
             "off_last=%d off_mode=%d off_mode_n=%llu top=",
             rxr_568 - rxr_base[0], rxr_other - rxr_base[1],
             rxr_fail - rxr_base[2], rxr_recovered - rxr_base[3],
-            rxr_tail - rxr_base[4], rxr_off_last, mode, mode_n);
+            rxr_tail - rxr_base[4],
+            rxq_stitch_ok - rxr_base[5], rxq_stitch_bad - rxr_base[6],
+            rxq_stitch_idle - rxr_base[7],
+            rxr_off_last, mode, mode_n);
     for (i = 0; i < ntop; i++)
         fprintf(stderr, "%s%d:%llu", i ? "," : "",
                 top[i] * QPSK_RESYNC_STEP, rxr_hist[top[i]]);
     fprintf(stderr, "%s\n", ntop ? "" : "-");
+    fprintf(stderr, "qpsk_tun rxqfix: dphase_carry=%d carry_kept=%llu stranded=%llu "
+            "stitch=%d stitch_ok=%llu stitch_bad=%llu stitch_idle=%llu\n",
+            rx_dphase_carry, rxq_carry_kept, rxq_stranded,
+            rx_stitch_en, rxq_stitch_ok, rxq_stitch_bad, rxq_stitch_idle);
 }
 
 /* ---- CP2/CP3 seam checkpoints (QPSK_CKPT) --------------------------------
@@ -1873,6 +2135,7 @@ static void rx_arm_queued(void)
     rx_fscan = 0;
     rx_drain = -1;
     rx_dphase = 0;                 /* RXFIX-26: a fresh arm is aligned */
+    rx_stitch_len = 0;             /* RXSTITCH: a held head cannot span an arm */
     rx_active = 1;
     rx_t0 = now_s();
     rx_q_progress = rx_q_delivered = rx_t0;
@@ -1934,10 +2197,27 @@ static void rx_q_on_complete(void)
         rx_qd = a;
     }
     if (from < rx_multi) {
+        /* STRANDED-AREA FIX (2026-09-24): if a partial drain of a DIFFERENT area
+         * is still in progress, the assignment below overwrites rx_drain and the
+         * old area is lost -- never re-submitted, never returned to
+         * rx_clean_mask.  With the default rx_nareas=2 that can leave the engine
+         * with nothing queued, and a dry ring is what overflows the fabric FIFO
+         * (rstCS: drstcs 700-850/window observed during a payload wedge) and
+         * displaces the byte stream in the first place.  Its undrained slices are
+         * lost either way, but the AREA must go back to the engine. */
+        if (rx_drain >= 0 && rx_drain != (int)completed) {
+            unsigned stranded = (unsigned)rx_drain;
+            rxq_stranded++;
+            if (rx_qd < 0) { rx_q_submit(stranded); rx_qd = (int)stranded; }
+            else           { rx_clean_mask |= 1u << stranded; }
+        }
         rx_drain = (int)completed;
         rx_dscan = from;
-        rx_dphase = 0;             /* RXFIX-26: every transfer starts on a tuser
+        if (!rx_dphase_carry)
+            rx_dphase = 0;         /* RXFIX-26: every transfer starts on a tuser
                                     * frame sync, so a new area is aligned again */
+        else if (rx_dphase)
+            rxq_carry_kept++;      /* see QPSK_RX_DPHASE_CARRY: premise is false */
     } else if (rx_qd < 0) {
         rx_q_submit(completed);        /* fully consumed and nothing queued: requeue */
         rx_qd = (int)completed;
@@ -2081,6 +2361,35 @@ static int rx_pump_queued(unsigned char *out, uint32_t *seq)
     if (rx_drain >= 0) {
         int ck_budget = rx_drain_budget;
         const size_t rx_dlimit = (size_t)rx_multi * (size_t)pkt_bytes;
+        /* RXSTITCH splice.  A head is only ever held at the tail break, which
+         * BREAKS that area's drain and hands the area back, so rx_drain here is
+         * necessarily the next completed area and its leading bytes are this
+         * frame's tail.  Exactly (pkt_bytes - head) of them, which is rx_dphase
+         * -- the same count the carried phase makes the scan below skip -- so
+         * the bytes are consumed once, not twice.  Successes flow into the
+         * normal delivery counters; a failure lands only in rxq_stitch_bad, so
+         * crc_drop keeps the same meaning it had before this change and the A/B
+         * stays comparable. */
+        if (rx_stitch_len > 0) {
+            const size_t sh = (size_t)rx_stitch_len;
+            const size_t stl = (size_t)pkt_bytes - sh;
+            rx_stitch_len = 0;
+            if (stl > 0 && stl <= rx_dlimit) {
+                unsigned char sf[QPSK_PKT_BYTES_MAX];
+                memcpy(sf, rx_stitch, sh);
+                carve_copy_from(sf + sh, rx_area_virt((unsigned)rx_drain), stl);
+                int sm = qpsk_frame_decode(sf, pkt_bytes, out, seq);
+                if (sm >= 0) {
+                    rxq_stitch_ok++;
+                    rx_q_progress = rx_q_delivered = now_s();
+                    if (sm > 0) return sm;
+                    rxq_stitch_idle++;
+                    st.idle_rx++;      /* reassembled an idle/keepalive frame */
+                } else {
+                    rxq_stitch_bad++;
+                }
+            }
+        }
         while (rx_dscan < rx_multi) {
             if (rx_drain_budget > 0 && ck_budget-- <= 0)
                 return 0;              /* resume this area on the next call */
@@ -2092,10 +2401,20 @@ static int rx_pump_queued(unsigned char *out, uint32_t *seq)
                                  + (size_t)rx_dphase;
             if (rx_doff + (size_t)pkt_bytes > rx_dlimit) {
                 /* Displaced tail: the last frame of this transfer runs past the
-                 * DMA-written region and cannot be reassembled (what follows is
-                 * stale carve, not this transfer's bytes). One frame, once per
-                 * burst; counted so the judge can attribute the residual. */
+                 * DMA-written region, so what FOLLOWS rx_dlimit is stale carve,
+                 * not this transfer's bytes.  But everything BEFORE it is real:
+                 * rx_dlimit - rx_doff bytes of this frame's head, which the
+                 * hardware did deliver.  RXSTITCH holds them for the next area.
+                 * Counted either way so the judge can attribute the residual. */
+                const size_t rx_head = rx_dlimit - rx_doff;
                 rxr_tail++;
+                rx_stitch_len = 0;
+                if (rx_stitch_en && rx_head > 0 && rx_head < (size_t)pkt_bytes) {
+                    carve_copy_from(rx_stitch,
+                                    rx_area_virt((unsigned)rx_drain) + rx_doff,
+                                    rx_head);
+                    rx_stitch_len = (int)rx_head;
+                }
                 break;
             }
             const volatile unsigned char *ck_src = rx_area_virt((unsigned)rx_drain)
@@ -3140,6 +3459,7 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
     unsigned char buf[QPSK_PKT_BYTES_MAX + 64];
     unsigned char pkt[QPSK_PKT_BYTES_MAX];
     unsigned char out[QPSK_PKT_BYTES_MAX];
+    unsigned char fecout[QPSK_PKT_BYTES_MAX];   /* FEC reorder-buffer pops */
     uint32_t tx_seq = 0, last_rx_seq = 0;
     int have_rx = 0;
     double tlast = now_s();
@@ -3284,6 +3604,7 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
                         hist_store(tx_seq, pkt);
                     if (tx_send(pkt) == 0) {
                         double tn = now_s();
+                        fec_tx_note(tx_seq, buf, (int)n, tn);
                         if (tx_next < tn - pace_lead)
                             tx_next = tn - pace_lead;
                         tx_next += frame_period_s;
@@ -3305,6 +3626,10 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
         {
             uint32_t seq;
             int m;
+            /* One timestamp for the whole drain: every frame in it arrived in
+             * the same DMA transfer, and the hold deadline is millisecond
+             * -grained, so a clock read per frame at ~1200 f/s buys nothing. */
+            double rxnow = fec_d ? now_s() : 0.0;
             while ((m = rx_pump_frame(out, &seq)) > 0) {
                 st.frames_rx_ok++;
                 framelog_record(1, seq);
@@ -3340,6 +3665,21 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
                         else
                             st.tun_drops++;
                     }
+                } else if (fec_d) {
+                    /* seq_gaps still measures the CHANNEL: parity frames sit
+                     * in the same seq stream, so contiguity is unchanged.
+                     * What the user actually sees is the fec line's
+                     * released / recovered / unrecov. */
+                    if (have_rx && seq != last_rx_seq + 1)
+                        st.seq_gaps++;
+                    last_rx_seq = seq;
+                    have_rx = 1;
+                    /* Data enters the reorder buffer; parity containers are
+                     * consumed here and never reach tun0.  Release is
+                     * in-order and deadline-driven, drained just below --
+                     * out-of-order fills break mpegts, so a rebuild that
+                     * misses its slot is discarded rather than delivered. */
+                    qpsk_fec_dec_rx(fec_d, seq, out, m, rxnow);
                 } else {
                     if (have_rx && seq != last_rx_seq + 1)
                         st.seq_gaps++;
@@ -3350,6 +3690,23 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
                     else
                         st.tun_drops++;
                 }
+            }
+            /* Drain the reorder buffer every iteration, not only when a frame
+             * arrived: the hold deadline must be able to fire on a link that
+             * has gone quiet, or the tail of a burst sits there forever. */
+            if (fec_d) {
+                int fn;
+                uint32_t fseq;
+                double fnow = now_s();      /* re-read: the drain above can
+                                             * take a while under load */
+                while ((fn = qpsk_fec_dec_pop(fec_d, fecout, (int)sizeof fecout,
+                                              &fseq, fnow)) > 0) {
+                    if (write(fdb, fecout, (size_t)fn) == fn)
+                        st.tun_b_tx++;
+                    else
+                        st.tun_drops++;
+                }
+                fec_tx_tick(fnow);
             }
             if (arq_on || arq_x)
                 retx_pump(&tx_next);
@@ -3375,7 +3732,28 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
             /* (tx_used_credit no longer gates this: with multiple credits per
              * wakeup the poll-admitted data frame consumed only one) */
             while (tx_capacity() && now_s() >= tx_next) {
-                ssize_t n = read(fda, buf, sizeof buf);   /* fda O_NONBLOCK */
+                ssize_t n;
+                /* Parity first.  It is worthless unless it lands inside the
+                 * receiver's hold window, so it must not queue behind a tun
+                 * backlog; at R<=4 it can delay video by at most R frame
+                 * periods (~3 ms at R3).  It displaces idle filler, which is
+                 * what makes FEC free in air time. */
+                if (fecq_n > 0) {
+                    qpsk_frame_encode(pkt, pkt_bytes, fecq_buf[fecq_head],
+                                      fecq_len[fecq_head], tx_seq);
+                    if (tx_send(pkt) != 0)
+                        break;
+                    fecq_head = (fecq_head + 1) % FECQ_MAX;
+                    fecq_n--;
+                    fec_par_tx++;
+                    tx_seq++;
+                    { double tn = now_s();
+                      if (tx_next < tn - pace_lead)
+                          tx_next = tn - pace_lead;
+                      tx_next += frame_period_s; }
+                    continue;
+                }
+                n = read(fda, buf, sizeof buf);           /* fda O_NONBLOCK */
                 if (n > 0) {
                     st.tun_a_rx++;
                     if ((int)n > max_read) {
@@ -3386,6 +3764,7 @@ static void run_irq_loop(int fda, int fdb, int nif, int max_read, int stats_int)
                             hist_store(tx_seq, pkt);
                         if (tx_send(pkt) == 0) {
                             double tn = now_s();
+                            fec_tx_note(tx_seq, buf, (int)n, tn);
                             if (tx_next < tn - pace_lead)
                                 tx_next = tn - pace_lead;
                             tx_next += frame_period_s;
@@ -3683,6 +4062,16 @@ int main(int argc, char **argv)
           if ((e = getenv("QPSK_RX_DRAIN_BUDGET")) && atoi(e) >= 0) {
               rx_drain_budget = atoi(e);
           }
+          if ((e = getenv("QPSK_RX_DPHASE_CARRY")))
+              rx_dphase_carry = atoi(e) != 0;
+          if ((e = getenv("QPSK_RX_STITCH")))
+              rx_stitch_en = atoi(e) != 0;
+          fprintf(stderr, "RX boundary stitch: %d (1 = splice the frame that "
+                  "straddles a transfer boundary; 0 = discard it as rxr_tail)\n",
+                  rx_stitch_en);
+          fprintf(stderr, "RX dphase carry: %d (1 = keep recovered byte phase "
+                  "across transfer boundaries; 0 = RXFIX-26 zeroing)\n",
+                  rx_dphase_carry);
           fprintf(stderr, "RX drain budget: %d slices/pump call (0 = unbounded; "
                   "TX can be fed between chunks)\n", rx_drain_budget);
           if ((e = getenv("QPSK_CKPT")) && atoi(e) != 0) {
@@ -3872,6 +4261,34 @@ int main(int argc, char **argv)
     if (max_read > QPSK_FRAME_MAX_PAYLOAD(pkt_bytes))
         max_read = QPSK_FRAME_MAX_PAYLOAD(pkt_bytes);
 
+    /* FEC and ARQ cannot both own the RX delivery path: the branch that feeds
+     * the decoder sits after both ARQ branches, so with either one on the
+     * decoder would never see a frame while TX still spent air on parity
+     * nobody consumes.
+     *
+     * -X (cross-link NAK ARQ) is a real protocol with its own frames, so FEC
+     * refuses to coexist with it.  In-process ARQ (-A, the DEFAULT; -R turns
+     * it off) is a different matter: on this link it is provably inert --
+     * 146 shows retx=0 dups=0 recovered=0 over 2.1M frames, because a one-way
+     * video link has no reverse path to carry a retransmit request.  So
+     * QPSK_FEC simply implies -R, loudly.  With QPSK_FEC unset none of this
+     * runs and arq_on keeps its default, so the existing behaviour is
+     * byte-for-byte unchanged. */
+    if (getenv("QPSK_FEC") && atoi(getenv("QPSK_FEC")) > 0) {
+        if (arq_x) {
+            fprintf(stderr, "QPSK_FEC ignored: -X cross-link ARQ owns the RX "
+                            "path (they cannot both deliver to tun0)\n");
+        } else {
+            if (arq_on) {
+                arq_on = 0;
+                fprintf(stderr, "QPSK_FEC implies -R: in-process ARQ off "
+                                "(it cannot share the RX delivery path; it is "
+                                "inert on a one-way link anyway)\n");
+            }
+            fec_init_from_env(max_read);
+        }
+    }
+
     /* IRQ mode runs its own event loop; the polled loop below is left exactly
      * as it was (the safety net for a board on the current image). */
     if (irq_mode) {
@@ -3880,6 +4297,17 @@ int main(int argc, char **argv)
             gpio_regs[0] = 1;   /* restore legacy per-packet TLAST (as polled) */
         stats_dump();
         return 0;
+    }
+
+    /* The polled fallback has no credit pacing and discards tx_send's result,
+     * so parity has nowhere to be injected and no way to know it went out.
+     * Refuse FEC here rather than run the decoder against a TX that emits no
+     * parity -- that would add hold latency and recover nothing. */
+    if (fec_k) {
+        fprintf(stderr, "QPSK_FEC: polled fallback in use (no IRQ mode) -- FEC OFF\n");
+        qpsk_fec_enc_free(fec_e); fec_e = NULL;
+        qpsk_fec_dec_free(fec_d); fec_d = NULL;
+        fec_k = 0;
     }
 
     unsigned char buf[QPSK_PKT_BYTES_MAX + 64];

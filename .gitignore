@@ -1,62 +1,106 @@
-# # =============================================================================
-# # Repo slimmed to the CANONICAL K5 QPSK Jupiter modem design. Everything at repo
-# # root is IGNORED except the keepers whitelisted below; the ~150 experimental
-# # snapshot dirs (composite_*, V*, fec_*, zed_*, jupiter_t8*, rf_*, ...) remain on
-# # LOCAL DISK, untracked -- they are NOT in the repo. Re-add one with:
-# #     git add -f <path>
-# # =============================================================================
+# =============================================================================
+# Repo slimmed to the CANONICAL K5 QPSK Jupiter modem design. Everything at repo
+# root is IGNORED except the keepers whitelisted below; the ~150 experimental
+# snapshot dirs (composite_*, V*, fec_*, zed_*, jupiter_t8*, rf_*, ...) remain on
+# LOCAL DISK, untracked -- they are NOT in the repo. Re-add one with:
+#     git add -f <path>
+#
+# 2026-09-25: this file had been commented out in its ENTIRETY (0 active lines),
+# so `git status` listed every build artifact and every capture directory. That
+# noise is why host/qpsk_fec.{c,h} sat untracked and unnoticed even though
+# ops/provision.sh scp's and compiles them -- a fresh clone could not provision.
+# Restored, and the whitelist below is now generated from the set of top-level
+# paths git actually tracks (it had drifted: /host/ and /images/ were missing).
+#
+# NOTE ON THE ARTIFACT PATTERNS BELOW (*.log, *.out, docs/superpowers/): 212
+# TRACKED evidence files match them (181 .log, 20 .md under docs/superpowers/,
+# 9 .out, 2 .txt -- measured with `git ls-files -z | git check-ignore --stdin -z
+# --no-index`). That is harmless: .gitignore does not apply to files git already
+# tracks, so they still diff, commit and clone normally, and no .c/.h/.sh source
+# is among them. It does mean `git clean -x` would delete them -- `git clean -n`
+# first. Re-run that pipeline after editing the patterns below.
+# =============================================================================
 
-# # ---- ignore all root entries, then whitelist the canonical keepers ----
-# /*
-# !/.gitignore
-# !/README.md
-# !/build_env_jupiter.sh
-# !/2026-07-01-bidir-240k-k5-design.md
-# !/docs/
-# !/docs_session/
-# !/host_app_k5/
-# !/jupiter_240k5_byte/
-# !/k5_240/
-# !/plans/
-# !/two_jup/
-# !/ops/
+# ---- ignore all root entries, then whitelist the canonical keepers ----
+/*
+!/2026-07-01-bidir-240k-k5-design.md
+!/boot_known_good/
+!/build_env_jupiter.sh
+!/contract/
+!/docs/
+!/docs_session/
+!/evm/
+!/.gitignore
+!/host/
+!/host_app_k5/
+!/images/
+!/ip_error_fix.md
+!/issue1.md
+!/jupiter_240k5_byte/
+!/jupiter_byte_ddrcap2_build/
+!/jupiter_byte_txfix_fetch.sh
+!/jupiter_byte_txfix_kit.sh
+!/k5_240/
+!/kill_watchdogs.md
+!/modem/
+!/ops/
+!/OVERNIGHT_LOG.md
+!/plans/
+!/README.md
+!/REPRODUCE.md
+!/tests/
+!/tick_repro/
+!/tick_repro_r3/
+!/tools/
+!/two_jup/
 
-# # ---- build/derived artifacts INSIDE the kept dirs. These come AFTER the
-# #      whitelist re-includes so they win (last matching pattern decides). ----
-# *.iq
-# *.mat
-# # golden payload is load-bearing (loaded by the build gates) -- keep despite *.mat
-# !/k5_240/golden_k5.mat
-# *.log
-# *.out
-# *.jou
-# *.pyc
-# *.vvp
-# *.vvpout
-# *.autosave
-# *BOOT.BIN
-# *BOOT.BIN.save
-# hdl_prj_*/
-# slprj/
-# obj_*/
-# .Xil/
-# ipcore/
-# s1_rtl/
-# __pycache__/
-# docs/superpowers/
-# two_jup/phaseB_agc/
-# jupiter_240k5_byte/rtl_sim/*.txt
-# jupiter_240k5_byte/rtl_sim/*.csv
-# jupiter_240k5_byte/rtl_sim/diag/
-# jupiter_240k5_byte/rtl_sim/replay/
-# two_jup/hunt/
-# two_jup/paired/
-# two_jup/census/
-# host_app_k5/qpsk_tun
-# host_app_k5/qpsk_capture
-# host_app_k5/qpsk_ringwrite
-# host_app_k5/test_frame
-# host_app_k5/test_k5
-# host_app_k5/test_ber
-# host_app_k5/test_whiten
-# host_app_k5/test_seq
+# ---- build/derived artifacts INSIDE the kept dirs. These come AFTER the
+#      whitelist re-includes so they win (last matching pattern decides). ----
+*.iq
+*.mat
+# golden payloads are load-bearing (loaded by the build gates) -- keep despite *.mat
+!/k5_240/golden_k5.mat
+!/k5_240/golden_f1536.mat
+!/contract/golden_k5.mat
+!/contract/golden_f1536.mat
+*.log
+*.out
+*.jou
+*.pyc
+*.vvp
+*.vvpout
+*.autosave
+*BOOT.BIN
+*BOOT.BIN.save
+hdl_prj_*/
+slprj/
+obj_*/
+.Xil/
+ipcore/
+s1_rtl/
+__pycache__/
+docs/superpowers/
+two_jup/phaseB_agc/
+jupiter_240k5_byte/rtl_sim/*.txt
+jupiter_240k5_byte/rtl_sim/*.csv
+jupiter_240k5_byte/rtl_sim/diag/
+jupiter_240k5_byte/rtl_sim/replay/
+two_jup/hunt/
+two_jup/paired/
+two_jup/census/
+host_app_k5/qpsk_tun
+host_app_k5/qpsk_capture
+host_app_k5/qpsk_ringwrite
+host_app_k5/test_frame
+host_app_k5/test_k5
+host_app_k5/test_ber
+host_app_k5/test_whiten
+host_app_k5/test_seq
+
+# ---- added 2026-09-25 ----
+# The UIO kernel is banked COMPRESSED (Image.*-uio.*.gz, tracked, 14M). Unpacking
+# it leaves a 47M byte-identical copy beside it; that copy is derived, never commit it.
+/images/Image.*-uio.*
+!/images/Image.*-uio.*.gz
+# r3 capture output written by two_jup/capture_r3.sh restore runs.
+two_jup/r3cap/restore_*/

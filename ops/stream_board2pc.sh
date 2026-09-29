@@ -161,8 +161,10 @@ VBV=${VBV:-5}
 # at ~19 datagrams/frame means 1-(1-0.165)^19 = 97% of frames arrive damaged.
 # At that rate the IDR interval has stopped being a latency knob and is the only
 # thing bounding how long corruption stays on screen: 233 ms at GOP=7, 100 ms at
-# GOP=3. Modelled mean on-screen corruption over a GOP (with RESIL=600 below)
-# falls from ~61% at G=7 to ~41% at G=3.
+# GOP=3. Modelled mean on-screen corruption over a GOP (computed at RESIL=600)
+# falls from ~61% at G=7 to ~41% at G=3. RESIL is now 400, which by the D+S
+# damage formula below scales per-datagram damage by 1716/1916 = 0.90, so both
+# figures move down by roughly a tenth; the G=7 vs G=3 conclusion is unchanged.
 #
 # This is an EXTRAPOLATION past the measured table and it is NOT free: GOP=5
 # already cost 1 q-point at 35% I-bit-share, so expect q ~28-29 and roughly half
@@ -224,12 +226,30 @@ GOP=${GOP:-$(( (OUTFPS + 9) / 10 > 3 ? (OUTFPS + 9) / 10 : 3 ))}
 # lost datagrams per frame, so corrupted area goes 31.6% -> 24.1% of the
 # picture. A ~24% relative improvement. It is not a fix and it does not touch p.
 #
-# 600 and not 400 because the only costs are slice-header overhead and CPU, the
-# encoder measured 0.995x speed at 6000k (about 0.5% of headroom), and the
-# camera was disconnected when this was chosen so the CPU cost could NOT be
-# measured. Before dropping to 400, check `speed=` in /tmp/qpsk_stream/tx.log
-# stays above 1.00x; if it falls below 1.00x, go back up. Above 1316 the whole
-# mechanism switches off -- a slice must fit inside one datagram.
+# 400, not 600, since 2026-09-24. 600 was chosen only because the camera was
+# disconnected at the time, so the CPU cost of 400 could NOT be measured; the
+# note here used to say "before dropping to 400, check `speed=` stays above
+# 1.00x". That check has now been run against the live camera and 400 passes:
+#
+#   /tmp/qpsk_stream/tx_progress.log on 148, 2092 samples, 6000k 720p30 C270
+#     speed=            1.000x steady; 73 samples below it, ALL in the first
+#                       ~4.5% of the run (last one at sample 94 of 2092)
+#     drop_frames=      0        over frame=62393
+#     dup_frames=       2
+#     fps=              30.00
+#
+# Read those 73 samples correctly: ffmpeg's `speed=` is a CUMULATIVE average of
+# wall time against encoded time since start, so a slow first second drags it
+# and it asymptotes upward -- 0.966, 0.983, 0.989, 0.991 ... 0.999 -- rather
+# than dipping under load. It is a warm-up transient, not headroom running out.
+# drop_frames is the honest realtime indicator and it is 0.
+#
+# Above 1316 the whole mechanism switches off -- a slice must fit inside one
+# datagram. Do not go below ~300: slice-header overhead starts to show in the
+# bitrate and there is nothing left to win (the S=400 row above is already at
+# 1.30x of the S->0 limit of 1.00x, so the remaining headroom is 30%, not 300%).
+# If `drop_frames` ever climbs above 0 on a slower camera or a higher bitrate,
+# go back to RESIL=slice-max-size=600.
 #
 # DO NOT re-add intra-refresh=1. It was tried on 2026-09-16 and reverted the
 # same day. The table above is the reason: cutting I-frames from 16 to 1 buys
@@ -242,13 +262,20 @@ GOP=${GOP:-$(( (OUTFPS + 9) / 10 > 3 ? (OUTFPS + 9) / 10 : 3 ))}
 # holding accumulated corruption. Users report it immediately.
 #
 # Set RESIL= (empty) to go back to unsliced 4-slice frames.
-RESIL=${RESIL:-slice-max-size=600}
+RESIL=${RESIL:-slice-max-size=400}
 X264OPTS=""; [ -n "$RESIL" ] && X264OPTS="-x264opts $RESIL"
 PORT=${PORT:-5002}              # RF video 148->146; the preflight probe uses 5001
 LATPORT=${LATPORT:-5003}        # continuous latency probe, over tun0, 148->146
 RELAY_PORT=${RELAY_PORT:-5010}  # 146's TCP listen port, on 146's LAN IP, for the PC to pull
 LOCAL_PORT=${LOCAL_PORT:-5020}  # unused now (kept so old env overrides don't error); see FIFO below
 POLL_INT=${POLL_INT:-5}         # telemetry report cadence, same as the existing "sleep 5"
+# How long the PC may receive NOTHING before the self-heal at the bottom of the
+# monitor loop investigates. Must clear the worst honest carrier outage or the
+# heal fights the modem watchdog: FAIL_N=2 windows (~14 s) + full_rearm (~4.6 s
+# incl. the 3 s double-tap) + HOLDOFF=10 = ~26 s. 40 s leaves margin and is still
+# far inside the "10-20 minutes" it used to sit dead. SELFHEAL=0 disables it.
+STALL_MS=${STALL_MS:-40000}
+SELFHEAL=${SELFHEAL:-1}
 LATPROBE_INT=${LATPROBE_INT:-2} # how often 148 sends a latency-probe packet
 LOGDIR=/tmp/qpsk_stream          # shared with stream_board2board.sh's own log files
 FIFO=${FIFO:-$LOGDIR/relay.fifo} # PC-local re-hop between the puller and ffplay: a named pipe,
@@ -260,7 +287,7 @@ FIFO=${FIFO:-$LOGDIR/relay.fifo} # PC-local re-hop between the puller and ffplay
                                  # is small and fixed (~64KB, a couple hundred ms of video), it never
                                  # silently drops data, and a slow reader applies real backpressure
                                  # (write() blocks) instead of either dropping or queuing megabytes.
-SKIP_PREFLIGHT=${SKIP_PREFLIGHT:-1} # set to 1 to skip the preflight probe (for debugging only)
+SKIP_PREFLIGHT=${SKIP_PREFLIGHT:-0} # set to 1 to skip the preflight probe (for debugging only)
 
 # --------------------------------------------------------- TX supervision --
 # Every name here MUST be declared with ${:-}: set -u is on (:60), and an unset
@@ -438,7 +465,7 @@ if [ "$SKIP_PREFLIGHT" != 1 ]; then
       *TUNOK*)    echo "   tun0 ok on $1" ;;
       *TUNFIXED*) echo "   tun0 was unaddressed on $1 -- repaired (daemon restart drops it)" ;;
       *NOTUN*)    die "no tun0 on $1 -- qpsk_tun is not running. Arm the link ON THE BOARD:
-  WATCHDOG=0 GATE_DIR=B bash /root/Electronica/two_jup/bringup_r2r3.sh r3" ;;
+  WATCHDOG=0 GATE_DIR=B bash /root/Electronica/ops/bringup_r2r3.sh r3" ;;
       *)          die "could not address tun0 on $1. Run bringup_r2r3.sh r3" ;;
     esac
   done
@@ -468,7 +495,7 @@ for i in range(100): s.sendto(b"X"*1000,("'"$TB"'",5001)); time.sleep(0.01)'
   got=$(run "$B" 'cat /dev/shm/probe.out 2>/dev/null || echo 0' | tr -dc 0-9); : "${got:=0}"
   echo "   one-way probe 148 -> 146 : $got/100 datagrams"
   [ "$got" -ge 60 ] || die "RF hop down or badly degraded ($got/100). Re-arm ON THE BOARD:
-  WATCHDOG=0 GATE_DIR=B bash /root/Electronica/two_jup/bringup_r2r3.sh r3"
+  WATCHDOG=0 GATE_DIR=B bash /root/Electronica/ops/bringup_r2r3.sh r3"
 fi
 
 if [ "$CHECK_ONLY" = 1 ]; then echo "== --check passed; hardware and hop are ready =="; exit 0; fi
@@ -852,6 +879,7 @@ echo
 # stalled camera from a hop that is dropping everything, or the PC's own
 # decode from the RF link itself.
 prev=0; prevt=0
+pct_prev=0; stall_t0=0; stall_rxb=0; heals=0   # self-heal state (set -u is on)
 while :; do
   sleep "$POLL_INT"
   # tx.pid is the SUPERVISOR now, so kill -0 on it is no longer a liveness test
@@ -908,6 +936,66 @@ fi" | tr -dc A-Z)
   # blank column reads as a stall when it only means "could not ask".
   printf "   camera=%-8s RF:%5dkbit/s  PC:%skbit/s %sfps  link:%s %s %s %s  lat148->146:%sms\n" \
     "${tx:-?}" "$rfrate" "$pc_kbit" "$pc_fps" "${fail:-resync_fail=?}" "${rec:-recovered=?}" "${lost:-tail_lost=?}" "${wd:-?}" "${lat:-?}"
+
+  # --------------------------------------------- self-heal: 146 lost tun0's IP
+  # tun0 is a NON-PERSISTENT tun device: qpsk_tun.c:2631 calls TUNSETIFF with no
+  # TUNSETPERSIST, and nothing in the tree runs `ip tuntap add`, so the device's
+  # only holder is qpsk_tun's fd. lock_watchdog.sh's BYTE-PLANE and DELIVERY-WEDGE
+  # paths answer a wedge with `pkill -x qpsk_tun` + relaunch from $DAEMON_CMD --
+  # which DESTROYS the netdev rather than merely resetting it, and brings it back
+  # with NO address: neither qpsk_tun nor DAEMON_CMD assigns one, only
+  # bringup_r2r3.sh:183 does. 148 keeps transmitting, so frames still arrive and
+  # tun0's rx counter still moves, but with no local address the kernel has
+  # nowhere to deliver them and the relay's socket (bound to $TB:$PORT at :504)
+  # starves. RF stays LOCKED, no process exits, nothing logs an error -- the
+  # stream is just dead until someone restarts it by hand.
+  #
+  # Discriminator, and why it compares the counter rather than asking "is it
+  # climbing":
+  #   rxb moved + PC frozen -> address gone, or the relay socket wedged  (heal)
+  #   rxb still + PC frozen -> carrier drought                           (hands off:
+  #      lock_watchdog owns it, ~26 s an event, and healing would fight it)
+  # Destroying and recreating tun0 RESETS rx_bytes to zero, so the counter going
+  # BACKWARDS is the strongest tell available -- test -ne, never -gt, or the check
+  # goes blind in exactly the case it exists for.
+  if [ "$SELFHEAL" = 1 ]; then
+    pct=$(tac "$LOGDIR/pc_progress.log" 2>/dev/null | grep -m1 '^total_size=' | tr -dc 0-9)
+    : "${pct:=0}"
+    if [ "$stall_t0" -eq 0 ]; then stall_t0=$nowms; stall_rxb=$rxb; pct_prev=$pct; fi
+    if [ "$pct" -ne "$pct_prev" ]; then
+      pct_prev=$pct; stall_t0=$nowms; stall_rxb=$rxb      # PC is being fed; all well
+    elif [ $(( nowms - stall_t0 )) -ge "$STALL_MS" ]; then
+      secs=$(( (nowms - stall_t0) / 1000 ))
+      if [ "$rxb" -eq "$stall_rxb" ]; then
+        echo "   .. PC starved ${secs}s but tun0 rx is frozen too -- carrier outage, not an IP loss; leaving it to lock_watchdog"
+      else
+        [ "$rxb" -lt "$stall_rxb" ] && \
+          echo "   !! tun0 rx_bytes went BACKWARDS ($stall_rxb -> $rxb): the device was destroyed and recreated"
+        echo "   !! PC starved ${secs}s while tun0 kept receiving -- inspecting 146"
+        if run "$B" "ip -o -4 addr show tun0 2>/dev/null" | grep -q 'inet '; then
+          # Address is fine, so the relay's socket or demuxer is the suspect. Kill
+          # ONLY the ffmpeg, never the group: relay.sh is a `while :;` loop (:501)
+          # that respawns it within 1 s, and a group kill would end the relay for
+          # good. -x on an exact process name, not -f on a substring, per the
+          # header rule; 146 runs no other ffmpeg because it never encodes.
+          echo "   !! tun0 address present -- bouncing the relay ffmpeg instead"
+          run "$B" "pkill -x ffmpeg 2>/dev/null; true" >/dev/null 2>&1
+        else
+          echo "   !! tun0 on 146 has NO address -- restoring $TB peer $TA (the qpsk_tun-restart trap)"
+          # Same three steps as bringup_r2r3.sh:183, MTU and route included: the
+          # address alone leaves a 1500-byte MTU and no peer route.
+          run "$B" "ip addr replace $TB peer $TA dev tun0
+ip link set tun0 up mtu 1516
+ip route replace $TA dev tun0 advmss 1476 rto_min 25ms 2>/dev/null
+pkill -x ffmpeg 2>/dev/null
+true" >/dev/null 2>&1
+        fi
+        heals=$(( heals + 1 ))
+        echo "   !! heal #$heals issued; relay re-listens on :$RELAY_PORT within ~1 s"
+      fi
+      stall_t0=$nowms; stall_rxb=$rxb     # re-arm either way: retry once per window
+    fi
+  fi
 
   if [ "$tx" = DOWN ]; then
     echo "   camera side exited:";     run "$A" "tail -6 $LOGDIR/tx.log" | sed 's/^/     148 /'

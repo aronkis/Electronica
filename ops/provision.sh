@@ -45,7 +45,8 @@ $W "$IP" 'echo up' 2>/dev/null | grep -q up || { echo "FATAL: $IP unreachable vi
 # sanity: the master files must exist on the host
 PROFILES="lvds_61p44_fdd_jupiter lvds_30p72_fdd_jupiter lvds_1p92_mhz"
 for f in "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_ber.c" \
-         "$SRC/qpsk_seq.c" "$SRC/qpsk_uio.c" "$SRC/qpsk_perf.c" "$SRC/qpsk_join.h" "$D/lock_watchdog.sh" \
+         "$SRC/qpsk_seq.c" "$SRC/qpsk_uio.c" "$SRC/qpsk_fec.c" "$SRC/qpsk_fec.h" \
+         "$SRC/qpsk_perf.c" "$SRC/qpsk_join.h" "$D/lock_watchdog.sh" \
          $(for pr in $PROFILES; do echo "$D/profiles/$pr.bin $D/profiles/$pr.json"; done); do
   [ -f "$f" ] || { echo "FATAL: master file missing on host: $f"; exit 1; }
 done
@@ -67,10 +68,11 @@ fi
 echo "-- host/ sources -> board; build qpsk_tun (on-board gcc) --"
 $W "$IP" 'mkdir -p /root/host_app_k5' 2>/dev/null
 scpput "$SRC/qpsk_tun.c" "$SRC/qpsk_frame.c" "$SRC/qpsk_ber.c" "$SRC/qpsk_seq.c" \
-       "$SRC/qpsk_uio.c" "$SRC/qpsk_frame.h" "$SRC/qpsk_ber.h" "$SRC/qpsk_seq.h" \
-       "$SRC/qpsk_uio.h" "$SRC/qpsk_hw.h" "$SRC/qpsk_join.h" "$SRC/qpsk_perf.c" root@"$IP":/root/host_app_k5/
+       "$SRC/qpsk_uio.c" "$SRC/qpsk_fec.c" "$SRC/qpsk_frame.h" "$SRC/qpsk_ber.h" "$SRC/qpsk_seq.h" \
+       "$SRC/qpsk_uio.h" "$SRC/qpsk_hw.h" "$SRC/qpsk_join.h" "$SRC/qpsk_fec.h" \
+       "$SRC/qpsk_perf.c" root@"$IP":/root/host_app_k5/
 [ -n "$CARVE_DEF" ] && echo "   (2 MB carve build: $CARVE_DEF -- f1536; needs the 2 MB qpsk dtb deployed)"
-SSH_T=300 $W "$IP" "cd /root/host_app_k5 && gcc -O2 -Wall $CARVE_DEF -o qpsk_tun qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c 2>&1 | tail -3
+SSH_T=300 $W "$IP" "cd /root/host_app_k5 && gcc -O2 -Wall $CARVE_DEF -o qpsk_tun qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c qpsk_fec.c 2>&1 | tail -3
   [ -x qpsk_tun ] && echo \"  qpsk_tun built OK\" || echo \"  qpsk_tun BUILD FAILED\"
   gcc -O2 -o qpsk_perf qpsk_perf.c 2>&1 | tail -2; [ -x qpsk_perf ] && echo \"  qpsk_perf built OK\" || echo \"  qpsk_perf BUILD FAILED\"" 2>/dev/null
 
@@ -85,6 +87,45 @@ echo "-- lock_watchdog.sh -> /root --"
 scpput "$D/lock_watchdog.sh" root@"$IP":/root/
 $W "$IP" 'chmod +x /root/lock_watchdog.sh' 2>/dev/null
 
+# 3b) per-board watchdog tuning -> /root/watchdog.conf
+# lock_watchdog.sh:34 sources this BEFORE every knob it defines, with unconditional
+# assignment, so it beats the launch environment and survives a bring-up. It has
+# only ever lived on the SD card, so a reflash silently loses it and the board comes
+# back on built-in defaults -- which reads exactly like RF drift. Banked here keyed
+# by last octet: ops/watchdog.conf.146 (five measured overrides), .148 (all
+# commented = defaults, behaviourally identical to having no file).
+# POLICY: install only when the board has none. An existing conf IS the measured
+# tuning and is never silently overwritten; a drift is reported, not resolved.
+# WATCHDOG_CONF_FORCE=1 pushes the repo copy anyway, backing the board's up first.
+WDCONF="$D/watchdog.conf.${IP##*.}"
+if [ ! -f "$WDCONF" ]; then
+  echo "-- watchdog.conf: no ops/watchdog.conf.${IP##*.} template for this board; skipping --"
+else
+  # "file absent" must be distinguishable from "ssh failed": an empty answer used
+  # to mean both, so an unreachable board was reported as "board had none" and we
+  # pushed to it. The board echoes NONE itself when the file is not there.
+  RMD5=$($W "$IP" 'if [ -r /root/watchdog.conf ]; then md5sum /root/watchdog.conf | cut -d" " -f1; else echo NONE; fi' 2>/dev/null | tr -dc '0-9A-Za-z')
+  LMD5=$(md5sum "$WDCONF" | cut -d' ' -f1)
+  if [ -z "$RMD5" ]; then
+    echo "-- watchdog.conf: [WARN] could not read /root/watchdog.conf on $IP (ssh failed) --"
+    echo "     Skipped rather than guessed. Re-run ops/provision.sh $IP once the board answers."
+  elif [ "$RMD5" = NONE ]; then
+    echo "-- watchdog.conf.${IP##*.} -> /root/watchdog.conf (board had none) --"
+    scpput "$WDCONF" root@"$IP":/root/watchdog.conf
+  elif [ "$RMD5" = "$LMD5" ]; then
+    echo "-- watchdog.conf: board already matches ops/watchdog.conf.${IP##*.} ($LMD5) --"
+  elif [ "${WATCHDOG_CONF_FORCE:-0}" = 1 ]; then
+    echo "-- watchdog.conf: FORCED $RMD5 -> $LMD5; board copy kept as /root/watchdog.conf.bak --"
+    $W "$IP" 'cp -a /root/watchdog.conf /root/watchdog.conf.bak' 2>/dev/null
+    scpput "$WDCONF" root@"$IP":/root/watchdog.conf
+  else
+    echo "-- watchdog.conf: [WARN] board ($RMD5) DIFFERS from ops/watchdog.conf.${IP##*.} ($LMD5)."
+    echo "     Left untouched: the board's copy is the measured one. Inspect the drift with"
+    echo "       ops/anyssh.sh $IP 'cat /root/watchdog.conf' | diff - ops/watchdog.conf.${IP##*.}"
+    echo "     then re-bank the board's version into the repo, or WATCHDOG_CONF_FORCE=1 to push the repo's."
+  fi
+fi
+
 # verify EXACTLY what link_test.sh preflight checks
 echo "-- verify (mirrors link_test.sh preflight) --"
 $W "$IP" '
@@ -94,6 +135,8 @@ $W "$IP" '
     [ -f /root/$pr.bin ] && [ -f /root/$pr.json ] && echo "  [ ok ] $pr.{bin,json}" || echo "  [FAIL] $pr.{bin,json}"
   done
   [ -f /root/lock_watchdog.sh ]      && echo "  [ ok ] watchdog"  || echo "  [FAIL] watchdog"
+  [ -f /root/watchdog.conf ]         && echo "  [ ok ] watchdog.conf ($(md5sum /root/watchdog.conf | cut -d" " -f1))" \
+                                     || echo "  [warn] no /root/watchdog.conf -- lock_watchdog.sh runs built-in defaults"
   uname -r | grep -q 6.12.77 && echo "  [ ok ] kernel 6.12.77 (UIO)" || echo "  [WARN] kernel $(uname -r) is not the banked UIO kernel (images/Image.6.12.77-uio.*)"
 ' 2>/dev/null
 echo "=== PROVISION $IP done -- next: ./bringup_r2r3.sh r3 (both boards), then health_probe_reset_aware.sh <ip> 12 ==="

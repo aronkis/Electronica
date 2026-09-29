@@ -1,0 +1,37 @@
+# Per-board watchdog overrides. lock_watchdog.sh sources this FIRST, with
+# unconditional assignment, so it beats the launch environment and survives a
+# bring-up (which hardcodes that environment).
+# This board's pre-fsv2 bitstream does not implement the 0x1C0/0x1C4/0x1C8 byte-word
+# counters, so the BYTE-PLANE detector has nothing to read. Off.
+BYTE_WD=0
+
+# RXPIN (task-GLITCH, 2026-09-23): rx0 SSI clock delay. 146's driver auto-tune
+# lands on clk=0 (a bad eye position) every time a 0x000 rearm fires, which
+# reintroduces the exact PAYLOAD-WEDGE it was recovering from. Confirmed-working
+# value from the clk 0-7 sweep. pin_rx0() in lock_watchdog.sh re-asserts this
+# after every rearm_once.
+RXPIN="5 4 4 4"
+
+# task-CHAIN (2026-09-24): gating the PAYLOAD-OK counter reset made parms survive a
+# half-cured re-arm, which made PAYLOAD_MAX_TRY/PAYLOAD_BACKOFF reachable for the first
+# time. The stock 120s is a deliberate no-polling, no-re-arm window -- longer than the
+# 94s outage the gate was meant to help. 15s keeps the "suspect the PEER TX" pause as a
+# real backoff without turning it into the worst outage on the link.
+PAYLOAD_BACKOFF=15
+
+# task-HALFRATE 2026-09-24: ~18% of full_rearms land HALF-RATE (drstcs 795-1401,
+# dpkts ~56% of rate) and emit one poll of payload burst, which sets pok=1 and blinds
+# BOTH the PAYLOAD-OK veto and the CARRIER-WEDGE clause -- costing ~21 s of needless
+# re-detection per failed round. 1 = re-arm on that poll instead. A/B vs baseline
+# p(cure)=0.82, failed-round gaps 38-45 s. Set back to 0 to revert (no redeploy).
+PAYLOAD_FASTRETRY=1
+
+# task-DETECT 2026-09-24: measured over n=39 outages under video load, the average
+# outage is 18.5 s DETECT + 31.2 s SETTLE. 48/48 PAYLOAD-WEDGE strike runs reached 3
+# strikes and re-armed -- zero aborted -- so the detector's false-positive rate is 0
+# on this data, and 0/39 outages ever self-healed (the wedged state is absorbing).
+# Counting to 3 therefore spends ~22 s with the link already down for no information.
+# 2 keeps one confirming strike so a single anomalous poll still cannot trigger an RF
+# re-arm, and removes ~7.3 s from every outage (healthy duty 72.5% -> ~75.5%).
+# Set back to 3 to revert -- conf edit + watchdog restart, no redeploy.
+PAYLOAD_FAIL_N=2

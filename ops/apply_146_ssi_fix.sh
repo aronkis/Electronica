@@ -62,16 +62,12 @@ OUT=$($W "$IP" 'B=/sys/kernel/debug/iio/iio:device2
  echo '"$DAT"' > $B/tx0_ssi_i_data_delay
  echo '"$DAT"' > $B/tx0_ssi_q_data_delay
  echo '"$DAT"' > $B/tx0_ssi_strobe_delay
- # (c2) OPTIONAL rx0 pin (RXPIN="clk i q strobe"). Unset -> rx0 stays preserved from the
- # live read, i.e. whatever this boot auto-tune chose -- the historical behaviour.
- RXP='"$RXPIN"'
- if [ -n "$RXP" ]; then
-   RC=${RXP%% *}; r=${RXP#* }; RI=${r%% *}; r=${r#* }; RQ=${r%% *}; RS=${r##* }
-   echo "$RC" > $B/rx0_ssi_clk_delay
-   echo "$RI" > $B/rx0_ssi_i_data_delay
-   echo "$RQ" > $B/rx0_ssi_q_data_delay
-   echo "$RS" > $B/rx0_ssi_strobe_delay
- fi
+ # (c2) rx0 is deliberately NOT pinned here -- see (f). A 0x000 pulse behind an SSI pin
+ # REVERTS it (FWD_CRC_REGRESSION_0907.md Task 61: the live read came back at the
+ # auto-tune value), and step (e2) below pulses 0x000. §23 fixed it by "re-arming first
+ # and pinning last; nothing writes a register behind the pin". So rx0 is preserved
+ # through this apply in every case, and RXPIN is applied afterwards.
+ RXP="'"$RXPIN"'"
  # (d) apply the full struct
  echo 1 > $B/ssi_delays
  # (e) verify against a fresh live read
@@ -80,16 +76,10 @@ OUT=$($W "$IP" 'B=/sys/kernel/debug/iio/iio:device2
  ok=1
  [ "$(g2 tx0_ClkDelay)" = "'"$CLK"'" ] || ok=0
  [ "$(g2 tx0_StrobeDelay)" = "'"$DAT"'" ] || ok=0
- if [ -z "$RXP" ]; then
-   for f in rx0_ClkDelay rx0_StrobeDelay rx0_rxIDataDelay rx0_rxQDataDelay; do
-     [ "$(g2 $f)" = "$(get $f)" ] || { ok=0; echo "PRESERVE-FAIL $f: live=$(g2 $f) want=$(get $f)"; }
-   done
- else
-   [ "$(g2 rx0_ClkDelay)"     = "$RC" ] || { ok=0; echo "RXPIN-FAIL rx0_ClkDelay: live=$(g2 rx0_ClkDelay) want=$RC"; }
-   [ "$(g2 rx0_rxIDataDelay)" = "$RI" ] || { ok=0; echo "RXPIN-FAIL rx0_rxIDataDelay: live=$(g2 rx0_rxIDataDelay) want=$RI"; }
-   [ "$(g2 rx0_rxQDataDelay)" = "$RQ" ] || { ok=0; echo "RXPIN-FAIL rx0_rxQDataDelay: live=$(g2 rx0_rxQDataDelay) want=$RQ"; }
-   [ "$(g2 rx0_StrobeDelay)"  = "$RS" ] || { ok=0; echo "RXPIN-FAIL rx0_StrobeDelay: live=$(g2 rx0_StrobeDelay) want=$RS"; }
- fi
+ # rx0 must be PRESERVED through this apply whether or not RXPIN is set.
+ for f in rx0_ClkDelay rx0_StrobeDelay rx0_rxIDataDelay rx0_rxQDataDelay; do
+   [ "$(g2 $f)" = "$(get $f)" ] || { ok=0; echo "PRESERVE-FAIL $f: live=$(g2 $f) want=$(get $f)"; }
+ done
  DRA=/sys/kernel/debug/iio/iio:device0/direct_reg_access; echo enabled > /sys/bus/iio/devices/iio:device0/reg_access
  echo "0x000 0x1">$DRA; sleep 0.5; echo "0x000 0x0">$DRA
  echo "0x158 0x1">$DRA; echo "0x118 0x0">$DRA; echo "0x114 0x'"$AIR"'">$DRA
@@ -97,7 +87,37 @@ OUT=$($W "$IP" 'B=/sys/kernel/debug/iio/iio:device2
  T=/sys/kernel/debug/iio/$TXD/direct_reg_access
  echo "0x418 0x2">$T; echo "0x458 0x2">$T; echo "0x044 0x1">$T
  echo "0x110 0x1">$DRA; sleep 0.3; echo "0x110 0x0">$DRA
- [ $ok = 1 ] && echo "ssi-fix VERIFIED: tx0=c'"$CLK"'d'"$DAT"' rx0 preserved ($(g2 rx0_ClkDelay)/$(g2 rx0_rxIDataDelay)) (rearmed, 0x114='"$AIR"')" \
-             || echo "ssi-fix VERIFY-FAIL (see PRESERVE-FAIL lines)"' 2>/dev/null)
+ # (f) PIN-LAST rx0. Nothing may write a modem register after this point, or the pin
+ # reverts (Task 61). Full write-cache protocol again against a FRESH live read, because
+ # the re-arm above may have moved the auto-tuned rows.
+ RXMSG="rx0 preserved ($(g2 rx0_ClkDelay)/$(g2 rx0_rxIDataDelay))"
+ if [ -n "$RXP" ]; then
+   RC=${RXP%% *}; r=${RXP#* }; RI=${r%% *}; r=${r#* }; RQ=${r%% *}; RS=${r##* }
+   LIVE3=$(cat $B/ssi_delays)
+   g3(){ echo "$LIVE3" | awk -F": " -v k="$1" "\$1==k{print \$2}"; }
+   for ch in rx0 rx1 tx0 tx1; do
+     echo "$(g3 ${ch}_ClkDelay)"     > $B/${ch}_ssi_clk_delay
+     echo "$(g3 ${ch}_StrobeDelay)"  > $B/${ch}_ssi_strobe_delay
+     echo "$(g3 ${ch}_rxIDataDelay)" > $B/${ch}_ssi_i_data_delay
+     echo "$(g3 ${ch}_rxQDataDelay)" > $B/${ch}_ssi_q_data_delay
+   done
+   echo "$(g3 tx0_RefClkDelay)" > $B/tx0_ssi_refclk_delay
+   echo "$(g3 tx1_RefClkDelay)" > $B/tx1_ssi_refclk_delay
+   echo "$RC" > $B/rx0_ssi_clk_delay
+   echo "$RI" > $B/rx0_ssi_i_data_delay
+   echo "$RQ" > $B/rx0_ssi_q_data_delay
+   echo "$RS" > $B/rx0_ssi_strobe_delay
+   echo 1 > $B/ssi_delays
+   LIVE4=$(cat $B/ssi_delays)
+   g4(){ echo "$LIVE4" | awk -F": " -v k="$1" "\$1==k{print \$2}"; }
+   [ "$(g4 rx0_ClkDelay)"     = "$RC" ] || { ok=0; echo "RXPIN-FAIL rx0_ClkDelay: live=$(g4 rx0_ClkDelay) want=$RC"; }
+   [ "$(g4 rx0_rxIDataDelay)" = "$RI" ] || { ok=0; echo "RXPIN-FAIL rx0_rxIDataDelay: live=$(g4 rx0_rxIDataDelay) want=$RI"; }
+   [ "$(g4 rx0_rxQDataDelay)" = "$RQ" ] || { ok=0; echo "RXPIN-FAIL rx0_rxQDataDelay: live=$(g4 rx0_rxQDataDelay) want=$RQ"; }
+   [ "$(g4 rx0_StrobeDelay)"  = "$RS" ] || { ok=0; echo "RXPIN-FAIL rx0_StrobeDelay: live=$(g4 rx0_StrobeDelay) want=$RS"; }
+   [ "$(g4 tx0_ClkDelay)" = "'"$CLK"'" ] || { ok=0; echo "RXPIN-FAIL tx0 clobbered: live=$(g4 tx0_ClkDelay) want='"$CLK"'"; }
+   RXMSG="rx0 PINNED-LAST $(g4 rx0_ClkDelay)/$(g4 rx0_rxIDataDelay)/$(g4 rx0_rxQDataDelay)/$(g4 rx0_StrobeDelay)"
+ fi
+ [ $ok = 1 ] && echo "ssi-fix VERIFIED: tx0=c'"$CLK"'d'"$DAT"' $RXMSG (rearmed, 0x114='"$AIR"')" \
+             || echo "ssi-fix VERIFY-FAIL (see PRESERVE-FAIL / RXPIN-FAIL lines)"' 2>/dev/null)
 echo "$OUT"
 echo "$OUT" | grep -q 'ssi-fix VERIFIED' || { echo "FATAL: SSI fix did not verify on $IP" >&2; exit 1; }

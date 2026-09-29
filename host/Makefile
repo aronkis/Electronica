@@ -37,6 +37,9 @@ qpsk_perf: qpsk_perf.c
 qpsk_ringwrite: qpsk_ringwrite.c
 	$(CC) $(CFLAGS) -o qpsk_ringwrite qpsk_ringwrite.c
 
+qpsk_fec.o: qpsk_fec.c qpsk_fec.h
+	$(CC) $(CFLAGS) -c qpsk_fec.c
+
 qpsk_frame.o: qpsk_frame.c qpsk_frame.h
 	$(CC) $(CFLAGS) -c qpsk_frame.c
 
@@ -49,8 +52,8 @@ qpsk_seq.o: qpsk_seq.c qpsk_seq.h qpsk_frame.h
 qpsk_uio.o: qpsk_uio.c qpsk_uio.h
 	$(CC) $(CFLAGS) -c qpsk_uio.c
 
-qpsk_tun: qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h
-	$(CC) $(CFLAGS) -o qpsk_tun qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o
+qpsk_tun: qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_fec.o qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h qpsk_fec.h
+	$(CC) $(CFLAGS) -o qpsk_tun qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_fec.o
 
 qpsk_capture: qpsk_capture.c qpsk_hw.h
 	$(CC) $(CFLAGS) -o qpsk_capture qpsk_capture.c
@@ -63,8 +66,8 @@ qpsk_capture: qpsk_capture.c qpsk_hw.h
 # default 1 MB objects. The binary's startup carve guard (qpsk_tun.c) refuses to
 # run until the 2 MB qpsk dtb is deployed -- see docs/setup-prebuilt.rst Step 0.
 qpsk_tun_2mb: CFLAGS += -DQPSK_CARVE_2MB
-qpsk_tun_2mb: qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c qpsk_hw.h qpsk_frame.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h
-	$(CC) $(CFLAGS) -o qpsk_tun_2mb qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c
+qpsk_tun_2mb: qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c qpsk_fec.c qpsk_hw.h qpsk_frame.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h qpsk_fec.h
+	$(CC) $(CFLAGS) -o qpsk_tun_2mb qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c qpsk_fec.c
 
 # ref_dump: print the fixed -B reference frame as 16 uint64 words for the
 # offline byte scorer. Output format is the contract in contract/decode_ref_k5.m.
@@ -78,13 +81,22 @@ seq_dump: seq_dump.c qpsk_seq.o qpsk_frame.o qpsk_seq.h qpsk_frame.h
 
 # --- host/tests/: C unit tests (not the K5-region test_modem_status, which
 # lives beside the module it tests in modem_status/) ---
+test_fec: tests/test_fec.c qpsk_fec.o qpsk_fec.h
+	$(CC) $(CFLAGS) -o test_fec tests/test_fec.c qpsk_fec.o
+
+# test_fecglue #includes qpsk_tun.c (same trick as test_k5) so it can drive
+# the daemon-side FEC glue -- group/queue bookkeeping and the reorder
+# buffer -- through the real qpsk_frame encode/whiten/decode path.
+test_fecglue: tests/test_fecglue.c qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_fec.o qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h qpsk_fec.h
+	$(CC) $(CFLAGS) -o test_fecglue tests/test_fecglue.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_fec.o -lm
+
 test_frame: tests/test_frame.c qpsk_frame.o qpsk_join.h
 	$(CC) $(CFLAGS) -o test_frame tests/test_frame.c qpsk_frame.o
 
 # -F path unit test: includes qpsk_tun.c (main renamed) and drives its Tx
 # path against a fake in-memory DMA regfile -- no hardware needed.
-test_k5: tests/test_k5.c qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h
-	$(CC) $(CFLAGS) -o test_k5 tests/test_k5.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o
+test_k5: tests/test_k5.c qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_fec.o qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h qpsk_fec.h
+	$(CC) $(CFLAGS) -o test_k5 tests/test_k5.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_fec.o
 
 # full-packet BER scorer self-test (no hardware; also `qpsk_tun -T` on-board)
 test_ber: tests/test_ber.c qpsk_ber.o qpsk_frame.o qpsk_ber.h qpsk_frame.h
@@ -98,8 +110,8 @@ test_whiten: tests/test_whiten.c qpsk_frame.o qpsk_frame.h
 test_seq: tests/test_seq.c qpsk_seq.o qpsk_frame.o qpsk_seq.h qpsk_frame.h
 	$(CC) $(CFLAGS) -o test_seq tests/test_seq.c qpsk_seq.o qpsk_frame.o
 
-test_txq: tests/test_txq.c qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h
-	$(CC) $(CFLAGS) -o test_txq tests/test_txq.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o -lm
+test_txq: tests/test_txq.c qpsk_tun.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_fec.o qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h qpsk_fec.h
+	$(CC) $(CFLAGS) -o test_txq tests/test_txq.c qpsk_frame.o qpsk_ber.o qpsk_seq.o qpsk_uio.o qpsk_fec.o -lm
 
 # COMB campaign T0a: TX<->RX per-frame join + on-disk record ABI (host-only)
 test_txlog: tests/test_txlog.c qpsk_frame.o qpsk_frame.h qpsk_join.h
@@ -112,8 +124,8 @@ test_txlog: tests/test_txlog.c qpsk_frame.o qpsk_frame.h qpsk_join.h
 # would silently rebuild them with the 2 MB define (same reason qpsk_tun_2mb
 # does it this way).
 test_rxresync: CFLAGS += -DQPSK_CARVE_2MB
-test_rxresync: tests/test_rxresync.c qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h
-	$(CC) $(CFLAGS) -o test_rxresync tests/test_rxresync.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c -lm
+test_rxresync: tests/test_rxresync.c qpsk_tun.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c qpsk_fec.c qpsk_frame.h qpsk_hw.h qpsk_ber.h qpsk_seq.h qpsk_uio.h qpsk_join.h qpsk_fec.h
+	$(CC) $(CFLAGS) -o test_rxresync tests/test_rxresync.c qpsk_frame.c qpsk_ber.c qpsk_seq.c qpsk_uio.c qpsk_fec.c -lm
 
 # --- host/modem_status/: on-board link status TUI (libc only, no curses).
 # Per-board build: 148 is arm64, 146 is armhf. _FILE_OFFSET_BITS=64 is
@@ -159,8 +171,10 @@ modem_status/test_modem_status: modem_status/test_modem_status.c modem_status/ms
 .PHONY: test_modem_status
 test_modem_status: modem_status/test_modem_status
 
-test: test_frame test_k5 test_ber test_whiten test_seq test_txq test_txlog test_rxresync modem_status/test_modem_status ms_safety_check
+test: test_frame test_fec test_fecglue test_k5 test_ber test_whiten test_seq test_txq test_txlog test_rxresync modem_status/test_modem_status ms_safety_check
 	./test_frame
+	./test_fec
+	./test_fecglue
 	./test_k5
 	./test_ber
 	./test_whiten
@@ -171,6 +185,6 @@ test: test_frame test_k5 test_ber test_whiten test_seq test_txq test_txlog test_
 	./modem_status/test_modem_status
 
 clean:
-	rm -f *.o qpsk_tun qpsk_tun_2mb qpsk_capture test_frame test_k5 test_ber test_whiten test_seq test_txq test_txlog test_rxresync
+	rm -f *.o qpsk_tun qpsk_tun_2mb qpsk_capture test_frame test_fec test_fecglue test_k5 test_ber test_whiten test_seq test_txq test_txlog test_rxresync
 	rm -f modem_status/*.o modem_status/modem_status modem_status/test_modem_status
 	rm -f tests/*.o
